@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LoggerMiddleware } from './common/logger.middleware';
-import { UsersModule } from './users/users.module';
+import { UsersModule } from './modules/users/users.module';
 import { dataSourceOptions } from '../data-source';
 
 @Module({
