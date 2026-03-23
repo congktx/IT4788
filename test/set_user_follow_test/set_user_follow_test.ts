@@ -1,4 +1,5 @@
 import { SetUserFollowInput, SetUserFollowOutput } from '../interfaces';
+import { assertSetUserFollow } from './assert_set_user_follow'; //
 
 export const runApiIntegrationTest = async (
   apiFunction: (input: SetUserFollowInput) => Promise<SetUserFollowOutput>,
@@ -93,16 +94,13 @@ export const runApiIntegrationTest = async (
 
         // Logic so sánh tự động của Jest
         try {
-          expect(actualResponse.code).toBe(tc.expectedCode);
+          // Dùng assert chung
+          assertSetUserFollow(tc.input, actualResponse, tc.expectedCode);
+
           console.log(`KẾT QUẢ: KHỚP (PASS)`);
         } catch (error) {
           console.log(`KẾT QUẢ: SAI LỆCH (FAIL)`);
           throw error;
-        }
-
-        if (tc.expectedCode === '1000') {
-          expect(actualResponse.data).toBeDefined();
-          expect(typeof actualResponse.data?.follow_count).toBe('number');
         }
       });
     });
