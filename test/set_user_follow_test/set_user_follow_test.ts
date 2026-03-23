@@ -1,8 +1,11 @@
 import { SetUserFollowInput, SetUserFollowOutput } from '../interfaces';
 import { assertSetUserFollow } from './assert_set_user_follow'; //
 
+export type TestMode = 'strict' | 'full'; // thêm kiểu dừng ngay khi test fail hoặc chạy full log lỗi
+
 export const runApiIntegrationTest = async (
   apiFunction: (input: SetUserFollowInput) => Promise<SetUserFollowOutput>,
+  mode: TestMode = 'full', // mặc định là chạy hết tất cả testcase
 ) => {
   const testCases = [
     {
@@ -92,7 +95,7 @@ export const runApiIntegrationTest = async (
           JSON.stringify(actualResponse, null, 2),
         );
 
-        // Logic so sánh tự động của Jest
+        // Logic so sánh tự động của Jest + chế độ mode
         try {
           // Dùng assert chung
           assertSetUserFollow(tc.input, actualResponse, tc.expectedCode);
@@ -100,7 +103,12 @@ export const runApiIntegrationTest = async (
           console.log(`KẾT QUẢ: KHỚP (PASS)`);
         } catch (error) {
           console.log(`KẾT QUẢ: SAI LỆCH (FAIL)`);
-          throw error;
+
+          if (mode === 'strict') {
+            // Nếu strict → throw ngay, dừng toàn bộ test
+            throw error;
+          }
+          // Nếu full → chỉ log fail, tiếp tục testcase khác
         }
       });
     });

@@ -20,7 +20,7 @@ export const assertSetUserFollow = (
 
     expect(typeof actual.data?.following_count).toBe('number');
   }
-  // ❌ Error case
+  // Error case
   else {
     expect(actual.data).toBeUndefined();
   }
