@@ -9,6 +9,7 @@ import { dataSourceOptions } from '../data-source';
 import { AuthModule } from './common/auth/auth.module';
 import { FollowModule } from './modules/follow/follow.module';
 import { BlocksModule } from './modules/blocks/blocks.module';
+import { RedisModule } from './common/redis/redis.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { BlocksModule } from './modules/blocks/blocks.module';
     AuthModule,
     FollowModule,
     BlocksModule,
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [AppService],
