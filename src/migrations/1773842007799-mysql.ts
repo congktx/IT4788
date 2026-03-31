@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Mysql1773234452817 implements MigrationInterface {
-    name = 'Mysql1773234452817'
+export class Mysql1773842007799 implements MigrationInterface {
+    name = 'Mysql1773842007799'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE \`user_codes\` (\`id\` int NOT NULL AUTO_INCREMENT, \`user_id\` int NOT NULL, \`code\` varchar(255) NULL, \`expired_at\` timestamp NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
@@ -20,7 +20,7 @@ export class Mysql1773234452817 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE \`messages\` (\`id\` int NOT NULL AUTO_INCREMENT, \`conversation_id\` int NOT NULL, \`sender_id\` int NOT NULL, \`content\` text NULL, \`image_url\` varchar(255) NULL, \`video_url\` varchar(255) NULL, \`created_at\` int NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
         await queryRunner.query(`CREATE TABLE \`conversations\` (\`id\` int NOT NULL AUTO_INCREMENT, \`time_last_update\` int NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
         await queryRunner.query(`CREATE TABLE \`user_conversations\` (\`user_id\` int NOT NULL, \`conversation_id\` int NOT NULL, PRIMARY KEY (\`user_id\`, \`conversation_id\`)) ENGINE=InnoDB`);
-        await queryRunner.query(`CREATE TABLE \`users\` (\`id\` int NOT NULL AUTO_INCREMENT, \`username\` varchar(255) NULL, \`email\` varchar(255) NULL, \`phonenumber\` varchar(255) NULL, \`password\` varchar(255) NULL, \`role\` varchar(255) NULL, \`fullname\` varchar(255) NULL, \`avatar\` varchar(255) NULL, \`bio\` text NULL, \`created_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), UNIQUE INDEX \`IDX_97672ac88f789774dd47f7c8be\` (\`email\`), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
+        await queryRunner.query(`CREATE TABLE \`users\` (\`id\` int NOT NULL AUTO_INCREMENT, \`username\` varchar(255) NULL, \`phone_number\` varchar(255) NULL, \`password\` varchar(255) NOT NULL, \`uuid\` varchar(255) NULL, \`role\` varchar(255) NULL, \`fullname\` varchar(255) NULL, \`avatar\` varchar(255) NULL, \`bio\` text NULL, \`created_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
         await queryRunner.query(`CREATE TABLE \`reward_rules\` (\`id\` int NOT NULL AUTO_INCREMENT, \`battle_type\` varchar(255) NULL, \`reward_coin\` decimal NULL, PRIMARY KEY (\`id\`)) ENGINE=InnoDB`);
         await queryRunner.query(`ALTER TABLE \`user_codes\` ADD CONSTRAINT \`FK_b98f6d82aa9b218599917bf21b3\` FOREIGN KEY (\`user_id\`) REFERENCES \`users\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE \`transactions\` ADD CONSTRAINT \`FK_0b171330be0cb621f8d73b87a9e\` FOREIGN KEY (\`wallet_id\`) REFERENCES \`wallets\`(\`id\`) ON DELETE NO ACTION ON UPDATE NO ACTION`);
@@ -72,7 +72,6 @@ export class Mysql1773234452817 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE \`transactions\` DROP FOREIGN KEY \`FK_0b171330be0cb621f8d73b87a9e\``);
         await queryRunner.query(`ALTER TABLE \`user_codes\` DROP FOREIGN KEY \`FK_b98f6d82aa9b218599917bf21b3\``);
         await queryRunner.query(`DROP TABLE \`reward_rules\``);
-        await queryRunner.query(`DROP INDEX \`IDX_97672ac88f789774dd47f7c8be\` ON \`users\``);
         await queryRunner.query(`DROP TABLE \`users\``);
         await queryRunner.query(`DROP TABLE \`user_conversations\``);
         await queryRunner.query(`DROP TABLE \`conversations\``);
