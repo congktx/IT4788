@@ -1,8 +1,20 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  UseGuards,
+  Headers,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
+import { CreateCodeResetPasswordDto } from './dto/create-code-reset-password.dto';
+import { CheckCodeResetPasswordDto } from './dto/check-code-reset-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -26,5 +38,28 @@ export class AuthController {
       message: 'OK',
       data: req.user,
     };
+  }
+
+  @Post('create_code_reset_password')
+  async createCodeResetPassword(@Body() dto: CreateCodeResetPasswordDto) {
+    return this.authService.createCodeResetPassword(dto);
+  }
+
+  @Post('check_code_reset_password')
+  async checkCodeResetPassword(@Body() dto: CheckCodeResetPasswordDto) {
+    return this.authService.checkCodeResetPassword(dto);
+  }
+
+  @Post('reset_password')
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
+  }
+
+  @Post('change_password')
+  async changePassword(
+    @Body() dto: ChangePasswordDto,
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.authService.changePassword(dto, authorization);
   }
 }
