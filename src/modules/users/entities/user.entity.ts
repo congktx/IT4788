@@ -10,7 +10,7 @@ import { Report } from '../../products/entities/report.entity';
 import { Order } from '../../orders/entities/order.entity';
 import { UserConversation } from '../../conversations/entities/user_conversation.entity';
 import { Message } from '../../conversations/entities/message.entity';
-
+import { Address } from '../../orders/entities/address.entity';
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
@@ -78,4 +78,6 @@ export class User {
 
   @OneToMany(() => Message, message => message.sender)
   messages_sent: Message[];
+  @OneToMany(() => Address, (address) => address.user)
+  addresses: Address[];
 }
