@@ -15,6 +15,7 @@ import { CreateCodeResetPasswordDto } from './dto/create-code-reset-password.dto
 import { CheckCodeResetPasswordDto } from './dto/check-code-reset-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { ChangeInfoAfterSignupDto } from './dto/change-info-after-signup.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -61,5 +62,13 @@ export class AuthController {
     @Headers('authorization') authorization?: string,
   ) {
     return this.authService.changePassword(dto, authorization);
+  }
+
+  @Post('change_info_after_signup')
+  async changeInfoAfterSignup(
+    @Body() dto: ChangeInfoAfterSignupDto,
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.authService.changeInfoAfterSignup(dto, authorization);
   }
 }
