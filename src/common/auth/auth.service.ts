@@ -15,6 +15,7 @@ import { RedisService } from '../redis/redis.service';
 import { CheckCodeResetPasswordDto } from './dto/check-code-reset-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { ChangeInfoAfterSignupDto } from './dto/change-info-after-signup.dto';
 
 @Injectable()
 export class AuthService {
@@ -74,6 +75,10 @@ export class AuthService {
     if (type !== 'Bearer' || !token) return null;
   
     return token;
+  }
+
+  private isValidUsername(username: string): boolean {
+    return /^[a-zA-Z0-9_. ]{3,50}$/.test(username);
   }
 
   async signup(signupDto: SignupDto) {
@@ -365,6 +370,64 @@ export class AuthService {
       return buildResponse(APP_RESPONSE.OK, 'OK');
     } catch (error) {
       console.error('changePassword error:', error);
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
+    }
+  }
+
+  async changeInfoAfterSignup(
+    dto: ChangeInfoAfterSignupDto,
+    authorization?: string,
+  ) {
+    try {
+      const headerToken = this.extractBearerToken(authorization);
+      const accessToken = headerToken || dto.token;
+  
+      if (!accessToken || accessToken.trim().length < 10) {
+        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
+      }
+  
+      let payload: any;
+  
+      try {
+        payload = await this.jwtService.verifyAsync(accessToken);
+      } catch (error) {
+        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
+      }
+  
+      const user = await this.usersService.findById(payload.sub);
+  
+      if (!user) {
+        return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
+      }
+  
+      const username = dto.username.trim();
+  
+      if (!this.isValidUsername(username)) {
+        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
+      }
+  
+      await this.usersService.updateInfoAfterSignup(user.id, {
+        username,
+        avatar: dto.avatar ?? user.avatar ?? null,
+      });
+  
+      const updatedUser = await this.usersService.findById(user.id);
+      if (!updatedUser) {
+        return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
+      }
+  
+      return buildResponse(APP_RESPONSE.OK, {
+        id: String(updatedUser.id),
+        username: updatedUser.username,
+        phone_number: updatedUser.phone_number,
+        password: updatedUser.password,
+        uuid: updatedUser.uuid,
+        role: updatedUser.role,
+        fullname: updatedUser.fullname,
+        avatar: updatedUser.avatar,
+      });
+    } catch (error) {
+      console.error('changeInfoAfterSignup error:', error);
       return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
