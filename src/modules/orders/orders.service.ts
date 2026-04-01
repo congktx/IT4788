@@ -7,7 +7,7 @@ import { Ward } from './entities/ward.entity';
 import { Province } from './entities/province.entity';
 import { Warehouse } from './entities/warehouse.entity';
 import { GetShipFromQueryDto } from './dto/ship_from.dto';
-import { GetShipFeeDto } from './dto/getshipfee.sto';
+import { GetShipFeeDto } from './dto/getshipfee.dto';
 import { Product } from '../products/entities/product.entity';
 import { AddOrderAddress } from './dto/add_order_address.dto';
 import { UpdateOrderAddressDto } from './dto/update_order_address.dto';

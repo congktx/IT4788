@@ -14,7 +14,7 @@ import { JwtAuthGuard } from 'src/common/jwt-auth.guards';
 import { OrderService } from './orders.service';
 import { ApiOperation } from '@nestjs/swagger';
 import { GetShipFromQueryDto } from './dto/ship_from.dto';
-import { GetShipFeeDto } from './dto/getshipfee.sto';
+import { GetShipFeeDto } from './dto/getshipfee.dto';
 import { AddOrderAddress } from './dto/add_order_address.dto';
 import { UpdateOrderAddressDto } from './dto/update_order_address.dto';
 import { GetOrderStatusDto } from './dto/get_order_status.dto';
