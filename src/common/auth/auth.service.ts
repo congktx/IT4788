@@ -432,6 +432,36 @@ export class AuthService {
     }
   }
 
+  async logout(token?: string) {
+    try {
+      if (!token || token.trim().length < 10) {
+        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
+      }
+  
+      let payload: any;
+  
+      try {
+        payload = await this.jwtService.verifyAsync(token);
+      } catch (error) {
+        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
+      }
+  
+      const user = await this.usersService.findById(payload.sub);
+  
+      if (!user) {
+        return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
+      }
+  
+      // OPTIONAL: xoá dev_token để không nhận push nữa
+      // await this.devTokensService.deleteByUserId(user.id);
+  
+      return buildResponse(APP_RESPONSE.OK, null);
+    } catch (error) {
+      console.error('logout error:', error);
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
+    }
+  }
+
   private async mockSendSms(phoneNumber: string, otp: string) {
     console.log(`[SMS MOCK] Send OTP ${otp} to ${phoneNumber}`);
   }
