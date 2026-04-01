@@ -10,6 +10,7 @@ import {
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
+import { LogoutDto } from './dto/logout.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CreateCodeResetPasswordDto } from './dto/create-code-reset-password.dto';
 import { CheckCodeResetPasswordDto } from './dto/check-code-reset-password.dto';
@@ -20,6 +21,15 @@ import { ChangeInfoAfterSignupDto } from './dto/change-info-after-signup.dto';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  private extractBearerToken(authorization?: string): string | null {
+    if (!authorization) return null;
+
+    const [type, token] = authorization.split(' ');
+    if (type !== 'Bearer' || !token) return null;
+
+    return token;
+  }
 
   @Post('signup')
   async signup(@Body() signupDto: SignupDto) {
@@ -70,5 +80,16 @@ export class AuthController {
     @Headers('authorization') authorization?: string,
   ) {
     return this.authService.changeInfoAfterSignup(dto, authorization);
+  }
+
+  @Post('logout')
+  async logout(
+    @Body() dto: LogoutDto,
+    @Headers('authorization') authorization?: string,
+  ) {
+    const headerToken = this.extractBearerToken(authorization);
+    const accessToken = headerToken || dto.token;
+
+    return this.authService.logout(accessToken);
   }
 }
