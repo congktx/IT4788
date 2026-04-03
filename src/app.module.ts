@@ -1,18 +1,28 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LoggerMiddleware } from './common/logger.middleware';
 import { UsersModule } from './modules/users/users.module';
 import { dataSourceOptions } from '../data-source';
+import { AuthModule } from './common/auth/auth.module';
+import { FollowModule } from './modules/follow/follow.module';
+import { BlocksModule } from './modules/blocks/blocks.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     TypeOrmModule.forRoot({
       ...dataSourceOptions,
-      migrations: [], // Ngăn NestJS nạp các file .ts lúc runtime (chỉ dùng cho CLI)
+      migrations: [],
     }),
     UsersModule,
+    AuthModule,
+    FollowModule,
+    BlocksModule,
   ],
   controllers: [AppController],
   providers: [AppService],
