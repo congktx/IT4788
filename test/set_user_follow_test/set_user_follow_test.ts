@@ -11,7 +11,7 @@ export const runApiIntegrationTest = async (
     {
       name: 'TC1: Không truyền tham số nào',
       input: {} as any,
-      expectedCode: '1004 Parameter value is invalid',
+      expectedCode: '9998', // Token is invalid // Sẽ kiểm tra token trước
     },
     {
       name: 'TC2: Thiếu followee_id',
@@ -19,22 +19,22 @@ export const runApiIntegrationTest = async (
         token: 'token_live_001',
         action: 'follow',
       } as any,
-      expectedCode: '1004 Parameter value is invalid',
+      expectedCode: '1004', // Parameter value is invalid
     },
     {
       name: 'TC3: Token không hợp lệ/hết hạn',
       input: {
         token: 'token_expired', // Có trong mockTokens nhưng giá trị là EXPIRED
-        followee_id: 'u_002',
+        followee_id: '2',
         action: 'follow' as const,
       },
-      expectedCode: '9998 Token is invalid',
+      expectedCode: '9998', // Token is invalid
     },
     {
       name: 'TC4: Follow thành công (u_001 follow u_003)',
       input: {
         token: 'token_live_001', // ID là u_001
-        followee_id: 'u_003', // u_003 có tồn tại và u_001 chưa follow
+        followee_id: '3', // u_003 có tồn tại và u_001 chưa follow
         action: 'follow' as const,
       },
       expectedCode: '1000',
@@ -43,37 +43,37 @@ export const runApiIntegrationTest = async (
       name: 'TC5: User mục tiêu không tồn tại',
       input: {
         token: 'token_live_001',
-        followee_id: 'u_999', // Không có trong mockUsers
+        followee_id: '9', // Không có trong mockUsers
         action: 'follow' as const,
       },
-      expectedCode: '1013 User does not exist',
+      expectedCode: '1013', // User does not exist
     },
     {
       name: 'TC6: Tự follow chính mình',
       input: {
         token: 'token_live_001', // ID là u_001
-        followee_id: 'u_001', // Trùng ID người gửi
+        followee_id: '1', // Trùng ID người gửi
         action: 'follow' as const,
       },
-      expectedCode: '1004 Parameter value is invalid',
+      expectedCode: '1004', // Parameter value is invalid
     },
     {
       name: 'TC7: Trùng hành động - Đã follow rồi lại follow tiếp',
       input: {
         token: 'token_live_001', // ID là u_001
-        followee_id: 'u_002', // u_001 ĐÃ follow u_002 trong mockFollowRelation
+        followee_id: '2', // u_001 ĐÃ follow u_002 trong mockFollowRelation
         action: 'follow' as const,
       },
-      expectedCode: '1010 Action has been done previously by this user',
+      expectedCode: '1010', // Action has been done previously by this user
     },
     {
       name: 'TC8: Trùng hành động - Chưa follow nhưng lại hủy follow',
       input: {
         token: 'token_live_002', // ID là u_002
-        followee_id: 'u_001', // u_002 CHƯA follow u_001 trong mockFollowRelation
+        followee_id: '1', // u_002 CHƯA follow u_001 trong mockFollowRelation
         action: 'unfollow' as const,
       },
-      expectedCode: '1010 Action has been done previously by this user',
+      expectedCode: '1010', // Action has been done previously by this user
     },
   ];
 
@@ -94,6 +94,8 @@ export const runApiIntegrationTest = async (
           `FULL OUTPUT TỪ DEV:`,
           JSON.stringify(actualResponse, null, 2),
         );
+
+        const isMatch = actualResponse.code.trim() === tc.expectedCode.trim();
 
         // Logic so sánh tự động của Jest + chế độ mode
         try {

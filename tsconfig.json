@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "types": ["node", "express"],
+    "types": ["node", "express", "jest"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "resolvePackageJsonExports": true,
@@ -25,4 +25,3 @@
     "strictPropertyInitialization": false
   }
 }
-
