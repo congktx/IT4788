@@ -8,7 +8,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from 'src/common/jwt-auth.guards';
+import { AuthGuard } from 'src/common/auth/guards/auth.guard';
 import { ProductService } from './products.service';
 import { CreateProductDto } from './dto/create_product.dto';
 import { UpdateProductDto } from './dto/update_product.dto';
@@ -27,7 +27,7 @@ export class ProductController {
   @ApiOperation({
     summary: 'Người bán thêm sản phẩm',
   })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthGuard)
   @Post('add_product')
   async create(
     @Body() dto: CreateProductDto,
@@ -38,7 +38,7 @@ export class ProductController {
   @ApiOperation({
     summary: 'Người bán cập nhật thông tin sản phẩm',
   })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthGuard)
   @Patch('/update/:id')
   async update(
     @Param('id') id: number,
@@ -50,7 +50,7 @@ export class ProductController {
   @ApiOperation({
     summary: 'Người bán xóa sản phầm',
   })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthGuard)
   @Delete('delete/:id')
   async remove(@Param('id') id: number) {
     return await this.productService.remove(id);
@@ -58,7 +58,7 @@ export class ProductController {
   @ApiOperation({
     summary: 'Lấy danh sách sản phẩm của người bán',
   })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthGuard)
   @Post('get_user_listings')
   async getUserListings(
     @Req() req: RequestWithUser,

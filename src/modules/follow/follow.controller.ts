@@ -1,0 +1,69 @@
+import {
+  Body,
+  Controller,
+  HttpCode,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { Request } from 'express';
+import { AuthGuard } from '../../common/auth/guards/auth.guard';
+import { SetUserFollowDto } from './dto/set-user-follow.dto';
+import { GetListFollowedDto } from './dto/get-list-followed.dto';
+import { FollowService } from './follow.service';
+import { GetListFollowingDto } from './dto/get-list-following.dto';
+
+type AuthenticatedRequest = Request & {
+  user?: {
+    id?: number;
+    userId?: number;
+    sub?: number;
+  };
+};
+
+@Controller()
+export class FollowController {
+  constructor(private readonly followService: FollowService) {}
+
+  @Post('set_user_follow')
+  @HttpCode(200)
+  @UseGuards(AuthGuard)
+  async setUserFollow(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: SetUserFollowDto,
+  ) {
+    const currentUserId = Number(
+      req.user?.id ?? req.user?.userId ?? req.user?.sub,
+    );
+
+    return this.followService.setUserFollow(currentUserId, dto);
+  }
+
+  @Post('get_list_followed')
+  @HttpCode(200)
+  @UseGuards(AuthGuard)
+  async getListFollowed(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: GetListFollowedDto,
+  ) {
+    const currentUserId = Number(
+      req.user?.id ?? req.user?.userId ?? req.user?.sub,
+    );
+
+    return this.followService.getListFollowed(currentUserId, dto);
+  }
+
+  @Post('get_list_following')
+  @HttpCode(200)
+  @UseGuards(AuthGuard)
+  async getListFollowing(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: GetListFollowingDto,
+  ) {
+    const currentUserId = Number(
+      req.user?.id ?? req.user?.userId ?? req.user?.sub,
+    );
+
+    return this.followService.getListFollowing(currentUserId, dto);
+  }
+}

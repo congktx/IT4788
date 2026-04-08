@@ -9,7 +9,6 @@ import { RESPONSE_CODE } from './constants';
 import { UpdateProductDto } from './dto/update_product.dto';
 import { GetUserListingsDto } from './dto/get_user_listing.dto';
 import { User } from '../users/entities/user.entity';
-import { url } from 'inspector';
 @Injectable()
 export class ProductService {
   constructor(
@@ -210,7 +209,7 @@ export class ProductService {
             0,
           )
         : 0;
-      const variantsData = p.variants
+      const variants_data = p.variants
         ? p.variants.map((v) => {
             const variantSold = p.order_items
               ? p.order_items
@@ -235,7 +234,7 @@ export class ProductService {
         like: p.likes ? p.likes.length.toString() : '0',
         comment: p.comments ? p.comments.length.toString() : '0',
         buyer_num: totalSold.toString(),
-        variants: variantsData,
+        variants: variants_data,
       };
     });
     return {

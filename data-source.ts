@@ -30,6 +30,11 @@ import { Province } from './src/modules/orders/entities/province.entity';
 import { Warehouse } from './src/modules/orders/entities/warehouse.entity';
 import { Brand } from './src/modules/products/entities/brand.entity';
 import { Category } from './src/modules/products/entities/category.entity';
+import { DevToken } from './src/modules/dev_tokens/entities/dev-token.entity';
+import { UserFollow } from './src/modules/follow/entities/user-follow.entity';
+import { UserBlock } from './src/modules/blocks/entities/user-block.entity';
+import { PushSetting } from './src/modules/push_settings/entities/push-setting.entity';
+
 export const dataSourceOptions: DataSourceOptions = {
   type: 'mysql',
   host: SecretConfig.database.host,
@@ -64,6 +69,10 @@ export const dataSourceOptions: DataSourceOptions = {
     Warehouse,
     Brand,
     Category,
+    DevToken,
+    UserBlock,
+    UserFollow,
+    PushSetting,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,

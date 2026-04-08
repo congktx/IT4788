@@ -26,11 +26,11 @@ export class newsService {
   async getListNews(query: GetListNewsDto) {
     const { index, count } = query;
     if (index === null || count === null) {
-      const listNews = await this.newsRepo.find();
+      const list_news = await this.newsRepo.find();
       return {
         code: '1000',
         message: 'OK',
-        data: listNews,
+        data: list_news,
       };
     }
     const [news, total] = await this.newsRepo.findAndCount({
@@ -42,7 +42,7 @@ export class newsService {
       code: '1000',
       message: 'OK',
       data: {
-        listNews: news,
+        list_news: news,
         total: total,
       },
     };

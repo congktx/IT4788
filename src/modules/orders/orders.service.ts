@@ -159,7 +159,7 @@ export class OrderService {
       code: '1000',
       message: 'OK',
       data: {
-        shipfee: shipfee,
+        ship_fee: shipfee,
         leatime: leatime,
       },
     };
@@ -169,14 +169,14 @@ export class OrderService {
     if (!user_id) {
       return RESPONSE_CODE.TOKEN_INVALID;
     }
-    const addressList = await this.addressRepo.find({
+    const address_list = await this.addressRepo.find({
       where: { user_id: Number(user_id) },
       order: { is_default: 'DESC', id: 'DESC' },
     });
     return {
       code: '1000',
       message: 'OK',
-      data: addressList,
+      data: address_list,
     };
   }
   //add order address
@@ -191,7 +191,7 @@ export class OrderService {
         { is_default: false },
       );
     }
-    const newAddress = this.addressRepo.create({
+    const new_address = this.addressRepo.create({
       user_id: user_id,
       address_name: address,
       is_default: is_default,
@@ -199,12 +199,12 @@ export class OrderService {
       lat: lat,
       lng: lng,
     });
-    await this.addressRepo.save(newAddress);
+    await this.addressRepo.save(new_address);
 
     return {
       code: '1000',
       message: 'OK',
-      data: newAddress,
+      data: new_address,
     };
   }
   async editOrderAddress(

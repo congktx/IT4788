@@ -17,8 +17,8 @@ export class AppController {
   @Get('get-test-token')
   async getTestToken() {
     return this.jwtService.sign(
-      { sub: 1, username: 'Người Bán Test' },
-      { secret: this.configService.get<string>('SECRET_KEY') }
+      { sub: 1, username: 'test_user' },
+      { secret: this.configService.get<string>('SECRET_KEY') },
     );
   }
 }

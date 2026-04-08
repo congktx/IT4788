@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Product } from './product.entity';
 import { User } from '../../users/entities/user.entity';
 
@@ -16,11 +22,11 @@ export class Report {
   @Column('text', { nullable: true })
   reason: string;
 
-  @ManyToOne(() => Product, product => product.reports)
+  @ManyToOne(() => Product, (product) => product.reports)
   @JoinColumn({ name: 'product_id' })
   product: Product;
 
-  @ManyToOne(() => User, user => user.reports)
+  @ManyToOne(() => User, (user) => user.reports)
   @JoinColumn({ name: 'user_id' })
   user: User;
 }

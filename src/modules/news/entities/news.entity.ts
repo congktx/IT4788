@@ -10,4 +10,7 @@ export class News {
 
   @Column({ nullable: true })
   created_at: number;
+
+  @Column({ nullable: true })
+  content: string;
 }
