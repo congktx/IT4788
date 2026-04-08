@@ -23,6 +23,7 @@ import { BlocksModule } from './modules/blocks/blocks.module';
     AuthModule,
     FollowModule,
     BlocksModule,
+
   ],
   controllers: [AppController],
   providers: [AppService],

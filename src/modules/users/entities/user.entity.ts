@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   OneToMany,
   OneToOne,
+  ManyToMany,
 } from 'typeorm';
 import { UserCode } from './user_code.entity';
 import { Wallet } from '../../wallets/entities/wallet.entity';
@@ -15,9 +16,9 @@ import { Comment } from '../../products/entities/comment.entity';
 import { Like } from '../../products/entities/like.entity';
 import { Report } from '../../products/entities/report.entity';
 import { Order } from '../../orders/entities/order.entity';
-import { UserConversation } from '../../conversations/entities/user_conversation.entity';
 import { Message } from '../../conversations/entities/message.entity';
 import { UserFollow } from '../../follow/entities/user-follow.entity';
+import { Conversation } from 'src/modules/conversations/entities/conversation.entity';
 
 @Entity('users')
 export class User {
@@ -81,8 +82,8 @@ export class User {
   @OneToMany(() => Order, (order) => order.seller)
   orders_sold: Order[];
 
-  @OneToMany(() => UserConversation, (uc) => uc.user)
-  user_conversations: UserConversation[];
+  @ManyToMany(() => Conversation, (conversation) => conversation.users)
+  conversations: Conversation[];
 
   @OneToMany(() => Message, (message) => message.sender)
   messages_sent: Message[];
