@@ -7,8 +7,14 @@ export class Conversation {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column('int', { nullable: true })
+  @Column({ nullable: true })
   time_last_update: number;
+
+  @Column({ nullable: true })
+  time_last_seen: number;
+
+  @Column({ nullable: true })
+  last_messasge_id: number;
 
   @ManyToMany(() => User, (user) => user.conversations)
   @JoinTable()

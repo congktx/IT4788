@@ -9,6 +9,7 @@ import { dataSourceOptions } from '../data-source';
 import { AuthModule } from './common/auth/auth.module';
 import { FollowModule } from './modules/follow/follow.module';
 import { BlocksModule } from './modules/blocks/blocks.module';
+import { ConversationsModule } from './modules/conversations/conversations.module';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { BlocksModule } from './modules/blocks/blocks.module';
     AuthModule,
     FollowModule,
     BlocksModule,
-
+    ConversationsModule
   ],
   controllers: [AppController],
   providers: [AppService],
