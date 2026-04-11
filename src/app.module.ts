@@ -11,6 +11,7 @@ import { FollowModule } from './modules/follow/follow.module';
 import { BlocksModule } from './modules/blocks/blocks.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { AddressesModule } from './modules/addresses/addresses.module';
+import { WalletsModule } from './modules/wallets/wallets.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -26,6 +27,7 @@ import { AddressesModule } from './modules/addresses/addresses.module';
     BlocksModule,
     OrdersModule,
     AddressesModule,
+    WalletsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

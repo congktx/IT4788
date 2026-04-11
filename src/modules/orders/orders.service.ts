@@ -23,6 +23,8 @@ import { RefundOrderDto } from './dto/refund-order.dto';
 import { SellerMarkAsShippedDto } from './dto/seller-mark-as-shipped.dto';
 import { OrderTimeline } from './entities/order-timeline.entity';
 import { GetOrderTimelineDto } from './dto/get-order-timeline.dto';
+import { Wallet } from '../wallets/entities/wallet.entity';
+import { Transaction } from '../wallets/entities/transaction.entity';
 @Injectable()
 export class OrdersService {
   constructor(
@@ -48,6 +50,12 @@ export class OrdersService {
 
     @InjectRepository(OrderTimeline)
     private readonly orderTimelineRepository: Repository<OrderTimeline>,
+
+    @InjectRepository(Wallet)
+    private readonly walletRepository: Repository<Wallet>,
+
+    @InjectRepository(Transaction)
+    private readonly transactionRepository: Repository<Transaction>,
   ) {}
 
   async createOrder(body: CreateOrderDto, userId: number) {
@@ -521,21 +529,59 @@ export class OrdersService {
       });
     }
 
-    order.status = OrderStatus.CANCELLED;
-    order.cancel_reason = body.reason ?? null;
-    await this.orderRepository.save(order);
-    await this.addTimeline(order.id, OrderStatus.CANCELLED, 'Buyer cancelled order');
+    return this.dataSource.transaction(async (manager) => {
+      order.status = OrderStatus.CANCELLED;
+      order.cancel_reason = body.reason ?? null;
+      await manager.save(Order, order);
 
-    return {
-      code: '1000',
-      message: 'OK',
-      data: {
-        id: order.id,
-        state: order.status,
-        refunded_coins: 0,
-        refunded_at: new Date(),
-      },
-    };
+      let wallet = await manager.findOne(Wallet, {
+        where: { user_id: buyer.id },
+      });
+
+      if (!wallet) {
+        wallet = manager.create(Wallet, {
+          user_id: buyer.id,
+          balance: 0,
+          pending_balance: 0,
+        });
+        wallet = await manager.save(Wallet, wallet);
+      }
+
+      const refundedCoins = Number(order.total_price || 0) + Number(order.shipping_fee || 0);
+
+      wallet.balance = Number(wallet.balance || 0) + refundedCoins;
+      await manager.save(Wallet, wallet);
+
+      const transaction = manager.create(Transaction, {
+        wallet_id: wallet.id,
+        type: 'income',
+        amount: refundedCoins,
+        status: 'success',
+        description: `Refund for cancelled order #${order.id}`,
+      });
+
+      await manager.save(Transaction, transaction);
+
+      const timeline = manager.create(OrderTimeline, {
+        order_id: order.id,
+        status: OrderStatus.CANCELLED,
+        note: 'Buyer cancelled order',
+      });
+
+      await manager.save(OrderTimeline, timeline);
+
+      return {
+        code: '1000',
+        message: 'OK',
+        data: {
+          id: order.id,
+          state: order.status,
+          cancel_reason: order.cancel_reason,
+          refunded_coins: refundedCoins,
+          refunded_at: new Date(),
+        },
+      };
+    });
   }
 
   async setAcceptBuyer(body: SetAcceptBuyerDto, userId: number) {

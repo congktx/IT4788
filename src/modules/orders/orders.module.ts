@@ -9,6 +9,8 @@ import { Product } from '../products/entities/product.entity';
 import { User } from '../users/entities/user.entity';
 import { Address } from '../addresses/entities/address.entity';
 import { OrderTimeline } from './entities/order-timeline.entity';
+import { Wallet } from '../wallets/entities/wallet.entity';
+import { Transaction } from '../wallets/entities/transaction.entity';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { OrderTimeline } from './entities/order-timeline.entity';
       User,
       Address,
       OrderTimeline,
+      Wallet,
+      Transaction,
     ]),
   ],
   controllers: [OrdersController],
