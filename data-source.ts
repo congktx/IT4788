@@ -24,6 +24,8 @@ import { UserConversation } from './src/modules/conversations/entities/user_conv
 import { Message } from './src/modules/conversations/entities/message.entity';
 import { UserFollow } from './src/modules/follow/entities/user-follow.entity';
 import { UserBlock } from './src/modules/blocks/entities/user-block.entity';
+import { Address } from './src/modules/addresses/entities/address.entity';
+import { OrderTimeline } from './src/modules/orders/entities/order-timeline.entity';
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'mysql',
@@ -38,12 +40,13 @@ export const dataSourceOptions: DataSourceOptions = {
     RewardRule,
     BattleProof, Appeal,
     Product, Like, Comment, Report, ProductVariant,
-    Order, OrderItem, Shipping,
-    Conversation, UserConversation, Message, 
+    Order, OrderItem, Shipping, OrderTimeline,
+    Conversation, UserConversation, Message,
     UserFollow, UserBlock,
+    Address,
   ],
   migrations: ['src/migrations/*.ts'],
-  synchronize: false,
+  synchronize: true,
 };
 
 

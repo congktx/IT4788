@@ -18,6 +18,7 @@ import { Order } from '../../orders/entities/order.entity';
 import { UserConversation } from '../../conversations/entities/user_conversation.entity';
 import { Message } from '../../conversations/entities/message.entity';
 import { UserFollow } from '../../follow/entities/user-follow.entity';
+import { Address } from '../../addresses/entities/address.entity';
 
 @Entity('users')
 export class User {
@@ -92,4 +93,7 @@ export class User {
 
   @OneToMany(() => UserFollow, (follow) => follow.followee)
   follower_relations: UserFollow[];
+
+  @OneToMany(() => Address, (address) => address.user)
+  addresses: Address[];
 }

@@ -9,7 +9,8 @@ import { dataSourceOptions } from '../data-source';
 import { AuthModule } from './common/auth/auth.module';
 import { FollowModule } from './modules/follow/follow.module';
 import { BlocksModule } from './modules/blocks/blocks.module';
-
+import { OrdersModule } from './modules/orders/orders.module';
+import { AddressesModule } from './modules/addresses/addresses.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -23,6 +24,8 @@ import { BlocksModule } from './modules/blocks/blocks.module';
     AuthModule,
     FollowModule,
     BlocksModule,
+    OrdersModule,
+    AddressesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -6,20 +6,20 @@ export class Shipping {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: 'int' })
   order_id: number;
 
-  @Column({ nullable: true })
-  address_id: number;
+  @Column({ type: 'int', nullable: true })
+  address_id: number | null;
 
-  @Column({ nullable: true })
-  shipper_id: number;
+  @Column({ type: 'int', nullable: true })
+  shipper_id: number | null;
 
-  @Column({ nullable: true })
-  status: string;
+  @Column({ type: 'varchar', nullable: true })
+  status: string | null;
 
-  @Column({ nullable: true })
-  tracking_code: string;
+  @Column({ type: 'varchar', nullable: true })
+  tracking_code: string | null;
 
   @OneToOne(() => Order, order => order.shipping)
   @JoinColumn({ name: 'order_id' })
