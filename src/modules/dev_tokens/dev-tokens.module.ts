@@ -1,19 +1,17 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { DevToken } from './entities/dev-token.entity';
+import { DevTokensService } from './dev-tokens.service';
+import { DevTokensController } from './dev-tokens.controller';
+import { UsersModule } from '../users/users.module';
 import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { UsersModule } from '../../modules/users/users.module';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([DevToken]),
     UsersModule,
-    PassportModule,
     ConfigModule,
-    RedisModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -25,8 +23,8 @@ import { RedisModule } from '../redis/redis.module';
       }),
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtModule],
+  providers: [DevTokensService],
+  controllers: [DevTokensController],
+  exports: [DevTokensService],
 })
-export class AuthModule {}
+export class DevTokensModule {}

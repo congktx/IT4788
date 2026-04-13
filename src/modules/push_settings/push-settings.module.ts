@@ -1,19 +1,17 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { UsersModule } from '../../modules/users/users.module';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { RedisModule } from '../redis/redis.module';
+import { PushSetting } from './entities/push-setting.entity';
+import { PushSettingsService } from './push-settings.service';
+import { PushSettingsController } from './push-settings.controller';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([PushSetting]),
     UsersModule,
-    PassportModule,
     ConfigModule,
-    RedisModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -25,8 +23,8 @@ import { RedisModule } from '../redis/redis.module';
       }),
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtModule],
+  providers: [PushSettingsService],
+  controllers: [PushSettingsController],
+  exports: [PushSettingsService],
 })
-export class AuthModule {}
+export class PushSettingsModule {}

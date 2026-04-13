@@ -9,6 +9,12 @@ import { dataSourceOptions } from '../data-source';
 import { AuthModule } from './common/auth/auth.module';
 import { FollowModule } from './modules/follow/follow.module';
 import { BlocksModule } from './modules/blocks/blocks.module';
+import { RedisModule } from './common/redis/redis.module';
+import { DevTokensModule } from './modules/dev_tokens/dev-tokens.module';
+import { PushSettingsModule } from './modules/push_settings/push-settings.module';
+import { ProductModule } from './modules/products/product.module';
+import { RatesModule } from './modules/rates/rates.module';
+import { SearchesModule } from './modules/searches/searches.module';
 
 @Module({
   imports: [
@@ -23,6 +29,12 @@ import { BlocksModule } from './modules/blocks/blocks.module';
     AuthModule,
     FollowModule,
     BlocksModule,
+    RedisModule,
+    DevTokensModule,
+    PushSettingsModule,
+    ProductModule,
+    RatesModule,
+    SearchesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

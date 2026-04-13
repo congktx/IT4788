@@ -35,7 +35,34 @@ export class UsersService {
       .getOne();
   }
 
+  async findByIdWithPassword(id: number) {
+    return this.usersRepository.findOne({
+      where: { id },
+      select: [
+        'id',
+        'username',
+        'password',
+        'role',
+        'avatar',
+        'fullname',
+      ],
+    });
+  }
+
   async updatePassword(id: number, password: string): Promise<void> {
     await this.usersRepository.update(id, { password });
+  }
+
+  async updateInfoAfterSignup(
+    userId: number,
+    payload: {
+      username: string;
+      avatar?: string;
+    },
+  ) {
+    await this.usersRepository.update(userId, {
+      username: payload.username,
+      avatar: payload.avatar,
+    });
   }
 }

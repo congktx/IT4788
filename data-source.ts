@@ -24,6 +24,10 @@ import { UserConversation } from './src/modules/conversations/entities/user_conv
 import { Message } from './src/modules/conversations/entities/message.entity';
 import { UserFollow } from './src/modules/follow/entities/user-follow.entity';
 import { UserBlock } from './src/modules/blocks/entities/user-block.entity';
+import { DevToken } from './src/modules/dev_tokens/entities/dev-token.entity';
+import { PushSetting } from './src/modules/push_settings/entities/push-setting.entity';
+import { Rate } from './src/modules/rates/entities/rate.entity';
+import { SavedSearch } from './src/modules/searches/entities/saved_search.entity';
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'mysql',
@@ -40,7 +44,8 @@ export const dataSourceOptions: DataSourceOptions = {
     Product, Like, Comment, Report, ProductVariant,
     Order, OrderItem, Shipping,
     Conversation, UserConversation, Message, 
-    UserFollow, UserBlock,
+    UserFollow, UserBlock, DevToken, PushSetting,
+    Rate, SavedSearch,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
