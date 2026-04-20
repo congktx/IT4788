@@ -45,6 +45,17 @@ export class CreateProductDto {
   price: number;
 
   @ApiProperty({
+    description: 'price_discount',
+    example: 100000.2,
+    minimum: 0,
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  price_discount: number;
+
+  @ApiProperty({
     description: 'Product description',
     example: 'description',
   })

@@ -42,6 +42,9 @@ export class Product {
   @Column('decimal', { nullable: true })
   price: number;
 
+  @Column('decimal')
+  price_discount: number;
+
   @Column({ type: 'json', nullable: true })
   videos: { url: string; thumb: string }[];
 

@@ -67,7 +67,7 @@ export class ProductService {
   }
 
   async findAll(): Promise<Product[]> {
-    return await this.productRepo.find(); //returning all the products
+    return await this.productRepo.find();
   }
 
   async findOne(id: number): Promise<any> {
@@ -203,12 +203,6 @@ export class ProductService {
     const products = await queryBuilder.getMany();
 
     const data = products.map((p) => {
-      const totalSold = p.order_items
-        ? p.order_items.reduce(
-            (sum, item) => sum + (Number(item.quantity) || 0),
-            0,
-          )
-        : 0;
       const variants_data = p.variants
         ? p.variants.map((v) => {
             const variantSold = p.order_items
@@ -229,11 +223,11 @@ export class ProductService {
         id: p.id.toString(),
         name: p.title || '',
         price: p.price ? p.price.toString() : '0',
+        price_discount: p.price_discount ? p.price_discount.toString() : '0',
         image: p.image_urls && p.image_urls.length > 0 ? p.image_urls[0] : null,
         video: p.videos && p.videos.length > 0 ? p.videos[0] : null,
         like: p.likes ? p.likes.length.toString() : '0',
         comment: p.comments ? p.comments.length.toString() : '0',
-        buyer_num: totalSold.toString(),
         variants: variants_data,
       };
     });
