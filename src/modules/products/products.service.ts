@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ProductVariant } from './entities/product_variant.entity';
 import { CreateProductVariantDto } from './dto/create_productVariants.dto';
-import { RESPONSE_CODE } from './constants';
+import { APP_RESPONSE } from '../constants/response.constants';
 import { UpdateProductDto } from './dto/update_product.dto';
 import { GetUserListingsDto } from './dto/get_user_listing.dto';
 import { User } from '../users/entities/user.entity';
@@ -28,7 +28,7 @@ export class ProductService {
         (v) => typeof v.stock !== 'number',
       );
       if (!user_id) {
-        return RESPONSE_CODE.TOKEN_INVALID;
+        return APP_RESPONSE.TOKEN_INVALID;
       }
       if (
         !dto.title ||
@@ -37,13 +37,13 @@ export class ProductService {
         !dto.variants ||
         !dto.ship_from_id
       ) {
-        return RESPONSE_CODE.PARAM_MISSING;
+        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
       }
       if (typeof dto.price !== 'number' || isInvalidVariant) {
-        return RESPONSE_CODE.PARAM_TYPE_INVALID;
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
       }
       if (dto.price < 0) {
-        return RESPONSE_CODE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
       const { ...productData } = dto;
       const product = await this.productRepo.save({
@@ -62,7 +62,7 @@ export class ProductService {
     } catch (e) {
       console.error(e);
       console.log(e);
-      return RESPONSE_CODE.EXCEPTION_ERROR;
+      return APP_RESPONSE.EXCEPTION_ERROR;
     }
   }
 
@@ -91,9 +91,9 @@ export class ProductService {
       const isInvalidVariant = variants.some(
         (v) => typeof v.stock !== 'number' || v.stock < 0,
       );
-      if (!product) return RESPONSE_CODE.PRODUCT_NOT_EXISTED;
+      if (!product) return APP_RESPONSE.PRODUCT_NOT_EXISTED;
       if (!user_id) {
-        return RESPONSE_CODE.TOKEN_INVALID;
+        return APP_RESPONSE.TOKEN_INVALID;
       }
       if (
         !dto.title ||
@@ -102,16 +102,16 @@ export class ProductService {
         !dto.category_id ||
         !dto.variants
       )
-        return RESPONSE_CODE.PARAM_MISSING;
+        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
       if (
         typeof dto.price !== 'number' ||
         typeof dto.title !== 'string' ||
         isInvalidVariant
       ) {
-        return RESPONSE_CODE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
       }
       if (dto.price < 0) {
-        return RESPONSE_CODE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
       const {
         variants: _,
@@ -147,7 +147,7 @@ export class ProductService {
       return await this.findOne(id);
     } catch (e) {
       console.error(e);
-      return RESPONSE_CODE.EXCEPTION_ERROR;
+      return APP_RESPONSE.EXCEPTION_ERROR;
     }
   }
   //delete product
@@ -157,16 +157,16 @@ export class ProductService {
       relations: ['variants'],
     });
     if (!product) {
-      return RESPONSE_CODE.PRODUCT_NOT_EXISTED;
+      return APP_RESPONSE.PRODUCT_NOT_EXISTED;
     }
     await this.variantRepo.delete({ product: { id: id } });
     await this.productRepo.delete(id);
-    return RESPONSE_CODE.OK;
+    return APP_RESPONSE.OK;
   }
   //get_user_listing
   async get_listing(user_id1: number, query: GetUserListingsDto) {
     if (!user_id1) {
-      return RESPONSE_CODE.TOKEN_INVALID;
+      return APP_RESPONSE.TOKEN_INVALID;
     }
     const { index, count, user_id, keyword, category_id } = query;
 
@@ -176,7 +176,7 @@ export class ProductService {
         where: { id: Number(user_id) },
       });
       if (!user) {
-        return RESPONSE_CODE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
     }
 

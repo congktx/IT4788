@@ -1,4 +1,3 @@
-import { RESPONSE_CODE } from '../products/constants';
 import { Injectable } from '@nestjs/common';
 import { Address } from './entities/address.entity';
 import { Repository } from 'typeorm';
@@ -13,6 +12,7 @@ import { AddOrderAddress } from './dto/add_order_address.dto';
 import { UpdateOrderAddressDto } from './dto/update_order_address.dto';
 import { GetOrderStatusDto } from './dto/get_order_status.dto';
 import { Order } from './entities/order.entity';
+import { APP_RESPONSE } from '../constants/response.constants';
 function calculateDistance(
   lat1: number,
   lon1: number,
@@ -60,14 +60,14 @@ export class OrderService {
         where: { id: Number(parent_id) },
       });
       if (!province) {
-        return RESPONSE_CODE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
     } else {
       const ward = await this.wardRepo.findOne({
         where: { id: Number(parent_id) },
       });
       if (!ward) {
-        return RESPONSE_CODE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
     }
     const queryBuilder = this.warehouseRepo.createQueryBuilder('warehouse');
@@ -101,7 +101,7 @@ export class OrderService {
   //get_ship_fee
   async getShipFee(user_id: number, query: GetShipFeeDto) {
     if (!user_id) {
-      return RESPONSE_CODE.TOKEN_INVALID;
+      return APP_RESPONSE.TOKEN_INVALID;
     }
     const { product_id, address_id } = query;
 
@@ -110,7 +110,7 @@ export class OrderService {
       relations: ['ship_from'],
     });
     if (!product || !product.ship_from) {
-      return RESPONSE_CODE.PARAM_VALUE_INVALID;
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
 
     const sellerLat = Number(product.ship_from.lat);
@@ -127,7 +127,7 @@ export class OrderService {
       });
     }
     if (!buyerAddress) {
-      return RESPONSE_CODE.PARAM_VALUE_INVALID;
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
 
     const buyerLat = Number(buyerAddress.lat);
@@ -167,7 +167,7 @@ export class OrderService {
   //get_list_order_address
   async getListOrderAddress(user_id: number) {
     if (!user_id) {
-      return RESPONSE_CODE.TOKEN_INVALID;
+      return APP_RESPONSE.TOKEN_INVALID;
     }
     const address_list = await this.addressRepo.find({
       where: { user_id: Number(user_id) },
@@ -182,7 +182,7 @@ export class OrderService {
   //add order address
   async addOrderAddress(user_id: number, query: AddOrderAddress) {
     if (!user_id) {
-      return RESPONSE_CODE.TOKEN_INVALID;
+      return APP_RESPONSE.TOKEN_INVALID;
     }
     const { address, is_default, address_id, lng, lat } = query;
     if (is_default) {
@@ -214,14 +214,14 @@ export class OrderService {
   ) {
     const { address: address_name, is_default, address_id, lng, lat } = query;
     if (!user_id) {
-      return RESPONSE_CODE.TOKEN_INVALID;
+      return APP_RESPONSE.TOKEN_INVALID;
     }
 
     const addressUpdate = await this.addressRepo.findOne({
       where: { id: Number(id), user_id: user_id },
     });
     if (!addressUpdate) {
-      return RESPONSE_CODE.PARAM_VALUE_INVALID;
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
     if (address_id && address_id.length > 0) {
       const newWardId = Number(address_id[0]);
@@ -230,13 +230,13 @@ export class OrderService {
         addressUpdate.ward_id === newWardId &&
         addressUpdate.address_name === address_name
       ) {
-        return RESPONSE_CODE.ACTION_DONE_PREVIOUS_BY_USER;
+        return APP_RESPONSE.ACTION_DONE_PREVIOUSLY;
       }
       const ward = await this.wardRepo.findOne({
         where: { id: Number(address_id[0]) },
       });
       if (!ward) {
-        return RESPONSE_CODE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
     }
 
@@ -261,28 +261,28 @@ export class OrderService {
   //delete_order_address
   async delete_order_address(user_id: number, id: number) {
     if (!user_id) {
-      return RESPONSE_CODE.TOKEN_INVALID;
+      return APP_RESPONSE.TOKEN_INVALID;
     }
     const address = await this.addressRepo.findOne({
       where: { id: Number(id), user_id: Number(user_id) },
     });
     if (!address) {
-      return RESPONSE_CODE.PARAM_VALUE_INVALID;
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
     await this.addressRepo.delete(id);
-    return RESPONSE_CODE.OK;
+    return APP_RESPONSE.OK;
   }
   //get_order_status
   async get_order_status(user_id: number, query: GetOrderStatusDto) {
     if (!user_id) {
-      return RESPONSE_CODE.TOKEN_INVALID;
+      return APP_RESPONSE.TOKEN_INVALID;
     }
     const { /*product_id,*/ purchase_id } = query;
     const purchase = await this.orderRepo.findOne({
       where: { id: Number(purchase_id) },
     });
     if (!purchase) {
-      return RESPONSE_CODE.PARAM_VALUE_INVALID;
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
     /*const product = await this.productRepo.findOne({
       where: { id: Number(product_id) },
@@ -309,7 +309,7 @@ export class OrderService {
       },
     });
     if (!order) {
-      return RESPONSE_CODE.PARAM_VALUE_INVALID;
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
     const selleraddress = order.seller_address;
     const full_addr_seller = `${selleraddress.address_name}, ${selleraddress.ward?.name || ''}, ${selleraddress.ward?.province?.name || ''}`;
