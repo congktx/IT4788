@@ -6,12 +6,20 @@ import { AppService } from './app.service';
 import { LoggerMiddleware } from './common/logger.middleware';
 import { UsersModule } from './modules/users/users.module';
 import { dataSourceOptions } from '../data-source';
+import { ProductsModule } from './modules/products/products.module';
+import { OrderModule } from './modules/orders/orders.module';
+import { newsModule } from './modules/news/news.module';
 import { AuthModule } from './common/auth/auth.module';
+import { RedisModule } from './common/redis/redis.module';
 import { FollowModule } from './modules/follow/follow.module';
 import { BlocksModule } from './modules/blocks/blocks.module';
-import { OrdersModule } from './modules/orders/orders.module';
 import { AddressesModule } from './modules/addresses/addresses.module';
 import { WalletsModule } from './modules/wallets/wallets.module';
+import { DevTokensModule } from './modules/dev_tokens/dev-tokens.module';
+import { PushSettingsModule } from './modules/push_settings/push-settings.module';
+import { RatesModule } from './modules/rates/rates.module';
+import { SearchesModule } from './modules/searches/searches.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -22,12 +30,19 @@ import { WalletsModule } from './modules/wallets/wallets.module';
       migrations: [],
     }),
     UsersModule,
+    ProductsModule,
+    OrderModule,
+    newsModule,
     AuthModule,
+    RedisModule,
+    DevTokensModule,
     FollowModule,
     BlocksModule,
-    OrdersModule,
     AddressesModule,
     WalletsModule,
+    PushSettingsModule,
+    RatesModule,
+    SearchesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

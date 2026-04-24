@@ -5,14 +5,23 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order_item.entity';
 import { Shipping } from './entities/shipping.entity';
+import { OrderTimeline } from './entities/order-timeline.entity';
+import { Status } from './entities/status_order.entities';
+import { Ward } from './entities/ward.entity';
+import { Province } from './entities/province.entity';
+import { Warehouse } from './entities/warehouse.entity';
+
 import { Product } from '../products/entities/product.entity';
 import { User } from '../users/entities/user.entity';
 import { Address } from '../addresses/entities/address.entity';
+import { Wallet } from '../wallets/entities/wallet.entity';
+import { Transaction } from '../wallets/entities/transaction.entity';
+
 import { CreateOrderDto } from './dto/create-order.dto';
-import { OrderStatus } from './enums/order-status.enum';
 import { GetListPurchasesDto } from './dto/get-list-purchases.dto';
 import { GetPurchaseDto } from './dto/get-purchase.dto';
 import { EditPurchaseDto } from './dto/edit-purchase.dto';
@@ -21,10 +30,41 @@ import { SetAcceptBuyerDto } from './dto/set-accept-buyer.dto';
 import { BuyerConfirmReceivedDto } from './dto/buyer-confirm-received.dto';
 import { RefundOrderDto } from './dto/refund-order.dto';
 import { SellerMarkAsShippedDto } from './dto/seller-mark-as-shipped.dto';
-import { OrderTimeline } from './entities/order-timeline.entity';
 import { GetOrderTimelineDto } from './dto/get-order-timeline.dto';
-import { Wallet } from '../wallets/entities/wallet.entity';
-import { Transaction } from '../wallets/entities/transaction.entity';
+
+import { GetShipFromQueryDto } from './dto/ship_from.dto';
+import { GetShipFeeDto } from './dto/getshipfee.dto';
+import { AddOrderAddress } from './dto/add_order_address.dto';
+import { UpdateOrderAddressDto } from './dto/update_order_address.dto';
+import { GetOrderStatusDto } from './dto/get_order_status.dto';
+
+import { OrderStatus } from './enums/order-status.enum';
+import {
+  APP_RESPONSE,
+  buildResponse,
+} from '../../common/constants/response.constants';
+
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 @Injectable()
 export class OrdersService {
   constructor(
@@ -56,6 +96,15 @@ export class OrdersService {
 
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
+
+    @InjectRepository(Ward)
+    private readonly wardRepository: Repository<Ward>,
+
+    @InjectRepository(Province)
+    private readonly provinceRepository: Repository<Province>,
+
+    @InjectRepository(Warehouse)
+    private readonly warehouseRepository: Repository<Warehouse>,
   ) {}
 
   async createOrder(body: CreateOrderDto, userId: number) {
@@ -63,20 +112,10 @@ export class OrdersService {
       where: { id: userId },
     });
 
-    if (!buyer) {
-      throw new UnauthorizedException({
-        code: '9998',
-        message: 'Token is invalid',
-        data: null,
-      });
-    }
+    if (!buyer) this.tokenInvalid();
 
     if (!body.items || body.items.length === 0) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Items must not be empty',
-        data: null,
-      });
+      this.paramInvalid();
     }
 
     const address = await this.addressRepository.findOne({
@@ -86,13 +125,7 @@ export class OrdersService {
       },
     });
 
-    if (!address) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Address is invalid',
-        data: null,
-      });
-    }
+    if (!address) this.paramInvalid();
 
     const productIds = body.items.map((item) => item.product_id);
 
@@ -102,11 +135,7 @@ export class OrdersService {
       .getMany();
 
     if (products.length !== productIds.length) {
-      throw new BadRequestException({
-        code: '1013',
-        message: 'One or more products do not exist',
-        data: null,
-      });
+      this.productNotExist();
     }
 
     const firstSellerId = products[0].seller_id;
@@ -114,33 +143,17 @@ export class OrdersService {
       (product) => product.seller_id === firstSellerId,
     );
 
-    if (!isSameSeller) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'All items in one order must belong to the same seller',
-        data: null,
-      });
-    }
+    if (!isSameSeller) this.paramInvalid();
 
     let totalPrice = 0;
 
     const itemPayloads = body.items.map((item) => {
       const product = products.find((p) => p.id === item.product_id);
 
-      if (!product) {
-        throw new BadRequestException({
-          code: '1013',
-          message: `Product ${item.product_id} does not exist`,
-          data: null,
-        });
-      }
+      if (!product) this.productNotExist();
 
       if (!item.quantity || item.quantity <= 0) {
-        throw new BadRequestException({
-          code: '1004',
-          message: 'Quantity must be greater than 0',
-          data: null,
-        });
+        this.paramInvalid();
       }
 
       const itemTotal = Number(product.price) * item.quantity;
@@ -169,6 +182,7 @@ export class OrdersService {
         status: OrderStatus.PENDING,
         note: 'Order created',
       });
+
       await manager.save(OrderTimeline, createdTimeline);
 
       const orderItems = itemPayloads.map((item) =>
@@ -192,18 +206,14 @@ export class OrdersService {
 
       await manager.save(Shipping, shipping);
 
-      return {
-        code: '1000',
-        message: 'OK',
-        data: {
-          order_id: savedOrder.id,
-          status: savedOrder.status,
-          total_price: savedOrder.total_price,
-          shipping_fee: savedOrder.shipping_fee,
-          address_id: address.id,
-          source: body.source,
-        },
-      };
+      return buildResponse(APP_RESPONSE.OK, {
+        order_id: savedOrder.id,
+        status: savedOrder.status,
+        total_price: savedOrder.total_price,
+        shipping_fee: savedOrder.shipping_fee,
+        address_id: address.id,
+        source: body.source,
+      });
     });
   }
 
@@ -212,23 +222,13 @@ export class OrdersService {
       where: { id: userId },
     });
 
-    if (!buyer) {
-      throw new UnauthorizedException({
-        code: '9998',
-        message: 'Token is invalid',
-        data: null,
-      });
-    }
+    if (!buyer) this.tokenInvalid();
 
     const index = Number(body.index ?? 0);
     const count = Number(body.count ?? 10);
 
     if (isNaN(index) || isNaN(count) || index < 0 || count <= 0) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
+      this.paramInvalid();
     }
 
     const query = this.orderRepository
@@ -260,53 +260,20 @@ export class OrdersService {
       })),
     }));
 
-    return {
-      code: '1000',
-      message: 'OK',
-      data,
-    };
+    return buildResponse(APP_RESPONSE.OK, data);
   }
 
-  private getFirstImage(imageUrls?: string[] | string | null): string {
-    if (!imageUrls) return '';
-
-    if (Array.isArray(imageUrls)) {
-      return imageUrls.length > 0 ? imageUrls[0] : '';
-    }
-
-    try {
-      const parsed = JSON.parse(imageUrls);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed[0];
-      }
-    } catch (_) {}
-
-    return imageUrls;
-}
   async getPurchase(body: GetPurchaseDto, userId: number) {
     const buyer = await this.userRepository.findOne({
       where: { id: userId },
     });
 
-    if (!buyer) {
-      throw new UnauthorizedException({
-        code: '9998',
-        message: 'Token is invalid',
-        data: null,
-      });
-    }
+    if (!buyer) this.tokenInvalid();
 
     const purchaseId = Number(body.id);
 
-    console.log('LOGIN USER ID:', userId);
-    console.log('PURCHASE ID:', purchaseId);
-    console.log('BODY:', body);
     if (isNaN(purchaseId) || purchaseId <= 0) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
+      this.paramInvalid();
     }
 
     const order = await this.orderRepository
@@ -319,15 +286,8 @@ export class OrdersService {
       .where('order.id = :purchaseId', { purchaseId })
       .andWhere('order.buyer_id = :buyerId', { buyerId: buyer.id })
       .getOne();
-    console.log('ORDER:', order);
 
-    if (!order) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
-    }
+    if (!order) this.paramInvalid();
 
     let buyerAddress = '';
 
@@ -345,36 +305,32 @@ export class OrdersService {
     const shipFee = Number(order.shipping_fee || 0);
     const finalPrice = totalPrice + shipFee;
 
-    return {
-      code: '1000',
-      message: 'OK',
-      data: {
-        id: order.id,
-        state: order.status,
-        total_price: totalPrice,
-        ship_fee: shipFee,
-        final_price: finalPrice,
-        note: '',
-        items: (order.items || []).map((item) => ({
-          product_id: item.product_id,
-          name: item.product?.title || '',
-          image: this.getFirstImage(item.product?.image_urls),
-          price: item.product ? Number(item.product.price) : 0,
-          quantity: item.quantity,
-          subtotal: Number(item.total_price || 0),
-        })),
-        seller: {
-          id: order.seller?.id || null,
-          name: order.seller?.username || '',
-        },
-        buyer: {
-          id: order.buyer?.id || null,
-          name: order.buyer?.username || '',
-          phonenumber: order.buyer?.phone_number || '',
-          address: buyerAddress,
-        },
+    return buildResponse(APP_RESPONSE.OK, {
+      id: order.id,
+      state: order.status,
+      total_price: totalPrice,
+      ship_fee: shipFee,
+      final_price: finalPrice,
+      note: order.note || '',
+      items: (order.items || []).map((item) => ({
+        product_id: item.product_id,
+        name: item.product?.title || '',
+        image: this.getFirstImage(item.product?.image_urls),
+        price: item.product ? Number(item.product.price) : 0,
+        quantity: item.quantity,
+        subtotal: Number(item.total_price || 0),
+      })),
+      seller: {
+        id: order.seller?.id || null,
+        name: order.seller?.username || '',
       },
-    };
+      buyer: {
+        id: order.buyer?.id || null,
+        name: order.buyer?.username || '',
+        phonenumber: order.buyer?.phone_number || '',
+        address: buyerAddress,
+      },
+    });
   }
 
   async editPurchase(body: EditPurchaseDto, userId: number) {
@@ -382,22 +338,12 @@ export class OrdersService {
       where: { id: userId },
     });
 
-    if (!buyer) {
-      throw new UnauthorizedException({
-        code: '9998',
-        message: 'Token is invalid',
-        data: null,
-      });
-    }
+    if (!buyer) this.tokenInvalid();
 
     const purchaseId = Number(body.id);
 
     if (isNaN(purchaseId) || purchaseId <= 0) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
+      this.paramInvalid();
     }
 
     const order = await this.orderRepository.findOne({
@@ -408,23 +354,13 @@ export class OrdersService {
       relations: ['shipping'],
     });
 
-    if (!order) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
-    }
+    if (!order) this.paramInvalid();
 
     if (
       order.status !== OrderStatus.PENDING &&
       order.status !== OrderStatus.CONFIRMED
     ) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
+      this.paramInvalid();
     }
 
     let updatedAddress: Address | null = null;
@@ -433,11 +369,7 @@ export class OrdersService {
       const addressId = Number(body.address_id);
 
       if (isNaN(addressId) || addressId <= 0) {
-        throw new BadRequestException({
-          code: '1004',
-          message: 'Parameter value is invalid',
-          data: null,
-        });
+        this.paramInvalid();
       }
 
       const address = await this.addressRepository.findOne({
@@ -447,13 +379,7 @@ export class OrdersService {
         },
       });
 
-      if (!address) {
-        throw new BadRequestException({
-          code: '1004',
-          message: 'Parameter value is invalid',
-          data: null,
-        });
-      }
+      if (!address) this.paramInvalid();
 
       order.shipping.address_id = address.id;
       await this.shippingRepository.save(order.shipping);
@@ -465,19 +391,13 @@ export class OrdersService {
       await this.orderRepository.save(order);
     }
 
-    return {
-      code: '1000',
-      message: 'OK',
-      data: {
-        id: order.id,
-        state: order.status,
-        note: order.note || '',
-        address_id: order.shipping?.address_id || null,
-        address: updatedAddress
-          ? updatedAddress.full_address
-          : null,
-      },
-    };
+    return buildResponse(APP_RESPONSE.OK, {
+      id: order.id,
+      state: order.status,
+      note: order.note || '',
+      address_id: order.shipping?.address_id || null,
+      address: updatedAddress ? updatedAddress.full_address : null,
+    });
   }
 
   async cancelOrder(body: CancelOrderDto, userId: number) {
@@ -485,22 +405,12 @@ export class OrdersService {
       where: { id: userId },
     });
 
-    if (!buyer) {
-      throw new UnauthorizedException({
-        code: '9998',
-        message: 'Token is invalid',
-        data: null,
-      });
-    }
+    if (!buyer) this.tokenInvalid();
 
     const purchaseId = Number(body.id);
 
     if (isNaN(purchaseId) || purchaseId <= 0) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
+      this.paramInvalid();
     }
 
     const order = await this.orderRepository.findOne({
@@ -510,23 +420,13 @@ export class OrdersService {
       },
     });
 
-    if (!order) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
-    }
+    if (!order) this.paramInvalid();
 
     if (
       order.status !== OrderStatus.PENDING &&
       order.status !== OrderStatus.CONFIRMED
     ) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
+      this.paramInvalid();
     }
 
     return this.dataSource.transaction(async (manager) => {
@@ -547,7 +447,8 @@ export class OrdersService {
         wallet = await manager.save(Wallet, wallet);
       }
 
-      const refundedCoins = Number(order.total_price || 0) + Number(order.shipping_fee || 0);
+      const refundedCoins =
+        Number(order.total_price || 0) + Number(order.shipping_fee || 0);
 
       wallet.balance = Number(wallet.balance || 0) + refundedCoins;
       await manager.save(Wallet, wallet);
@@ -570,17 +471,13 @@ export class OrdersService {
 
       await manager.save(OrderTimeline, timeline);
 
-      return {
-        code: '1000',
-        message: 'OK',
-        data: {
-          id: order.id,
-          state: order.status,
-          cancel_reason: order.cancel_reason,
-          refunded_coins: refundedCoins,
-          refunded_at: new Date(),
-        },
-      };
+      return buildResponse(APP_RESPONSE.OK, {
+        id: order.id,
+        state: order.status,
+        cancel_reason: order.cancel_reason,
+        refunded_coins: refundedCoins,
+        refunded_at: new Date(),
+      });
     });
   }
 
@@ -589,13 +486,7 @@ export class OrdersService {
       where: { id: userId },
     });
 
-    if (!seller) {
-      throw new UnauthorizedException({
-        code: '9998',
-        message: 'Token is invalid',
-        data: null,
-      });
-    }
+    if (!seller) this.tokenInvalid();
 
     const purchaseId = Number(body.purchase_id);
     const buyerId = Number(body.buyer_id);
@@ -608,24 +499,14 @@ export class OrdersService {
       buyerId <= 0 ||
       (isAccept !== 0 && isAccept !== 1)
     ) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
+      this.paramInvalid();
     }
 
     const buyer = await this.userRepository.findOne({
       where: { id: buyerId },
     });
 
-    if (!buyer) {
-      throw new BadRequestException({
-        code: '1013',
-        message: 'User does not exist',
-        data: null,
-      });
-    }
+    if (!buyer) this.userNotExist();
 
     const order = await this.orderRepository.findOne({
       where: {
@@ -635,25 +516,14 @@ export class OrdersService {
       },
     });
 
-    if (!order) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
-    }
+    if (!order) this.paramInvalid();
 
     if (order.status !== OrderStatus.PENDING) {
-      throw new BadRequestException({
-        code: '1010',
-        message: 'Action has been done previously by this user',
-        data: null,
-      });
+      this.actionDone();
     }
 
-    order.status = isAccept === 1
-      ? OrderStatus.CONFIRMED
-      : OrderStatus.CANCELLED;
+    order.status =
+      isAccept === 1 ? OrderStatus.CONFIRMED : OrderStatus.CANCELLED;
 
     await this.orderRepository.save(order);
 
@@ -663,10 +533,7 @@ export class OrdersService {
       isAccept === 1 ? 'Seller accepted order' : 'Seller rejected order',
     );
 
-    return {
-      code: '1000',
-      message: 'OK',
-    };
+    return buildResponse(APP_RESPONSE.OK);
   }
 
   async buyerConfirmReceived(body: BuyerConfirmReceivedDto, userId: number) {
@@ -674,22 +541,12 @@ export class OrdersService {
       where: { id: userId },
     });
 
-    if (!buyer) {
-      throw new UnauthorizedException({
-        code: '9998',
-        message: 'Token is invalid',
-        data: null,
-      });
-    }
+    if (!buyer) this.tokenInvalid();
 
     const purchaseId = Number(body.purchase_id);
 
     if (isNaN(purchaseId) || purchaseId <= 0) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
+      this.paramInvalid();
     }
 
     const order = await this.orderRepository.findOne({
@@ -699,30 +556,22 @@ export class OrdersService {
       },
     });
 
-    if (!order) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
-    }
+    if (!order) this.paramInvalid();
 
     if (order.status !== OrderStatus.SHIPPING) {
-      throw new BadRequestException({
-        code: '1010',
-        message: 'Action has been done previously by this user',
-        data: null,
-      });
+      this.actionDone();
     }
 
     order.status = OrderStatus.DELIVERED;
     await this.orderRepository.save(order);
-    await this.addTimeline(order.id, OrderStatus.DELIVERED, 'Buyer confirmed received');
 
-    return {
-      code: '1000',
-      message: 'OK',
-    };
+    await this.addTimeline(
+      order.id,
+      OrderStatus.DELIVERED,
+      'Buyer confirmed received',
+    );
+
+    return buildResponse(APP_RESPONSE.OK);
   }
 
   async refundOrder(body: RefundOrderDto, userId: number) {
@@ -730,22 +579,12 @@ export class OrdersService {
       where: { id: userId },
     });
 
-    if (!buyer) {
-      throw new UnauthorizedException({
-        code: '9998',
-        message: 'Token is invalid',
-        data: null,
-      });
-    }
+    if (!buyer) this.tokenInvalid();
 
     const purchaseId = Number(body.purchase_id);
 
     if (isNaN(purchaseId) || purchaseId <= 0) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
+      this.paramInvalid();
     }
 
     const order = await this.orderRepository.findOne({
@@ -755,32 +594,24 @@ export class OrdersService {
       },
     });
 
-    if (!order) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
-    }
+    if (!order) this.paramInvalid();
 
     if (order.status !== OrderStatus.DELIVERED) {
-      throw new BadRequestException({
-        code: '1010',
-        message: 'Action has been done previously by this user',
-        data: null,
-      });
+      this.actionDone();
     }
 
     order.status = OrderStatus.REFUNDED;
     order.refund_reason = body.reason ?? null;
 
     await this.orderRepository.save(order);
-    await this.addTimeline(order.id, OrderStatus.REFUNDED, body.reason ?? 'Refund requested');
 
-    return {
-      code: '1000',
-      message: 'OK',
-    };
+    await this.addTimeline(
+      order.id,
+      OrderStatus.REFUNDED,
+      body.reason ?? 'Refund requested',
+    );
+
+    return buildResponse(APP_RESPONSE.OK);
   }
 
   async sellerMarkAsShipped(body: SellerMarkAsShippedDto, userId: number) {
@@ -788,13 +619,7 @@ export class OrdersService {
       where: { id: userId },
     });
 
-    if (!seller) {
-      throw new UnauthorizedException({
-        code: '9998',
-        message: 'Token is invalid',
-        data: null,
-      });
-    }
+    if (!seller) this.tokenInvalid();
 
     const purchaseId = Number(body.purchase_id);
     const buyerId = Number(body.buyer_id);
@@ -805,24 +630,14 @@ export class OrdersService {
       isNaN(buyerId) ||
       buyerId <= 0
     ) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
+      this.paramInvalid();
     }
 
     const buyer = await this.userRepository.findOne({
       where: { id: buyerId },
     });
 
-    if (!buyer) {
-      throw new BadRequestException({
-        code: '1013',
-        message: 'User does not exist',
-        data: null,
-      });
-    }
+    if (!buyer) this.userNotExist();
 
     const order = await this.orderRepository.findOne({
       where: {
@@ -832,30 +647,320 @@ export class OrdersService {
       },
     });
 
-    if (!order) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
-    }
+    if (!order) this.paramInvalid();
 
     if (order.status !== OrderStatus.CONFIRMED) {
-      throw new BadRequestException({
-        code: '1010',
-        message: 'Action has been done previously by this user',
-        data: null,
-      });
+      this.actionDone();
     }
 
     order.status = OrderStatus.SHIPPING;
     await this.orderRepository.save(order);
-    await this.addTimeline(order.id, OrderStatus.SHIPPING, 'Seller marked as shipped');
 
-    return {
-      code: '1000',
-      message: 'OK',
-    };
+    await this.addTimeline(
+      order.id,
+      OrderStatus.SHIPPING,
+      'Seller marked as shipped',
+    );
+
+    return buildResponse(APP_RESPONSE.OK);
+  }
+
+  async getOrderTimeline(body: GetOrderTimelineDto, userId: number) {
+    const purchaseId = Number(body.purchase_id);
+
+    if (isNaN(purchaseId) || purchaseId <= 0) {
+      this.paramInvalid();
+    }
+
+    const order = await this.orderRepository.findOne({
+      where: { id: purchaseId },
+    });
+
+    if (!order) this.paramInvalid();
+
+    const isRelated = order.buyer_id === userId || order.seller_id === userId;
+
+    if (!isRelated) this.paramInvalid();
+
+    const timelines = await this.orderTimelineRepository.find({
+      where: { order_id: purchaseId },
+      order: { created_at: 'ASC' },
+    });
+
+    return buildResponse(
+      APP_RESPONSE.OK,
+      timelines.map((item) => ({
+        id: item.id,
+        purchase_id: item.order_id,
+        state: item.status,
+        note: item.note,
+        created_at: item.created_at,
+      })),
+    );
+  }
+
+  async getShipFrom(query: GetShipFromQueryDto) {
+    const { level, index, count, parent_id } = query;
+    const parentIdNum = Number(parent_id);
+
+    if (level == 1) {
+      const province = await this.provinceRepository.findOne({
+        where: { id: Number(parent_id) },
+      });
+
+      if (!province) {
+        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID);
+      }
+    } else {
+      const ward = await this.wardRepository.findOne({
+        where: { id: Number(parent_id) },
+      });
+
+      if (!ward) {
+        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID);
+      }
+    }
+
+    const queryBuilder =
+      this.warehouseRepository.createQueryBuilder('warehouse');
+
+    if (level == 1) {
+      queryBuilder
+        .innerJoin('warehouse.ward', 'ward')
+        .where('ward.provinces_id = :provinceId', { provinceId: parentIdNum });
+    } else {
+      queryBuilder.where('warehouse.ward_id = :wardId', {
+        wardId: parentIdNum,
+      });
+    }
+
+    const [warehouses] = await queryBuilder
+      .skip(Number(index))
+      .take(Number(count))
+      .getManyAndCount();
+
+    const list_address = warehouses.map((wh) => ({
+      id: wh.id.toString(),
+      name: wh.warehouse_name,
+      pick_support: wh.pick_support ? '1' : '0',
+      message_pick_support: wh.pick_support ? '1-Có' : '0-Không',
+    }));
+
+    return buildResponse(APP_RESPONSE.OK, {
+      list_address,
+    });
+  }
+
+  async getShipFee(userId: number, query: GetShipFeeDto) {
+    if (!userId) {
+      return buildResponse(APP_RESPONSE.TOKEN_INVALID);
+    }
+
+    const { product_id, address_id } = query;
+
+    const product = await this.productRepository.findOne({
+      where: { id: Number(product_id) },
+      relations: ['ship_from'],
+    });
+
+    const shipFrom = (product as any)?.ship_from;
+
+    if (!product || !shipFrom) {
+      return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID);
+    }
+
+    const sellerLat = Number(shipFrom.lat);
+    const sellerLng = Number(shipFrom.lng);
+
+    let buyerAddress: Address | null = null;
+
+    if (address_id) {
+      buyerAddress = await this.addressRepository.findOne({
+        where: { id: Number(address_id), user_id: userId },
+      });
+    } else {
+      buyerAddress = await this.addressRepository.findOne({
+        where: { user_id: userId, is_default: true },
+      });
+    }
+
+    if (!buyerAddress) {
+      return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID);
+    }
+
+    const buyerLat = Number((buyerAddress as any).lat);
+    const buyerLng = Number((buyerAddress as any).lng);
+
+    const distance = calculateDistance(
+      sellerLat,
+      sellerLng,
+      buyerLat,
+      buyerLng,
+    );
+
+    let shipfee = 0;
+    let leatime = 0;
+
+    if (distance < 15) {
+      shipfee = 20000;
+      leatime = 24;
+    } else if (distance >= 15 && distance <= 100) {
+      shipfee = 30000;
+      leatime = 36;
+    } else if (distance > 100 && distance < 500) {
+      shipfee = 44000;
+      leatime = 72;
+    } else if (distance >= 500) {
+      shipfee = 55000;
+      leatime = 120;
+    }
+
+    return buildResponse(APP_RESPONSE.OK, {
+      ship_fee: shipfee,
+      leatime,
+    });
+  }
+
+  async getListOrderAddress(userId: number) {
+    if (!userId) {
+      return buildResponse(APP_RESPONSE.TOKEN_INVALID);
+    }
+
+    const address_list = await this.addressRepository.find({
+      where: { user_id: Number(userId) },
+      order: { is_default: 'DESC', id: 'DESC' },
+    });
+
+    return buildResponse(APP_RESPONSE.OK, address_list);
+  }
+
+  async addOrderAddress(userId: number, query: AddOrderAddress) {
+    if (!userId) {
+      return buildResponse(APP_RESPONSE.TOKEN_INVALID);
+    }
+
+    const { address, is_default, address_id, lng, lat } = query;
+
+    if (is_default) {
+      await this.addressRepository.update(
+        { user_id: userId, is_default: true },
+        { is_default: false },
+      );
+    }
+
+    const newAddress = this.addressRepository.create({
+      user_id: userId,
+      full_address: address,
+      is_default: is_default,
+      ...(lat && { lat }),
+      ...(lng && { lng }),
+      ...(address_id && { ward_id: address_id[0] }),
+    } as any);
+
+    await this.addressRepository.save(newAddress);
+
+    return buildResponse(APP_RESPONSE.OK, newAddress);
+  }
+
+  async editOrderAddress(
+    userId: number,
+    id: number,
+    query: UpdateOrderAddressDto,
+  ) {
+    const { address: addressName, is_default, address_id, lng, lat } = query;
+
+    if (!userId) {
+      return buildResponse(APP_RESPONSE.TOKEN_INVALID);
+    }
+
+    const addressUpdate = await this.addressRepository.findOne({
+      where: { id: Number(id), user_id: userId },
+    });
+
+    if (!addressUpdate) {
+      return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID);
+    }
+
+    if (is_default) {
+      await this.addressRepository.update(
+        { user_id: userId, is_default: true },
+        { is_default: false },
+      );
+    }
+
+    await this.addressRepository.update(id, {
+      ...(addressName && { full_address: addressName }),
+      ...(is_default !== undefined && { is_default }),
+      ...(lat && { lat }),
+      ...(lng && { lng }),
+      ...(address_id && { ward_id: address_id[0] }),
+    } as any);
+
+    return buildResponse(APP_RESPONSE.OK);
+  }
+
+  async delete_order_address(userId: number, id: number) {
+    if (!userId) {
+      return buildResponse(APP_RESPONSE.TOKEN_INVALID);
+    }
+
+    const address = await this.addressRepository.findOne({
+      where: { id: Number(id), user_id: Number(userId) },
+    });
+
+    if (!address) {
+      return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID);
+    }
+
+    await this.addressRepository.delete(id);
+
+    return buildResponse(APP_RESPONSE.OK);
+  }
+
+  async get_order_status(userId: number, query: GetOrderStatusDto) {
+    if (!userId) {
+      return buildResponse(APP_RESPONSE.TOKEN_INVALID);
+    }
+
+    const { purchase_id } = query;
+
+    const order = await this.orderRepository.findOne({
+      where: { id: Number(purchase_id) },
+      relations: [
+        'items',
+        'items.product',
+        'shipping',
+        'seller',
+        'buyer',
+        'statuses',
+      ],
+      order: {
+        statuses: { id: 'DESC' },
+      } as any,
+    });
+
+    if (!order) {
+      return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID);
+    }
+
+    return buildResponse(APP_RESPONSE.OK, {
+      id: order.id,
+      ship_from: '',
+      ship_to: '',
+      price: order.total_price,
+      ship_fee: order.shipping_fee,
+      create: order.created_at,
+      leatime: order.leatime,
+      current_status: (order as any).statuses?.[0] || null,
+      status_history: (order as any).statuses || [],
+      products: (order.items || []).map((item) => ({
+        id: item.product?.id,
+        name: item.product?.title,
+        price: item.product?.price,
+        image: item.product?.image_urls || [],
+        video: (item.product as any)?.videos || [],
+      })),
+    });
   }
 
   private async addTimeline(
@@ -872,55 +977,46 @@ export class OrdersService {
     await this.orderTimelineRepository.save(timeline);
   }
 
-  async getOrderTimeline(body: GetOrderTimelineDto, userId: number) {
-    const purchaseId = Number(body.purchase_id);
+  private getFirstImage(imageUrls?: string[] | string | null): string {
+    if (!imageUrls) return '';
 
-    if (isNaN(purchaseId) || purchaseId <= 0) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
+    if (Array.isArray(imageUrls)) {
+      return imageUrls.length > 0 ? imageUrls[0] : '';
     }
 
-    const order = await this.orderRepository.findOne({
-      where: { id: purchaseId },
-    });
+    try {
+      const parsed = JSON.parse(imageUrls);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed[0];
+      }
+    } catch (_) {}
 
-    if (!order) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
-    }
+    return imageUrls;
+  }
 
-    const isRelated =
-      order.buyer_id === userId || order.seller_id === userId;
+  private tokenInvalid(): never {
+    throw new UnauthorizedException(buildResponse(APP_RESPONSE.TOKEN_INVALID));
+  }
 
-    if (!isRelated) {
-      throw new BadRequestException({
-        code: '1004',
-        message: 'Parameter value is invalid',
-        data: null,
-      });
-    }
+  private paramInvalid(): never {
+    throw new BadRequestException(
+      buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+    );
+  }
 
-    const timelines = await this.orderTimelineRepository.find({
-      where: { order_id: purchaseId },
-      order: { created_at: 'ASC' },
-    });
+  private actionDone(): never {
+    throw new BadRequestException(
+      buildResponse(APP_RESPONSE.ACTION_DONE_PREVIOUSLY),
+    );
+  }
 
-    return {
-      code: '1000',
-      message: 'OK',
-      data: timelines.map((item) => ({
-        id: item.id,
-        purchase_id: item.order_id,
-        state: item.status,
-        note: item.note,
-        created_at: item.created_at,
-      })),
-    };
+  private userNotExist(): never {
+    throw new BadRequestException(buildResponse(APP_RESPONSE.USER_NOT_EXIST));
+  }
+
+  private productNotExist(): never {
+    throw new BadRequestException(
+      buildResponse(APP_RESPONSE.PRODUCT_NOT_EXISTED),
+    );
   }
 }

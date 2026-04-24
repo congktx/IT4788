@@ -28,7 +28,7 @@ export class User {
   @Column({ nullable: true })
   username: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'phonenumber', nullable: true })
   phone_number: string;
 
   @Column({ select: false })
@@ -40,7 +40,7 @@ export class User {
   @Column({ nullable: true })
   role: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'fullName', nullable: true })
   fullname: string;
 
   @Column({ nullable: true })
