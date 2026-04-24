@@ -6,7 +6,7 @@ import { AppService } from './app.service';
 import { LoggerMiddleware } from './common/logger.middleware';
 import { UsersModule } from './modules/users/users.module';
 import { dataSourceOptions } from '../data-source';
-import { productModule } from './modules/products/product.module';
+import { productModule } from './modules/products/products.module';
 import { OrderModule } from './modules/orders/orders.module';
 import { newsModule } from './modules/news/news.module';
 import { JwtModule } from '@nestjs/jwt';
