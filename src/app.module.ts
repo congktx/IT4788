@@ -6,7 +6,7 @@ import { AppService } from './app.service';
 import { LoggerMiddleware } from './common/logger.middleware';
 import { UsersModule } from './modules/users/users.module';
 import { dataSourceOptions } from '../data-source';
-import { productModule } from './modules/products/product.module';
+import { productModule } from './modules/products/products.module';
 import { OrderModule } from './modules/orders/orders.module';
 import { newsModule } from './modules/news/news.module';
 import { JwtModule } from '@nestjs/jwt';
@@ -16,6 +16,9 @@ import { FollowModule } from './modules/follow/follow.module';
 import { BlocksModule } from './modules/blocks/blocks.module';
 import { DevTokensModule } from './modules/dev_tokens/dev-tokens.module';
 import { PushSettingsModule } from './modules/push_settings/push-settings.module';
+import { RatesModule } from './modules/rates/rates.module';
+import { SearchesModule } from './modules/searches/searches.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -34,7 +37,11 @@ import { PushSettingsModule } from './modules/push_settings/push-settings.module
     DevTokensModule,
     FollowModule,
     BlocksModule,
+    RedisModule,
+    DevTokensModule,
     PushSettingsModule,
+    RatesModule,
+    SearchesModule,
     JwtModule.register({
       secret: 'SECRET_KEY',
       signOptions: { expiresIn: '1d' },

@@ -1,34 +1,48 @@
 import { Injectable } from '@nestjs/common';
-import { CreateProductDto } from './dto/create_product.dto';
-import { Product } from './entities/product.entity';
-import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Product } from './entities/product.entity';
 import { ProductVariant } from './entities/product_variant.entity';
+import { CreateProductDto } from './dto/create_product.dto';
 import { CreateProductVariantDto } from './dto/create_productVariants.dto';
-import { RESPONSE_CODE } from './constants';
+import { APP_RESPONSE } from '../common/constants/response.constants';
+import { Comment } from './entities/comment.entity';
+import { User } from '../users/entities/user.entity';
+import { Like } from './entities/like.entity';
+import { Report } from './entities/report.entity';
 import { UpdateProductDto } from './dto/update_product.dto';
 import { GetUserListingsDto } from './dto/get_user_listing.dto';
-import { User } from '../users/entities/user.entity';
+
 @Injectable()
-export class ProductService {
+export class ProductsService {
   constructor(
     @InjectRepository(Product)
-    private productRepo: Repository<Product>,
+    private readonly productRepo: Repository<Product>,
+
+    @InjectRepository(Comment)
+    private readonly commentRepo: Repository<Comment>,
+
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+
+    @InjectRepository(Like)
+    private readonly likeRepo: Repository<Like>,
+
+    @InjectRepository(Report)
+    private readonly reportRepo: Repository<Report>,
+
     @InjectRepository(ProductVariant)
     private variantRepo: Repository<ProductVariant>,
-    @InjectRepository(User)
-    private userRepo: Repository<User>,
   ) {}
 
-  //add_product
-  async create(dto: CreateProductDto, user_id: number) {
+  async createProduct(dto: CreateProductDto, user_id: number) {
     try {
       const variants = dto.variants;
       const isInvalidVariant = variants.some(
         (v) => typeof v.stock !== 'number',
       );
       if (!user_id) {
-        return RESPONSE_CODE.TOKEN_INVALID;
+        return APP_RESPONSE.TOKEN_INVALID;
       }
       if (
         !dto.title ||
@@ -37,13 +51,13 @@ export class ProductService {
         !dto.variants ||
         !dto.ship_from_id
       ) {
-        return RESPONSE_CODE.PARAM_MISSING;
+        return APP_RESPONSE.PARAM_MISSING;
       }
       if (typeof dto.price !== 'number' || isInvalidVariant) {
-        return RESPONSE_CODE.PARAM_TYPE_INVALID;
+        return APP_RESPONSE.PARAM_TYPE_INVALID;
       }
       if (dto.price < 0) {
-        return RESPONSE_CODE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAM_VALUE_INVALID;
       }
       const { ...productData } = dto;
       const product = await this.productRepo.save({
@@ -62,7 +76,7 @@ export class ProductService {
     } catch (e) {
       console.error(e);
       console.log(e);
-      return RESPONSE_CODE.EXCEPTION_ERROR;
+      return APP_RESPONSE.EXCEPTION_ERROR;
     }
   }
 
@@ -70,12 +84,6 @@ export class ProductService {
     return await this.productRepo.find();
   }
 
-  async findOne(id: number): Promise<any> {
-    return await this.productRepo.findOne({
-      where: { id: id },
-      relations: ['variants'],
-    });
-  }
   //update product
   async update(
     user_id: number,
@@ -91,9 +99,9 @@ export class ProductService {
       const isInvalidVariant = variants.some(
         (v) => typeof v.stock !== 'number' || v.stock < 0,
       );
-      if (!product) return RESPONSE_CODE.PRODUCT_NOT_EXISTED;
+      if (!product) return APP_RESPONSE.PRODUCT_NOT_EXISTED;
       if (!user_id) {
-        return RESPONSE_CODE.TOKEN_INVALID;
+        return APP_RESPONSE.TOKEN_INVALID;
       }
       if (
         !dto.title ||
@@ -102,16 +110,16 @@ export class ProductService {
         !dto.category_id ||
         !dto.variants
       )
-        return RESPONSE_CODE.PARAM_MISSING;
+        return APP_RESPONSE.PARAM_MISSING;
       if (
         typeof dto.price !== 'number' ||
         typeof dto.title !== 'string' ||
         isInvalidVariant
       ) {
-        return RESPONSE_CODE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAM_VALUE_INVALID;
       }
       if (dto.price < 0) {
-        return RESPONSE_CODE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAM_VALUE_INVALID;
       }
       const {
         variants: _,
@@ -147,9 +155,10 @@ export class ProductService {
       return await this.findOne(id);
     } catch (e) {
       console.error(e);
-      return RESPONSE_CODE.EXCEPTION_ERROR;
+      return APP_RESPONSE.EXCEPTION_ERROR;
     }
   }
+
   //delete product
   async remove(id: number) {
     const product = await this.productRepo.findOne({
@@ -157,16 +166,16 @@ export class ProductService {
       relations: ['variants'],
     });
     if (!product) {
-      return RESPONSE_CODE.PRODUCT_NOT_EXISTED;
+      return APP_RESPONSE.PRODUCT_NOT_EXISTED;
     }
     await this.variantRepo.delete({ product: { id: id } });
     await this.productRepo.delete(id);
-    return RESPONSE_CODE.OK;
+    return APP_RESPONSE.OK;
   }
   //get_user_listing
   async get_listing(user_id1: number, query: GetUserListingsDto) {
     if (!user_id1) {
-      return RESPONSE_CODE.TOKEN_INVALID;
+      return APP_RESPONSE.TOKEN_INVALID;
     }
     const { index, count, user_id, keyword, category_id } = query;
 
@@ -176,7 +185,7 @@ export class ProductService {
         where: { id: Number(user_id) },
       });
       if (!user) {
-        return RESPONSE_CODE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAM_VALUE_INVALID;
       }
     }
 
@@ -236,5 +245,185 @@ export class ProductService {
       message: 'OK',
       data: data,
     };
+  }
+
+  async getCategories() {
+    const data = await this.productRepo
+      .createQueryBuilder('product')
+      .select('DISTINCT product.category_id', 'category_id')
+      .where('product.category_id IS NOT NULL')
+      .orderBy('product.category_id', 'ASC')
+      .getRawMany();
+
+    return data;
+  }
+
+  async getListBrands() {
+    const data = await this.productRepo
+      .createQueryBuilder('product')
+      .select('DISTINCT product.brand_id', 'brand_id')
+      .where('product.brand_id IS NOT NULL')
+      .orderBy('product.brand_id', 'ASC')
+      .getRawMany();
+
+    return data;
+  }
+
+  //getProductById(1, true): co variants, getProductById(1): khong co
+  async getProductById(id: number, withVariants = false) {
+    return this.productRepo.findOne({
+      where: { id },
+      relations: withVariants ? ['variants'] : [],
+    });
+  }
+
+  async getListProducts(index: number, count: number) {
+    const products = await this.productRepo.find({
+      order: { id: 'DESC' },
+      skip: index,
+      take: count,
+    });
+
+    return products;
+  }
+
+  async getCommentsProduct(productId: number, index: number, count: number) {
+    const comments = await this.commentRepo.find({
+      where: { product_id: productId },
+      order: { created_at: 'DESC' },
+      skip: index,
+      take: count,
+    });
+
+    return comments;
+  }
+
+  async getUserById(id: number) {
+    const user = await this.userRepo
+      .createQueryBuilder('user')
+      .select(['user.id'])
+      .where('user.id = :id', { id })
+      .getRawOne();
+
+    return user;
+  }
+
+  async setCommentsProduct(
+    productId: number,
+    userId: number,
+    content: string,
+    index: number,
+    count: number,
+  ) {
+    const comment = this.commentRepo.create({
+      product_id: productId,
+      user_id: userId,
+      content,
+    });
+
+    await this.commentRepo.save(comment);
+
+    const comments = await this.commentRepo.find({
+      where: { product_id: productId },
+      order: { created_at: 'DESC' },
+      skip: index,
+      take: count,
+    });
+
+    return comments;
+  }
+
+  async likeProduct(productId: number, userId: number) {
+    const existingLike = await this.likeRepo.findOne({
+      where: {
+        product_id: productId,
+        user_id: userId,
+      },
+    });
+
+    let is_liked = false;
+
+    if (existingLike) {
+      await this.likeRepo.remove(existingLike);
+      is_liked = false;
+    } else {
+      const newLike = this.likeRepo.create({
+        product_id: productId,
+        user_id: userId,
+      });
+
+      await this.likeRepo.save(newLike);
+      is_liked = true;
+    }
+
+    const like_count = await this.likeRepo.count({
+      where: { product_id: productId },
+    });
+
+    return {
+      is_liked,
+      like_count,
+    };
+  }
+
+  async reportProduct(
+    productId: number,
+    userId: number,
+    subject: string,
+    details: string,
+  ) {
+    const reason = `[${subject}] ${details}`;
+
+    const report = this.reportRepo.create({
+      product_id: productId,
+      user_id: userId,
+      reason,
+    });
+
+    const savedReport = await this.reportRepo.save(report);
+
+    return savedReport;
+  }
+
+  async searchProducts(
+    keyword: string | undefined,
+    categoryId: number | undefined,
+    brandId: number | undefined,
+    priceMin: number | undefined,
+    priceMax: number | undefined,
+    index: number,
+    count: number,
+  ) {
+    const qb = this.productRepo.createQueryBuilder('product');
+
+    if (keyword !== undefined && keyword !== '') {
+      qb.andWhere('product.title LIKE :keyword', {
+        keyword: `%${keyword}%`,
+      });
+    }
+
+    if (categoryId !== undefined) {
+      qb.andWhere('product.category_id = :categoryId', { categoryId });
+    }
+
+    if (brandId !== undefined) {
+      qb.andWhere('product.brand_id = :brandId', { brandId });
+    }
+
+    if (priceMin !== undefined) {
+      qb.andWhere('product.price >= :priceMin', { priceMin });
+    }
+
+    if (priceMax !== undefined) {
+      qb.andWhere('product.price <= :priceMax', { priceMax });
+    }
+
+    const data = await qb
+      .orderBy('product.id', 'DESC')
+      .offset(index)
+      .limit(count)
+      .getMany();
+
+    return data;
   }
 }
