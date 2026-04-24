@@ -1,9 +1,9 @@
-import { RESPONSE_CODE } from '../products/constants';
 import { News } from './entities/news.entity';
 import { Injectable } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { GetListNewsDto } from './dto/get_list_news.dto';
+import { APP_RESPONSE } from '../constants/response.constants';
 @Injectable()
 export class newsService {
   constructor(
@@ -15,7 +15,7 @@ export class newsService {
       where: { id: Number(id) },
     });
     if (!news) {
-      return RESPONSE_CODE.PARAM_VALUE_INVALID;
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
     return {
       code: '1000',

@@ -5,11 +5,11 @@ import { Product } from './entities/product.entity';
 import { ProductVariant } from './entities/product_variant.entity';
 import { CreateProductDto } from './dto/create_product.dto';
 import { CreateProductVariantDto } from './dto/create_productVariants.dto';
-import { APP_RESPONSE } from '../common/constants/response.constants';
 import { Comment } from './entities/comment.entity';
 import { User } from '../users/entities/user.entity';
 import { Like } from './entities/like.entity';
 import { Report } from './entities/report.entity';
+import { APP_RESPONSE } from '../constants/response.constants';
 import { UpdateProductDto } from './dto/update_product.dto';
 import { GetUserListingsDto } from './dto/get_user_listing.dto';
 
@@ -51,13 +51,13 @@ export class ProductsService {
         !dto.variants ||
         !dto.ship_from_id
       ) {
-        return APP_RESPONSE.PARAM_MISSING;
+        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
       }
       if (typeof dto.price !== 'number' || isInvalidVariant) {
-        return APP_RESPONSE.PARAM_TYPE_INVALID;
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
       }
       if (dto.price < 0) {
-        return APP_RESPONSE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
       const { ...productData } = dto;
       const product = await this.productRepo.save({
@@ -110,16 +110,16 @@ export class ProductsService {
         !dto.category_id ||
         !dto.variants
       )
-        return APP_RESPONSE.PARAM_MISSING;
+        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
       if (
         typeof dto.price !== 'number' ||
         typeof dto.title !== 'string' ||
         isInvalidVariant
       ) {
-        return APP_RESPONSE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
       }
       if (dto.price < 0) {
-        return APP_RESPONSE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
       const {
         variants: _,
@@ -152,7 +152,7 @@ export class ProductsService {
         }),
       );
       await this.variantRepo.save(variantEntities);
-      return await this.findOne(id);
+      return await this.getProductById(id, true);
     } catch (e) {
       console.error(e);
       return APP_RESPONSE.EXCEPTION_ERROR;
@@ -185,7 +185,7 @@ export class ProductsService {
         where: { id: Number(user_id) },
       });
       if (!user) {
-        return APP_RESPONSE.PARAM_VALUE_INVALID;
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
     }
 
