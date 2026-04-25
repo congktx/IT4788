@@ -2,9 +2,12 @@
   "moduleFileExtensions": ["js", "json", "ts"],
   "rootDir": ".",
   "testEnvironment": "node",
-  "testRegex": "test/e2e/.+\\.e2e.spec\\.ts$",
-  "transform": { "^.+\\.(t|j)s$": "ts-jest" },
+  "testRegex": "test/e2e/.+\\.failfast.spec\\.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
   "testTimeout": 30000,
   "setupFilesAfterEnv": ["jest-expect-message"],
+  "reporters": ["default", "<rootDir>/helpers/fail-fast-reporter.js"],
   "silent": true
 }
