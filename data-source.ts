@@ -33,9 +33,6 @@ import { Category } from './src/modules/products/entities/category.entity';
 import { DevToken } from './src/modules/dev_tokens/entities/dev-token.entity';
 import { UserFollow } from './src/modules/follow/entities/user-follow.entity';
 import { UserBlock } from './src/modules/blocks/entities/user-block.entity';
-import { PushSetting } from './src/modules/push_settings/entities/push-setting.entity';
-import { Rate } from './src/modules/rates/entities/rate.entity';
-import { SavedSearch } from './src/modules/searches/entities/saved_search.entity';
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'mysql',
@@ -50,36 +47,14 @@ export const dataSourceOptions: DataSourceOptions = {
     Wallet,
     Transaction,
     RewardRule,
-    BattleProof,
-    Appeal,
-    Product,
-    Like,
-    Comment,
-    Report,
-    ProductVariant,
-    Order,
-    OrderItem,
-    Shipping,
-    Address,
-    News,
-    Conversation,
-    UserConversation,
-    Message,
-    Ward,
-    Status,
-    Province,
-    Warehouse,
-    Brand,
-    Category,
-    DevToken,
-    UserBlock,
-    UserFollow,
-    PushSetting,
-    Rate,
-    SavedSearch,
+    BattleProof, Appeal,
+    Product, Like, Comment, Report, ProductVariant,
+    Order, OrderItem, Shipping,
+    Conversation, UserConversation, Message, 
+    UserFollow, UserBlock,
   ],
   migrations: ['src/migrations/*.ts'],
-  synchronize: false,
+  synchronize: true,
 };
 
 const dataSource = new DataSource(dataSourceOptions);

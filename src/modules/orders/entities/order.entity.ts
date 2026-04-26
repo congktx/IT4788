@@ -13,6 +13,9 @@ import { OrderItem } from './order_item.entity';
 import { Shipping } from './shipping.entity';
 import { Address } from './address.entity';
 import { Status } from './status_order.entities';
+import { OrderStatus } from '../enums/order-status.enum';
+import { OrderTimeline } from './order-timeline.entity';
+
 @Entity('orders')
 export class Order {
   @PrimaryGeneratedColumn()
@@ -33,14 +36,30 @@ export class Order {
   @Column({ nullable: true })
   status_id: number;
 
-  @Column('decimal', { nullable: true })
+  @Column({
+    type: 'enum',
+    enum: OrderStatus,
+    default: OrderStatus.PENDING,
+  })
+  status: OrderStatus;
+
+  @Column('decimal', { nullable: true, default: 0 })
   total_price: number;
 
-  @Column('decimal', { nullable: true })
+  @Column('decimal', { nullable: true, default: 0 })
   shipping_fee: number;
 
-  @Column()
+  @Column({ nullable: true, default: 0 })
   leatime: number;
+
+  @Column({ type: 'text', nullable: true })
+  note: string;
+
+  @Column({ type: 'int', nullable: true })
+  cancel_reason: number | null;
+
+  @Column({ type: 'text', nullable: true })
+  refund_reason: string | null;
 
   @CreateDateColumn()
   created_at: Date;
@@ -66,6 +85,10 @@ export class Order {
   @ManyToOne(() => Address, (address) => address.orders_as_seller)
   @JoinColumn({ name: 'seller_address_id' })
   seller_address: Address;
+
   @OneToMany(() => Status, (status) => status.order)
   statuses: Status[];
+
+  @OneToMany(() => OrderTimeline, (timeline) => timeline.order)
+  timelines: OrderTimeline[];
 }

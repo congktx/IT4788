@@ -1,10 +1,20 @@
-import { Body, Controller, Post, Req, Delete, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { AuthGuard } from '../../common/auth/guards/auth.guard';
 import { CreateProductDto } from './dto/create_product.dto';
 import { UpdateProductDto } from './dto/update_product.dto';
 import { ApiOperation } from '@nestjs/swagger';
 import { GetUserListingsDto } from './dto/get_user_listing.dto';
+import { APP_RESPONSE, buildResponse } from '../constants/response.constants';
 
 interface RequestWithUser extends Request {
   user: {
@@ -21,17 +31,10 @@ export class ProductsController {
     const data = await this.productsService.getCategories();
 
     if (!data || data.length === 0) {
-      return {
-        code: 9994,
-        message: 'No Data or end of list data',
-      };
+      return APP_RESPONSE.NO_DATA_OR_END_OF_LIST;
     }
 
-    return {
-      code: 1000,
-      message: 'OK',
-      data,
-    };
+    return buildResponse(APP_RESPONSE.OK, data);
   }
 
   @Post('get_list_brands')
@@ -39,48 +42,28 @@ export class ProductsController {
     const data = await this.productsService.getListBrands();
 
     if (!data || data.length === 0) {
-      return {
-        code: 9994,
-        message: 'No Data or end of list data',
-      };
+      return APP_RESPONSE.NO_DATA_OR_END_OF_LIST;
     }
 
-    return {
-      code: 1000,
-      message: 'OK',
-      data,
-    };
+    return buildResponse(APP_RESPONSE.OK, data);
   }
 
   @Post('get_products')
   async getProducts(@Body() body: any) {
     try {
       if (!body.id) {
-        return {
-          code: 1002,
-          message: 'Parameter is not enought.',
-        };
+        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
       }
 
       const data = await this.productsService.getProductById(body.id);
 
       if (!data) {
-        return {
-          code: 9992,
-          message: 'Product is not existed',
-        };
+        return APP_RESPONSE.PRODUCT_NOT_EXISTED;
       }
 
-      return {
-        code: 1000,
-        message: 'OK',
-        data,
-      };
+      return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
-      return {
-        code: 9999,
-        message: 'Exception error.',
-      };
+      return APP_RESPONSE.EXCEPTION_ERROR;
     }
   }
 
@@ -88,10 +71,7 @@ export class ProductsController {
   async getListProducts(@Body() body: any) {
     try {
       if (body.index === undefined || body.count === undefined) {
-        return {
-          code: 1002,
-          message: 'Parameter is not enought.',
-        };
+        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
       }
 
       const data = await this.productsService.getListProducts(
@@ -100,22 +80,12 @@ export class ProductsController {
       );
 
       if (!data || data.length === 0) {
-        return {
-          code: 9994,
-          message: 'No Data or end of list data',
-        };
+        return APP_RESPONSE.NO_DATA_OR_END_OF_LIST;
       }
 
-      return {
-        code: 1000,
-        message: 'OK',
-        data,
-      };
+      return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
-      return {
-        code: 9999,
-        message: 'Exception error.',
-      };
+      return APP_RESPONSE.EXCEPTION_ERROR;
     }
   }
 
@@ -127,10 +97,7 @@ export class ProductsController {
         body.index === undefined ||
         body.count === undefined
       ) {
-        return {
-          code: 1002,
-          message: 'Parameter is not enought.',
-        };
+        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
       }
 
       const product = await this.productsService.getProductById(
@@ -138,10 +105,7 @@ export class ProductsController {
       );
 
       if (!product) {
-        return {
-          code: 9992,
-          message: 'Product is not existed',
-        };
+        return APP_RESPONSE.PRODUCT_NOT_EXISTED;
       }
 
       const data = await this.productsService.getCommentsProduct(
@@ -151,22 +115,12 @@ export class ProductsController {
       );
 
       if (!data || data.length === 0) {
-        return {
-          code: 9994,
-          message: 'No Data or end of list data',
-        };
+        return APP_RESPONSE.NO_DATA_OR_END_OF_LIST;
       }
 
-      return {
-        code: 1000,
-        message: 'OK',
-        data,
-      };
+      return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
-      return {
-        code: 9999,
-        message: 'Exception error.',
-      };
+      return APP_RESPONSE.EXCEPTION_ERROR;
     }
   }
 
@@ -180,10 +134,7 @@ export class ProductsController {
         body.index === undefined ||
         body.count === undefined
       ) {
-        return {
-          code: 1002,
-          message: 'Parameter is not enought.',
-        };
+        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
       }
 
       const product = await this.productsService.getProductById(
@@ -191,21 +142,13 @@ export class ProductsController {
       );
 
       if (!product) {
-        return {
-          code: 9992,
-          message: 'Product is not existed',
-        };
+        return APP_RESPONSE.PRODUCT_NOT_EXISTED;
       }
 
-      const user = await this.productsService.getUserById(
-        Number(body.user_id),
-      );
+      const user = await this.productsService.getUserById(Number(body.user_id));
 
       if (!user) {
-        return {
-          code: 9994,
-          message: 'No Data or end of list data',
-        };
+        return APP_RESPONSE.NO_DATA_OR_END_OF_LIST;
       }
 
       const data = await this.productsService.setCommentsProduct(
@@ -216,32 +159,19 @@ export class ProductsController {
         Number(body.count),
       );
 
-      return {
-        code: 1000,
-        message: 'OK',
-        data,
-      };
+      return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
-        console.error('set_comments_product error:', error);
+      console.error('set_comments_product error:', error);
 
-        return {
-            code: 9999,
-            message: 'Exception error.',
-        };
+      return APP_RESPONSE.EXCEPTION_ERROR;
     }
   }
 
   @Post('like_product')
   async likeProduct(@Body() body: any) {
     try {
-      if (
-        body.product_id === undefined ||
-        body.user_id === undefined
-      ) {
-        return {
-          code: 1002,
-          message: 'Parameter is not enought.',
-        };
+      if (body.product_id === undefined || body.user_id === undefined) {
+        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
       }
 
       const product = await this.productsService.getProductById(
@@ -249,21 +179,13 @@ export class ProductsController {
       );
 
       if (!product) {
-        return {
-          code: 9992,
-          message: 'Product is not existed',
-        };
+        return APP_RESPONSE.PRODUCT_NOT_EXISTED;
       }
 
-      const user = await this.productsService.getUserById(
-        Number(body.user_id),
-      );
+      const user = await this.productsService.getUserById(Number(body.user_id));
 
       if (!user) {
-        return {
-          code: 9994,
-          message: 'No Data or end of list data',
-        };
+        return APP_RESPONSE.NO_DATA_OR_END_OF_LIST;
       }
 
       const data = await this.productsService.likeProduct(
@@ -271,18 +193,11 @@ export class ProductsController {
         Number(body.user_id),
       );
 
-      return {
-        code: 1000,
-        message: 'OK',
-        data,
-      };
+      return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
       console.error('like_product error:', error);
 
-      return {
-        code: 9999,
-        message: 'Exception error.',
-      };
+      return APP_RESPONSE.EXCEPTION_ERROR;
     }
   }
 
@@ -295,10 +210,7 @@ export class ProductsController {
         body.subject === undefined ||
         body.details === undefined
       ) {
-        return {
-          code: 1002,
-          message: 'Parameter is not enought.',
-        };
+        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
       }
 
       const product = await this.productsService.getProductById(
@@ -306,21 +218,13 @@ export class ProductsController {
       );
 
       if (!product) {
-        return {
-          code: 9992,
-          message: 'Product is not existed',
-        };
+        return APP_RESPONSE.PRODUCT_NOT_EXISTED;
       }
 
-      const user = await this.productsService.getUserById(
-        Number(body.user_id),
-      );
+      const user = await this.productsService.getUserById(Number(body.user_id));
 
       if (!user) {
-        return {
-          code: 9994,
-          message: 'No Data or end of list data',
-        };
+        return APP_RESPONSE.NO_DATA_OR_END_OF_LIST;
       }
 
       const data = await this.productsService.reportProduct(
@@ -330,18 +234,11 @@ export class ProductsController {
         body.details,
       );
 
-      return {
-        code: 1000,
-        message: 'OK',
-        data,
-      };
+      return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
       console.error('report_product error:', error);
 
-      return {
-        code: 9999,
-        message: 'Exception error.',
-      };
+      return APP_RESPONSE.EXCEPTION_ERROR;
     }
   }
 
