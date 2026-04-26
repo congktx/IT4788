@@ -19,10 +19,11 @@ import { ProductVariant } from './src/modules/products/entities/product_variant.
 import { Order } from './src/modules/orders/entities/order.entity';
 import { OrderItem } from './src/modules/orders/entities/order_item.entity';
 import { Shipping } from './src/modules/orders/entities/shipping.entity';
+import { OrderTimeline } from './src/modules/orders/entities/order-timeline.entity';
 import { Conversation } from './src/modules/conversations/entities/conversation.entity';
 import { UserConversation } from './src/modules/conversations/entities/user_conversation.entity';
 import { Message } from './src/modules/conversations/entities/message.entity';
-import { Address } from './src/modules/orders/entities/address.entity';
+import { Address } from './src/modules/addresses/entities/address.entity';
 import { News } from './src/modules/news/entities/news.entity';
 import { Status } from './src/modules/orders/entities/status_order.entities';
 import { Ward } from './src/modules/orders/entities/ward.entity';
@@ -33,6 +34,9 @@ import { Category } from './src/modules/products/entities/category.entity';
 import { DevToken } from './src/modules/dev_tokens/entities/dev-token.entity';
 import { UserFollow } from './src/modules/follow/entities/user-follow.entity';
 import { UserBlock } from './src/modules/blocks/entities/user-block.entity';
+import { PushSetting } from './src/modules/push_settings/entities/push-setting.entity';
+import { Rate } from './src/modules/rates/entities/rate.entity';
+import { SavedSearch } from './src/modules/searches/entities/saved_search.entity';
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'mysql',
@@ -52,6 +56,34 @@ export const dataSourceOptions: DataSourceOptions = {
     Order, OrderItem, Shipping,
     Conversation, UserConversation, Message, 
     UserFollow, UserBlock,
+    BattleProof,
+    Appeal,
+    Product,
+    Like,
+    Comment,
+    Report,
+    ProductVariant,
+    Order,
+    OrderItem,
+    Shipping,
+    OrderTimeline,
+    Address,
+    News,
+    Conversation,
+    UserConversation,
+    Message,
+    Ward,
+    Status,
+    Province,
+    Warehouse,
+    Brand,
+    Category,
+    DevToken,
+    UserBlock,
+    UserFollow,
+    PushSetting,
+    Rate,
+    SavedSearch,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: true,
@@ -60,4 +92,3 @@ export const dataSourceOptions: DataSourceOptions = {
 const dataSource = new DataSource(dataSourceOptions);
 
 export default dataSource;
-

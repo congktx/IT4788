@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrdersController } from './orders.controller';
-import { OrderService, OrdersService } from './orders.service';
+import { OrdersService } from './orders.service';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order_item.entity';
 import { Shipping } from './entities/shipping.entity';
@@ -37,6 +37,7 @@ import { Transaction } from '../wallets/entities/transaction.entity';
     ]),
   ],
   controllers: [OrdersController],
-  providers: [OrderService, OrdersService],
+  providers: [OrdersService],
+  exports: [OrdersService],
 })
 export class OrdersModule {}

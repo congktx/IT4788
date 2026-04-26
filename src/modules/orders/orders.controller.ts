@@ -102,13 +102,13 @@ export class OrdersController {
   }
 
   @UseGuards(AuthGuard)
-  @Post('orders/create_order')
+  @Post('order/create_order')
   createOrder(@Body() body: CreateOrderDto, @Req() req: RequestWithUser) {
     return this.ordersService.createOrder(body, this.getUserId(req));
   }
 
   @UseGuards(AuthGuard)
-  @Post('orders/get_list_purchases')
+  @Post('order/get_list_purchases')
   getListPurchases(
     @Body() body: GetListPurchasesDto,
     @Req() req: RequestWithUser,
@@ -117,31 +117,31 @@ export class OrdersController {
   }
 
   @UseGuards(AuthGuard)
-  @Post('orders/get_purchase')
+  @Post('order/get_purchase')
   getPurchase(@Body() body: GetPurchaseDto, @Req() req: RequestWithUser) {
     return this.ordersService.getPurchase(body, this.getUserId(req));
   }
 
   @UseGuards(AuthGuard)
-  @Post('orders/edit_purchase')
+  @Post('order/edit_purchase')
   editPurchase(@Body() body: EditPurchaseDto, @Req() req: RequestWithUser) {
     return this.ordersService.editPurchase(body, this.getUserId(req));
   }
 
   @UseGuards(AuthGuard)
-  @Post('orders/cancel_order')
+  @Post('order/cancel_order')
   cancelOrder(@Body() body: CancelOrderDto, @Req() req: RequestWithUser) {
     return this.ordersService.cancelOrder(body, this.getUserId(req));
   }
 
   @UseGuards(AuthGuard)
-  @Post('orders/set_accept_buyer')
+  @Post('order/set_accept_buyer')
   setAcceptBuyer(@Body() body: SetAcceptBuyerDto, @Req() req: RequestWithUser) {
     return this.ordersService.setAcceptBuyer(body, this.getUserId(req));
   }
 
   @UseGuards(AuthGuard)
-  @Post('orders/buyer_confirm_received')
+  @Post('order/buyer_confirm_received')
   buyerConfirmReceived(
     @Body() body: BuyerConfirmReceivedDto,
     @Req() req: RequestWithUser,
@@ -150,13 +150,13 @@ export class OrdersController {
   }
 
   @UseGuards(AuthGuard)
-  @Post('orders/refund_order')
+  @Post('order/refund_order')
   refundOrder(@Body() body: RefundOrderDto, @Req() req: RequestWithUser) {
     return this.ordersService.refundOrder(body, this.getUserId(req));
   }
 
   @UseGuards(AuthGuard)
-  @Post('orders/seller_mark_as_shipped')
+  @Post('order/seller_mark_as_shipped')
   sellerMarkAsShipped(
     @Body() body: SellerMarkAsShippedDto,
     @Req() req: RequestWithUser,
@@ -165,7 +165,7 @@ export class OrdersController {
   }
 
   @UseGuards(AuthGuard)
-  @Post('orders/get_order_timeline')
+  @Post('order/get_order_timeline')
   getOrderTimeline(
     @Body() body: GetOrderTimelineDto,
     @Req() req: RequestWithUser,

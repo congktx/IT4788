@@ -49,11 +49,11 @@ export class Order {
   @Column('decimal', { nullable: true, default: 0 })
   shipping_fee: number;
 
-  @Column({ nullable: true, default: 0 })
-  leatime: number;
+  @Column({ type: 'int', nullable: true, default: 0 })
+  leatime: number | null;
 
   @Column({ type: 'text', nullable: true })
-  note: string;
+  note: string | null;
 
   @Column({ type: 'int', nullable: true })
   cancel_reason: number | null;

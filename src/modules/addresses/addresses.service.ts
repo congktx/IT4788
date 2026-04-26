@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Address } from './entities/address.entity';
 import { CreateAddressDto } from './dto/create-address.dto';
+import {APP_RESPONSE, buildResponse,} from '../../common/constants/response.constants';
 
 @Injectable()
 export class AddressesService {
@@ -22,11 +23,7 @@ export class AddressesService {
 
     const saved = await this.addressRepository.save(address);
 
-    return {
-      code: '1000',
-      message: 'OK',
-      data: saved,
-    };
+    return buildResponse(APP_RESPONSE.OK, saved);
   }
 
   async getMyAddresses(userId: number) {
@@ -34,10 +31,6 @@ export class AddressesService {
       where: { user_id: userId },
     });
 
-    return {
-      code: '1000',
-      message: 'OK',
-      data: list,
-    };
+    return buildResponse(APP_RESPONSE.OK, list);
   }
 }
