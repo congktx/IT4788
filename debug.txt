@@ -1,0 +1,33 @@
+TITLE: SIGNUP-01: (Thành công) - Lưu user mới vào Database
+MSG: Error: data and hash arguments required
+    at Object.compare (D:\IT4788\node_modules\bcrypt\bcrypt.js:204:17)
+    at D:\IT4788\node_modules\bcrypt\promises.js:26:12
+    at new Promise (<anonymous>)
+    at Object.promise (D:\IT4788\node_modules\bcrypt\promises.js:17:12)
+    at Object.compare (D:\IT4788\node_modules\bcrypt\bcrypt.js:200:25)
+    at Object.<anonymous> (D:\IT4788\test\auth\1-signup.e2
+---
+TITLE: SIGNUP-03: (Thất bại) - Lỗi 1002 khi thiếu điện thoại hoặc mật khẩu
+MSG: Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: "1002"
+Received: undefined
+    at Object.<anonymous> (D:\IT4788\test\auth\1-signup.e2e-spec.ts:97:28)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+---
+TITLE: SIGNUP-04: (Thất bại) - Lỗi 1003 khi sai kiểu dữ liệu
+MSG: Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: "1003"
+Received: undefined
+    at Object.<anonymous> (D:\IT4788\test\auth\1-signup.e2e-spec.ts:118:27)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+---
+TITLE: SIGNUP-05: (Thất bại) - Lỗi 1004 khi giá trị tham số bất thường (VD: format sai)
+MSG: Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: "1004"
+Received: undefined
+    at Object.<anonymous> (D:\IT4788\test\auth\1-signup.e2e-spec.ts:130:27)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+---

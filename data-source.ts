@@ -45,7 +45,7 @@ export const dataSourceOptions: DataSourceOptions = {
     UserFollow, UserBlock, DevToken, PushSetting,
   ],
   migrations: ['src/migrations/*.ts'],
-  synchronize: false,
+  synchronize: process.env.NODE_ENV === 'test' ? true : false,
 };
 
 
