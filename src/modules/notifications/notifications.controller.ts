@@ -1,8 +1,8 @@
 import { Body, Controller, HttpCode, Post, Req, UseGuards } from "@nestjs/common";
 import { NotificationsService } from "./notifications.service";
-import { APP_RESPONSE } from "src/common/constants/response.constants";
-import { AuthGuard } from "src/common/auth/guards/auth.guard";
-import { AuthenticatedRequest } from "src/types/auth.type";
+import { APP_RESPONSE } from "../../common/constants/response.constants";
+import { AuthGuard } from "../../common/auth/guards/auth.guard";
+import { AuthenticatedRequest } from "../../types/auth.type";
 import { GetNotiticationDto } from "./dto/get-notification.dto";
 import { SetReadNotificationDto } from "./dto/set-read-notification.dto";
 

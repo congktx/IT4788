@@ -4,7 +4,7 @@ import { RewardProof } from "./entities/reward_proof.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { RewardAppeal } from "./entities/reward_appeal.entity";
 import { GetRewardHistoryDto } from "./dto/get-reward-history.dto";
-import { APP_RESPONSE } from "src/common/constants/response.constants";
+import { APP_RESPONSE } from "../../common/constants/response.constants";
 
 @Injectable()
 export class RewardsService {

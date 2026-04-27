@@ -18,9 +18,9 @@ import { Report } from '../../products/entities/report.entity';
 import { Order } from '../../orders/entities/order.entity';
 import { Message } from '../../conversations/entities/message.entity';
 import { UserFollow } from '../../follow/entities/user-follow.entity';
-import { Conversation } from 'src/modules/conversations/entities/conversation.entity';
-import { Notification } from 'src/modules/notifications/entities/notification.entity';
-import { Address } from '../../addresses/entities/address.entity';
+import { Conversation } from '../../../modules/conversations/entities/conversation.entity';
+import { Notification } from '../../../modules/notifications/entities/notification.entity';
+import { Address } from '../../orders/entities/address.entity';
 
 @Entity('users')
 export class User {

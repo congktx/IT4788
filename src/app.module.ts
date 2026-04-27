@@ -44,7 +44,7 @@ import { JwtModule } from '@nestjs/jwt';
     BlocksModule,
     ConversationsModule,
     UploadModule,
-    NotificationsModule
+    NotificationsModule,
     OrdersModule,
     AddressesModule,
     WalletsModule,

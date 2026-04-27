@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
-import { ApiResponse } from "src/common/interfaces/api-response.interface";
-import { APP_RESPONSE } from "src/common/constants/response.constants";
+import { ApiResponse } from "../../common/interfaces/api-response.interface";
+import { APP_RESPONSE } from "../../common/constants/response.constants";
 import { SendMessageDto } from "./dto/send-message.dto";
 import { Conversation } from "./entities/conversation.entity";
 import { Message } from "./entities/message.entity";

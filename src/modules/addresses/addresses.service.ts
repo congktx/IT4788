@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Address } from './entities/address.entity';
+import { Address } from '../orders/entities/address.entity';
 import { CreateAddressDto } from './dto/create-address.dto';
-import {APP_RESPONSE, buildResponse,} from '../../common/constants/response.constants';
+import { APP_RESPONSE, buildResponse, } from '../../common/constants/response.constants';
 
 @Injectable()
 export class AddressesService {
   constructor(
     @InjectRepository(Address)
     private readonly addressRepository: Repository<Address>,
-  ) {}
+  ) { }
 
   async createAddress(userId: number, body: CreateAddressDto) {
     const address = this.addressRepository.create({

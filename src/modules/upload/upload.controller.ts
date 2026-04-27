@@ -1,9 +1,9 @@
 import { Controller, Post, Req, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { UploadService } from "./upload.service";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { APP_RESPONSE } from "src/common/constants/response.constants";
-import { AuthGuard } from "src/common/auth/guards/auth.guard";
-import type { AuthenticatedRequest } from "src/types/auth.type";
+import { APP_RESPONSE } from "../../common/constants/response.constants";
+import { AuthGuard } from "../../common/auth/guards/auth.guard";
+import type { AuthenticatedRequest } from "../../types/auth.type";
 
 @Controller("upload")
 export class UploadController {
