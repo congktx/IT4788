@@ -1,17 +1,11 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { BattleProof } from './battle_proof.entity';
+import { RewardProof } from './reward_proof.entity';
 import { User } from '../../users/entities/user.entity';
 
-@Entity('appeals')
-export class Appeal {
+@Entity('reward_appeals')
+export class RewardAppeal {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @Column()
-  proof_id: number;
-
-  @Column()
-  user_id: number;
 
   @Column('text', { nullable: true })
   reason: string;
@@ -19,9 +13,9 @@ export class Appeal {
   @Column({ nullable: true })
   status: string;
 
-  @ManyToOne(() => BattleProof, bp => bp.appeals)
+  @ManyToOne(() => RewardProof, bp => bp.appeals)
   @JoinColumn({ name: 'proof_id' })
-  proof: BattleProof;
+  proof: RewardProof;
 
   @ManyToOne(() => User, user => user.appeals)
   @JoinColumn({ name: 'user_id' })

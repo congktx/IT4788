@@ -8,21 +8,12 @@ export class Message {
   id: number;
 
   @Column()
-  conversation_id: number;
-
-  @Column()
-  sender_id: number;
-
-  @Column('text', { nullable: true })
   content: string;
 
-  @Column({ nullable: true })
-  image_url: string;
+  @Column()
+  type: string;
 
   @Column({ nullable: true })
-  video_url: string;
-
-  @Column('int', { nullable: true })
   created_at: number;
 
   @ManyToOne(() => Conversation, conv => conv.messages)

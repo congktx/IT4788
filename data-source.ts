@@ -8,9 +8,9 @@ import { User } from './src/modules/users/entities/user.entity';
 import { UserCode } from './src/modules/users/entities/user_code.entity';
 import { Wallet } from './src/modules/wallets/entities/wallet.entity';
 import { Transaction } from './src/modules/wallets/entities/transaction.entity';
-import { RewardRule } from './src/modules/reward_rules/entities/reward_rule.entity';
-import { BattleProof } from './src/modules/battle_proofs/entities/battle_proof.entity';
-import { Appeal } from './src/modules/battle_proofs/entities/appeal.entity';
+import { RewardRule } from './src/modules/rewards/entities/reward_rule.entity';
+import { RewardProof } from './src/modules/rewards/entities/reward_proof.entity';
+import { RewardAppeal } from './src/modules/rewards/entities/reward_appeal.entity';
 import { Product } from './src/modules/products/entities/product.entity';
 import { Like } from './src/modules/products/entities/like.entity';
 import { Comment } from './src/modules/products/entities/comment.entity';
@@ -21,7 +21,6 @@ import { OrderItem } from './src/modules/orders/entities/order_item.entity';
 import { Shipping } from './src/modules/orders/entities/shipping.entity';
 import { OrderTimeline } from './src/modules/orders/entities/order-timeline.entity';
 import { Conversation } from './src/modules/conversations/entities/conversation.entity';
-import { UserConversation } from './src/modules/conversations/entities/user_conversation.entity';
 import { Message } from './src/modules/conversations/entities/message.entity';
 import { Address } from './src/modules/addresses/entities/address.entity';
 import { News } from './src/modules/news/entities/news.entity';
@@ -34,6 +33,7 @@ import { Category } from './src/modules/products/entities/category.entity';
 import { DevToken } from './src/modules/dev_tokens/entities/dev-token.entity';
 import { UserFollow } from './src/modules/follow/entities/user-follow.entity';
 import { UserBlock } from './src/modules/blocks/entities/user-block.entity';
+import { Notification } from 'src/modules/notifications/entities/notification.entity';
 import { PushSetting } from './src/modules/push_settings/entities/push-setting.entity';
 import { Rate } from './src/modules/rates/entities/rate.entity';
 import { SavedSearch } from './src/modules/searches/entities/saved_search.entity';
@@ -46,16 +46,14 @@ export const dataSourceOptions: DataSourceOptions = {
   password: SecretConfig.database.password,
   database: SecretConfig.database.name,
   entities: [
-    User,
-    UserCode,
-    Wallet,
-    Transaction,
-    RewardRule,
-    BattleProof, Appeal,
+    User, UserCode,
+    Wallet, Transaction,
+    RewardProof, RewardAppeal, RewardRule,
     Product, Like, Comment, Report, ProductVariant,
     Order, OrderItem, Shipping,
-    Conversation, UserConversation, Message, 
+    Conversation, Message,
     UserFollow, UserBlock,
+    Notification
     BattleProof,
     Appeal,
     Product,

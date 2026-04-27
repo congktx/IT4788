@@ -12,6 +12,9 @@ import { AuthModule } from './common/auth/auth.module';
 import { RedisModule } from './common/redis/redis.module';
 import { FollowModule } from './modules/follow/follow.module';
 import { BlocksModule } from './modules/blocks/blocks.module';
+import { ConversationsModule } from './modules/conversations/conversations.module';
+import { UploadModule } from './modules/upload/upload.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { AddressesModule } from './modules/addresses/addresses.module';
 import { WalletsModule } from './modules/wallets/wallets.module';
@@ -39,6 +42,9 @@ import { JwtModule } from '@nestjs/jwt';
     DevTokensModule,
     FollowModule,
     BlocksModule,
+    ConversationsModule,
+    UploadModule,
+    NotificationsModule
     OrdersModule,
     AddressesModule,
     WalletsModule,
