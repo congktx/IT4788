@@ -20,6 +20,7 @@ import { Message } from '../../conversations/entities/message.entity';
 import { UserFollow } from '../../follow/entities/user-follow.entity';
 import { Conversation } from 'src/modules/conversations/entities/conversation.entity';
 import { Notification } from 'src/modules/notifications/entities/notification.entity';
+import { Address } from '../../addresses/entities/address.entity';
 
 @Entity('users')
 export class User {
@@ -29,7 +30,7 @@ export class User {
   @Column({ nullable: true })
   username: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'phonenumber', nullable: true })
   phone_number: string;
 
   @Column({ select: false })
@@ -41,7 +42,7 @@ export class User {
   @Column({ nullable: true })
   role: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'fullName', nullable: true })
   fullname: string;
 
   @Column({ nullable: true })
@@ -97,4 +98,7 @@ export class User {
 
   @OneToMany(() => UserFollow, (follow) => follow.followee)
   follower_relations: UserFollow[];
+
+  @OneToMany(() => Address, (address) => address.user)
+  addresses: Address[];
 }
