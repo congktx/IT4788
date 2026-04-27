@@ -11,7 +11,7 @@ export class UploadService {
   async uploadFile(file: Express.Multer.File) {
     const key = `files/${uuidv4()}-${file.originalname}`;
 
-    await r2Client.send(
+    let result = await r2Client.send(
       new PutObjectCommand({
         Bucket: process.env.R2_BUCKET,
 
@@ -21,10 +21,10 @@ export class UploadService {
       }),
     );
 
-    const url = SecretConfig.r2.endpoint + `${key}`;
+    const url = SecretConfig.r2.pub_endpoint + `/${key}`;
 
     return {
-      url,
+      url: url,
     };
   }
 }

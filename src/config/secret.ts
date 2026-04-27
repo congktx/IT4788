@@ -12,6 +12,7 @@ export const SecretConfig = {
   r2: {
     bucket: process.env.R2_BUCKET || "it4788",
     endpoint: process.env.R2_ENDPOINT || "",
+    pub_endpoint: process.env.R2_PUB_ENDPOINT || "",
     access_key: process.env.R2_ACCESS_KEY || "",
     secret_key: process.env.R2_SECRET_KEY || ""
   }

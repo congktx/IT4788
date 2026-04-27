@@ -10,13 +10,13 @@ export class UploadController {
   constructor(private readonly uploadService: UploadService) { }
 
   @Post("file")
-  // @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard)
   @UseInterceptors(FileInterceptor('file'))
-  upload(
+  async upload(
     @Req() req: AuthenticatedRequest,
     @UploadedFile() file: Express.Multer.File
   ) {
-    const data = this.uploadService.uploadFile(file);
+    const data = await this.uploadService.uploadFile(file);
     return {
       code: APP_RESPONSE.OK.code,
       message: APP_RESPONSE.OK.message,

@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { ApiResponse } from "src/common/interfaces/api-response.interface";
 import { APP_RESPONSE } from "src/common/constants/response.constants";
 import { SendMessageDto } from "./dto/send-message.dto";
@@ -116,11 +116,15 @@ export class ConversationsService {
       sender: { id: senderId },
       conversation: { id: conversationId }
     });
-    await this.conversationRepo.update(conversationId, {
-      time_last_update: now,
-      last_messasge_id: message.id
-    });
-    return await this.messageRepo.save(message);
+    const message_saved = await this.messageRepo.save(message);
+    await this.conversationRepo.update(
+      { id: conversationId },
+      {
+        time_last_update: now,
+        last_messasge_id: message_saved.id,
+      }
+    );
+    return message_saved;
   }
 
   async sendMessage(currentUserId: number, sendMessageDto: SendMessageDto) {
@@ -171,7 +175,7 @@ export class ConversationsService {
     const skip = (index - 1) * count;
     let qb = this.conversationRepo
       .createQueryBuilder('conversation')
-      .innerJoin('conversation.users', 'user', 'user.id = :userId', { currentUserId })
+      .innerJoin('conversation.users', 'user', 'user.id = :userId', { userId: currentUserId })
       .leftJoinAndSelect('conversation.users', 'users')
       .orderBy('conversation.time_last_update', 'DESC')
       .skip(skip)
@@ -187,36 +191,42 @@ export class ConversationsService {
     let listLastMessageId: number[] = [];
     for (let i = 0; i < conversations.length; i++)
       listLastMessageId.push(conversations[i]['last_messasge_id']);
-    const listLastMessage = await this.messageRepo.findByIds(listLastMessageId);
+    const listLastMessage = await this.messageRepo.find({
+      where: {
+        id: In(listLastMessageId),
+      },
+      relations: ['sender', 'conversation'],
+    });
 
     let listConv: any[] = [];
-    let numNewMessage = 0;
+    let num_new_message = 0;
     for (let i = 0; i < conversations.length; i++) {
       let idPartner = 0;
       if (conversations[i]['users'][0]['id'] === currentUserId) idPartner = 1;
+      console.log(listLastMessage[i])
       listConv.push({
         id: conversations[i]["id"],
-        Partner: {
+        partner: {
           id: conversations[i]['users'][idPartner]['id'],
           username: conversations[i]['users'][idPartner]['username'],
           avatar: conversations[i]['users'][idPartner]['avatar']
         },
-        LastMessage: {
+        last_message: !listLastMessage[i] ? null : {
           message: listLastMessage[i].content,
           type: listLastMessage[i].type,
           created: listLastMessage[i].created_at,
           unread: listLastMessage[i].sender.id != currentUserId && listLastMessage[i].created_at > conversations[i].time_last_seen
         }
       });
-      if (listLastMessage[i].created_at !== conversations[i].time_last_seen)
-        numNewMessage++;
+      if (listLastMessage[i] && listLastMessage[i].created_at !== conversations[i].time_last_seen)
+        num_new_message++;
     }
 
     return {
       code: APP_RESPONSE.OK.code,
       message: APP_RESPONSE.OK.message,
       data: listConv,
-      numNewMessage: numNewMessage
+      num_new_message: num_new_message
     }
   }
 
@@ -260,13 +270,17 @@ export class ConversationsService {
 
     let conversationId = conversation.id;
     let skip = (getConvDto.index - 1) * getConvDto.count;
-    let qb = this.messageRepo
-      .createQueryBuilder('message')
-      .leftJoinAndSelect('message.conversation_id', 'conversation', 'conversation.id = :conversationId', { conversationId })
-      .orderBy('message.created_at', 'DESC')
-      .skip(skip)
-      .take(getConvDto.count);
-    let [messages, _] = await qb.getManyAndCount();
+    let [messages, _] = await this.messageRepo.findAndCount({
+      where: {
+        conversation: { id: conversationId }
+      },
+      relations: ['sender'],
+      order: {
+        created_at: 'DESC'
+      },
+      skip: skip,
+      take: getConvDto.count
+    });
 
     if (!Array.isArray(messages))
       return this.fail(

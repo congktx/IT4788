@@ -10,6 +10,8 @@ import { AuthModule } from './common/auth/auth.module';
 import { FollowModule } from './modules/follow/follow.module';
 import { BlocksModule } from './modules/blocks/blocks.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
+import { UploadModule } from './modules/upload/upload.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -24,7 +26,9 @@ import { ConversationsModule } from './modules/conversations/conversations.modul
     AuthModule,
     FollowModule,
     BlocksModule,
-    ConversationsModule
+    ConversationsModule,
+    UploadModule,
+    NotificationsModule
   ],
   controllers: [AppController],
   providers: [AppService],
