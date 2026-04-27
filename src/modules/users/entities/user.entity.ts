@@ -30,6 +30,9 @@ export class User {
   @Column({ nullable: true })
   username: string;
 
+  @Column({ nullable: true })
+  email: string;
+
   @Column({ name: 'phonenumber', nullable: true })
   phone_number: string;
 
@@ -44,6 +47,24 @@ export class User {
 
   @Column({ name: 'fullName', nullable: true })
   fullname: string;
+
+  @Column({ name: 'firstName', nullable: true })
+  firstname: string;
+
+  @Column({ name: 'lastName', nullable: true })
+  lastname: string;
+
+  @Column({ nullable: true })
+  address: string;
+
+  @Column({ nullable: true })
+  status: string;
+
+  @Column({ nullable: true })
+  cover_image: string;
+
+  @Column({ nullable: true })
+  cover_image_web: string;
 
   @Column({ nullable: true })
   avatar: string;
