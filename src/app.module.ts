@@ -23,7 +23,6 @@ import { PushSettingsModule } from './modules/push_settings/push-settings.module
 import { RatesModule } from './modules/rates/rates.module';
 import { SearchesModule } from './modules/searches/searches.module';
 import { JwtModule } from '@nestjs/jwt';
-
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -60,7 +59,7 @@ import { JwtModule } from '@nestjs/jwt';
     }),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService]
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

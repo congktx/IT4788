@@ -12,10 +12,13 @@ import { UserBlock } from "../blocks/entities/user-block.entity";
 import { GetListConvDto } from "./dto/get-list-conversation.dto";
 import { GetConvDto } from "./dto/get-conversation.dto";
 import { SetReadMessageDto } from "./dto/set-read-message.dto";
+import { ConversationsGateway } from "./conversations.gateway";
 
 @Injectable()
 export class ConversationsService {
   constructor(
+    private readonly conversationsGateway: ConversationsGateway,
+
     @InjectRepository(Conversation)
     private readonly conversationRepo: Repository<Conversation>,
 
@@ -82,13 +85,23 @@ export class ConversationsService {
       );
     }
 
-    return await this.conversationRepo
+    const foundConversation = await this.conversationRepo
       .createQueryBuilder('conversation')
+      .select('conversation.id')
       .leftJoin('conversation.users', 'user')
       .where('user.id IN (:...userIds)', { userIds })
       .groupBy('conversation.id')
       .having('COUNT(user.id) = :count', { count: userIds.length })
       .getOne();
+
+    if (!foundConversation) {
+      return null;
+    }
+
+    return await this.conversationRepo.findOne({
+      where: { id: foundConversation.id },
+      relations: ['']
+    });
   }
 
   async findConversationById(id: number) {
@@ -98,7 +111,7 @@ export class ConversationsService {
     });
   }
 
-  async createMessage(sendMessageDto: SendMessageDto, conversationId: number, senderId: number) {
+  async createMessage(sendMessageDto: SendMessageDto, conversationId: number, senderId: number, receiverId: number) {
     let now = Math.floor(Date.now() / 1000);
 
     let content = sendMessageDto.message;
@@ -114,6 +127,7 @@ export class ConversationsService {
       type: type,
       created_at: now,
       sender: { id: senderId },
+      receiver: { id: receiverId },
       conversation: { id: conversationId }
     });
     const message_saved = await this.messageRepo.save(message);
@@ -156,12 +170,14 @@ export class ConversationsService {
       conversation = await this.createConversation(userIds);
     }
 
-    const message = await this.createMessage(sendMessageDto, conversation["id"], currentUserId);
+    const message = await this.createMessage(sendMessageDto, conversation["id"], currentUserId, sendMessageDto.to_id);
     const data_res = {
       conversation_id: message["conversation"]["id"] || "",
       message_id: message["id"],
       created_at: message["created_at"] || 0
     };
+
+    this.conversationsGateway.notifyUser(sendMessageDto.to_id, 'new-message', message);
 
     return {
       code: APP_RESPONSE.OK.code,
@@ -338,6 +354,8 @@ export class ConversationsService {
         time_last_seen: Math.floor(Date.now() / 1000)
       });
     }
+
+    this.conversationsGateway.notifyUser(partner.id, 'read-message', { conversation_id: conversation.id });
 
     return {
       ...APP_RESPONSE.OK,
