@@ -15,6 +15,11 @@ services:
     networks:
       - proxy-net
 
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
   group2-api:
     image: ghcr.io/congktx/it4788:latest
     container_name: it4788_app
@@ -30,14 +35,15 @@ services:
       PORT: 8000
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.group2-api.rule=Host(`group2.it4788.sukkaito.id.vn`)"
+      - "traefik.http.routers.group2-api.rule=Host(`group2.it4788.sukkaito.id.v\
+        n`)"
       - "traefik.http.routers.group2-api.entrypoints=web"
     networks:
       - proxy-net
-    
+
 volumes:
   mysql_data:
-  
+
 networks:
   proxy-net:
     external: true
