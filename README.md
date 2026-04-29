@@ -55,10 +55,12 @@ Sau khi Docker MySQL đã chạy lên thành công, hãy thực thi các lệnh 
   npm run migration:run
   ```
 
-- **Xóa hết các table đã tạo**:
+- **Cách reset toàn bộ database về trạng thái trống**:
+  Xóa sạch toàn bộ bảng trong db:
   ```bash
-  npm run migration:revert
+  npm run migration:drop
   ```
+  Dọn dẹp thư mục migrations: xóa hết các file trong folder migrations đi
 
 ### 5. Chạy ứng dụng NestJS
 

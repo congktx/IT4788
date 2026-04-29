@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Transaction } from './transaction.entity';
 
@@ -10,13 +10,16 @@ export class Wallet {
   @Column()
   user_id: number;
 
-  @Column('decimal', { nullable: true })
+  @Column('decimal', { default: 0 })
   balance: number;
 
-  @OneToOne(() => User, user => user.wallet)
+  @Column('decimal', { default: 0 })
+  pending_balance: number;
+
+  @OneToOne(() => User, (user) => user.wallet)
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @OneToMany(() => Transaction, transaction => transaction.wallet)
+  @OneToMany(() => Transaction, (transaction) => transaction.wallet)
   transactions: Transaction[];
 }

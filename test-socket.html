@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Test Socket.IO</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  </head>
+  <body>
+    <h2>Test Socket.IO Connection</h2>
+    <button onclick="connectSocket()">Kết nối Socket</button>
+    <button onclick="disconnectSocket()">Ngắt kết nối</button>
+    <div id="status">Chưa kết nối</div>
+    <pre id="log"></pre>
+
+    <script>
+      let socket;
+
+      function connectSocket() {
+        const token = prompt('Nhập JWT Token của bạn (hoặc để trống để test):');
+
+        socket = io('http://localhost:8000', {
+          transports: ['websocket', 'polling'],
+          auth: token ? { jwt_token: token } : undefined,
+        });
+
+        socket.on('connect', () => {
+          document.getElementById('status').innerHTML =
+            'Kết nối thành công! ID: ' + socket.id;
+          log('Connected with ID: ' + socket.id);
+        });
+
+        socket.on('welcome', (data) => {
+          log('Server gửi: ' + JSON.stringify(data));
+        });
+
+        socket.on('connect_error', (err) => {
+          document.getElementById('status').innerHTML =
+            'Lỗi kết nối: ' + err.message;
+          log('Connect error: ' + err.message);
+        });
+
+        socket.on('new_message', (data) => {
+          log('New message: ' + data['id']);
+        });
+
+        socket.on('read_message', (data) => {
+          log('Read conversation id: ' + data['conversation_id']);
+        });
+
+        socket.on('disconnect', () => {
+          log('Disconnected');
+        });
+      }
+
+      function disconnectSocket() {
+        if (socket) socket.disconnect();
+      }
+
+      function log(msg) {
+        const logEl = document.getElementById('log');
+        logEl.textContent +=
+          new Date().toLocaleTimeString() + ' - ' + msg + '\n';
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+    </script>
+  </body>
+</html>
