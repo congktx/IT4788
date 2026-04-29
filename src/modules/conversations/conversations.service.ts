@@ -85,23 +85,13 @@ export class ConversationsService {
       );
     }
 
-    const foundConversation = await this.conversationRepo
+    return await this.conversationRepo
       .createQueryBuilder('conversation')
-      .select('conversation.id')
       .leftJoin('conversation.users', 'user')
       .where('user.id IN (:...userIds)', { userIds })
       .groupBy('conversation.id')
       .having('COUNT(user.id) = :count', { count: userIds.length })
       .getOne();
-
-    if (!foundConversation) {
-      return null;
-    }
-
-    return await this.conversationRepo.findOne({
-      where: { id: foundConversation.id },
-      relations: ['']
-    });
   }
 
   async findConversationById(id: number) {
@@ -177,7 +167,7 @@ export class ConversationsService {
       created_at: message["created_at"] || 0
     };
 
-    this.conversationsGateway.notifyUser(sendMessageDto.to_id, 'new-message', message);
+    this.conversationsGateway.notifyUser(sendMessageDto.to_id, 'new_message', message);
 
     return {
       code: APP_RESPONSE.OK.code,
@@ -355,7 +345,7 @@ export class ConversationsService {
       });
     }
 
-    this.conversationsGateway.notifyUser(partner.id, 'read-message', { conversation_id: conversation.id });
+    this.conversationsGateway.notifyUser(partner.id, 'read_message', { conversation_id: conversation.id });
 
     return {
       ...APP_RESPONSE.OK,
