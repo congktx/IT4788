@@ -1,0 +1,43 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: it4788_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: it4788_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: always
+    networks:
+      - proxy-net
+
+  group2-api:
+    image: ghcr.io/congktx/it4788:latest
+    container_name: it4788_app
+    depends_on:
+      - mysql
+    restart: always
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_NAME: it4788_db
+      PORT: 8000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.group2-api.rule=Host(`group2.it4788.sukkaito.id.vn`)"
+      - "traefik.http.routers.group2-api.entrypoints=web"
+    networks:
+      - proxy-net
+    
+volumes:
+  mysql_data:
+  
+networks:
+  proxy-net:
+    external: true
