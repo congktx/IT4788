@@ -15,6 +15,11 @@ import { UsersModule } from '../../src/modules/users/users.module';
 import { AuthModule } from '../../src/common/auth/auth.module';
 import { FollowModule } from '../../src/modules/follow/follow.module';
 import { BlocksModule } from '../../src/modules/blocks/blocks.module';
+import { ConversationsModule } from '../../src/modules/conversations/conversations.module';
+import { AddressesModule } from '../../src/modules/addresses/addresses.module';
+import { OrdersModule } from '../../src/modules/orders/orders.module';
+import { ProductsModule } from '../../src/modules/products/products.module';
+import { NotificationsModule } from '../../src/modules/notifications/notifications.module';
 
 export async function createTestApp(): Promise<{
   app: INestApplication;
@@ -36,10 +41,18 @@ export async function createTestApp(): Promise<{
       AuthModule,
       FollowModule,
       BlocksModule,
+      ConversationsModule,
+      AddressesModule,
+      OrdersModule,
+      ProductsModule,
+      NotificationsModule,
     ],
   }).compile();
 
   const app = module.createNestApplication();
+
+  // Bắt signal shutdown để đóng DB connection đúng cách
+  app.enableShutdownHooks();
   await app.init();
 
   return { app, module };

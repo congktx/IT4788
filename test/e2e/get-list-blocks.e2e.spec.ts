@@ -53,6 +53,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await seed.clearAll();
   await app.close();
+  await new Promise((resolve) => setTimeout(resolve, 500));
 });
 
 beforeEach(async () => {

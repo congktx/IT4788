@@ -10,11 +10,11 @@ export class UserConversation {
   @PrimaryColumn()
   conversation_id: number;
 
-  @ManyToOne(() => User, user => user.user_conversations)
+  @ManyToOne(() => User, (user) => user.user_conversations)
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @ManyToOne(() => Conversation, conv => conv.user_conversations)
+  @ManyToOne(() => Conversation, (conv) => conv.user_conversations)
   @JoinColumn({ name: 'conversation_id' })
   conversation: Conversation;
 }

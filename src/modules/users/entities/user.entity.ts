@@ -5,19 +5,22 @@ import {
   CreateDateColumn,
   OneToMany,
   OneToOne,
+  ManyToMany,
 } from 'typeorm';
 import { UserCode } from './user_code.entity';
 import { Wallet } from '../../wallets/entities/wallet.entity';
-import { BattleProof } from '../../battle_proofs/entities/battle_proof.entity';
-import { Appeal } from '../../battle_proofs/entities/appeal.entity';
+import { RewardProof } from '../../rewards/entities/reward_proof.entity';
+import { RewardAppeal } from '../../rewards/entities/reward_appeal.entity';
 import { Product } from '../../products/entities/product.entity';
 import { Comment } from '../../products/entities/comment.entity';
 import { Like } from '../../products/entities/like.entity';
 import { Report } from '../../products/entities/report.entity';
 import { Order } from '../../orders/entities/order.entity';
-import { UserConversation } from '../../conversations/entities/user_conversation.entity';
 import { Message } from '../../conversations/entities/message.entity';
 import { UserFollow } from '../../follow/entities/user-follow.entity';
+import { Conversation } from 'src/modules/conversations/entities/conversation.entity';
+import { Notification } from 'src/modules/notifications/entities/notification.entity';
+import { Address } from '../../addresses/entities/address.entity';
 
 @Entity('users')
 export class User {
@@ -27,7 +30,7 @@ export class User {
   @Column({ nullable: true })
   username: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'phonenumber', nullable: true })
   phone_number: string;
 
   @Column({ select: false })
@@ -39,7 +42,7 @@ export class User {
   @Column({ nullable: true })
   role: string;
 
-  @Column({ nullable: true })
+  @Column({ name: 'fullName', nullable: true })
   fullname: string;
 
   @Column({ nullable: true })
@@ -57,11 +60,11 @@ export class User {
   @OneToMany(() => UserCode, (userCode) => userCode.user)
   user_codes: UserCode[];
 
-  @OneToMany(() => BattleProof, (bp) => bp.user)
-  battle_proofs: BattleProof[];
+  @OneToMany(() => RewardProof, (proof) => proof.user)
+  reward_proofs: RewardProof[];
 
-  @OneToMany(() => Appeal, (appeal) => appeal.user)
-  appeals: Appeal[];
+  @OneToMany(() => RewardAppeal, (appeal) => appeal.user)
+  appeals: RewardAppeal[];
 
   @OneToMany(() => Product, (product) => product.seller)
   products: Product[];
@@ -81,15 +84,21 @@ export class User {
   @OneToMany(() => Order, (order) => order.seller)
   orders_sold: Order[];
 
-  @OneToMany(() => UserConversation, (uc) => uc.user)
-  user_conversations: UserConversation[];
+  @ManyToMany(() => Conversation, (conversation) => conversation.users)
+  conversations: Conversation[];
 
   @OneToMany(() => Message, (message) => message.sender)
   messages_sent: Message[];
+
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications: Notification[];
 
   @OneToMany(() => UserFollow, (follow) => follow.follower)
   following_relations: UserFollow[];
 
   @OneToMany(() => UserFollow, (follow) => follow.followee)
   follower_relations: UserFollow[];
+
+  @OneToMany(() => Address, (address) => address.user)
+  addresses: Address[];
 }
