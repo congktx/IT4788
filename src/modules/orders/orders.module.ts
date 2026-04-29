@@ -13,7 +13,7 @@ import { Status } from './entities/status_order.entities';
 import { OrderTimeline } from './entities/order-timeline.entity';
 import { Product } from '../products/entities/product.entity';
 import { User } from '../users/entities/user.entity';
-import { Address } from '../addresses/entities/address.entity';
+import { Address } from '../orders/entities/address.entity';
 import { Wallet } from '../wallets/entities/wallet.entity';
 import { Transaction } from '../wallets/entities/transaction.entity';
 
@@ -40,4 +40,4 @@ import { Transaction } from '../wallets/entities/transaction.entity';
   providers: [OrdersService],
   exports: [OrdersService],
 })
-export class OrdersModule {}
+export class OrdersModule { }

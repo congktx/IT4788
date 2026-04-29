@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Address } from './entities/address.entity';
+import { Address } from '../orders/entities/address.entity';
 import { AddressesService } from './addresses.service';
 import { AddressesController } from './addresses.controller';
 
@@ -9,4 +9,4 @@ import { AddressesController } from './addresses.controller';
   providers: [AddressesService],
   controllers: [AddressesController],
 })
-export class AddressesModule {}
+export class AddressesModule { }

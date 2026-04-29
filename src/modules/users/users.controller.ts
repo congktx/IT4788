@@ -1,30 +1,30 @@
 import { Body, Controller, HttpCode, Post, Req, UseGuards } from "@nestjs/common";
-import { NotificationsService } from "./notifications.service";
-import { APP_RESPONSE } from "../../common/constants/response.constants";
+import { UsersService } from "./users.service";
 import { AuthGuard } from "../../common/auth/guards/auth.guard";
 import { AuthenticatedRequest } from "../../types/auth.type";
-import { GetNotiticationDto } from "./dto/get-notification.dto";
-import { SetReadNotificationDto } from "./dto/set-read-notification.dto";
+import { GetUserInfoDto } from "./dto/get-user-info.dto";
+import { APP_RESPONSE } from "../constants/response.constants";
+import { SetUserInfoDto } from "./dto/set-user-info.dto";
 
-@Controller('notification')
-export class NotificationsController {
+@Controller('users')
+export class UsersController {
   constructor(
-    private readonly notificationsService: NotificationsService
+    private readonly usersService: UsersService,
   ) { }
 
-  @Post('get_notification')
+  @Post('get_user_info')
   @HttpCode(200)
   @UseGuards(AuthGuard)
-  async get_notification(
+  async get_user_info(
     @Req() req: AuthenticatedRequest,
-    @Body() body: GetNotiticationDto,
+    @Body() body: GetUserInfoDto,
   ) {
     try {
       const currentUserId = Number(
         req.user?.id ?? req.user?.userId ?? req.user?.sub,
       );
 
-      return await this.notificationsService.getNotification(currentUserId, body);
+      return await this.usersService.getUserInfo(currentUserId, body);
     } catch (err: any) {
       return {
         code: APP_RESPONSE.UNKNOWN_ERROR.code,
@@ -34,19 +34,19 @@ export class NotificationsController {
     }
   }
 
-  @Post('set_read_notification')
+  @Post('set_user_info')
   @HttpCode(200)
   @UseGuards(AuthGuard)
-  async set_read_notification(
+  async set_user_info(
     @Req() req: AuthenticatedRequest,
-    @Body() body: SetReadNotificationDto,
+    @Body() body: SetUserInfoDto,
   ) {
     try {
       const currentUserId = Number(
         req.user?.id ?? req.user?.userId ?? req.user?.sub,
       );
 
-      return await this.notificationsService.setReadNotification(currentUserId, body);
+      return await this.usersService.setUserInfo(currentUserId, body);
     } catch (err: any) {
       return {
         code: APP_RESPONSE.UNKNOWN_ERROR.code,

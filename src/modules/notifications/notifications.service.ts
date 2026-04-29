@@ -3,7 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Notification } from "./entities/notification.entity";
 import { Repository } from "typeorm";
 import { GetNotiticationDto } from "./dto/get-notification.dto";
-import { APP_RESPONSE } from "src/common/constants/response.constants";
+import { APP_RESPONSE } from "../../common/constants/response.constants";
 import { SetReadNotificationDto } from "./dto/set-read-notification.dto";
 
 @Injectable()

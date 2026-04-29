@@ -7,7 +7,7 @@ import {
   ManyToOne,
 } from 'typeorm';
 import { Order } from './order.entity';
-import { Address } from '../../addresses/entities/address.entity';
+import { Address } from '../../orders/entities/address.entity';
 
 @Entity('shipping')
 export class Shipping {
