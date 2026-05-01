@@ -5,7 +5,9 @@ import { AuthenticatedRequest } from "../../types/auth.type";
 import { GetUserInfoDto } from "./dto/get-user-info.dto";
 import { APP_RESPONSE } from "../constants/response.constants";
 import { SetUserInfoDto } from "./dto/set-user-info.dto";
+import { ApiBearerAuth } from "@nestjs/swagger";
 
+@ApiBearerAuth("JWT-auth")
 @Controller('users')
 export class UsersController {
   constructor(

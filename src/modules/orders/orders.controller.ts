@@ -10,7 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '../../common/auth/guards/auth.guard';
 import { OrdersService } from './orders.service';
 import { GetShipFromQueryDto } from './dto/ship_from.dto';
@@ -36,9 +36,10 @@ interface RequestWithUser extends Request {
   };
 }
 
+@ApiBearerAuth("JWT-auth")
 @Controller()
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(private readonly ordersService: OrdersService) { }
 
   private getUserId(req: RequestWithUser): number {
     return req.user?.id ?? req.user?.userId ?? 0;

@@ -13,7 +13,17 @@ async function bootstrap() {
     .setTitle('IT 4788 API')
     .setDescription('Tài liệu hướng dẫn sử dụng API hệ thống e-commerce')
     .setVersion('1.0')
-    .addBearerAuth()
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Nhập JWT token vào đây',
+        in: 'header',
+      },
+      'JWT-auth',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

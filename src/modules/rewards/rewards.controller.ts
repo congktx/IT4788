@@ -5,7 +5,9 @@ import { AuthenticatedRequest } from "../../types/auth.type";
 import { GetRewardHistoryDto } from "./dto/get-reward-history.dto";
 import { APP_RESPONSE } from "../constants/response.constants";
 import { CreateRewardAppealDto } from "./dto/create-reward-appeal.dto";
+import { ApiBearerAuth } from "@nestjs/swagger";
 
+@ApiBearerAuth("JWT-auth")
 @Controller('rewards')
 export class RewardsController {
   constructor(

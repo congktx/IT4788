@@ -4,7 +4,10 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { APP_RESPONSE } from "../../common/constants/response.constants";
 import { AuthGuard } from "../../common/auth/guards/auth.guard";
 import type { AuthenticatedRequest } from "../../types/auth.type";
+import 'multer'
+import { ApiBearerAuth } from "@nestjs/swagger";
 
+@ApiBearerAuth("JWT-auth")
 @Controller("upload")
 export class UploadController {
   constructor(private readonly uploadService: UploadService) { }

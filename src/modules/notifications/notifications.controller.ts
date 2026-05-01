@@ -5,7 +5,8 @@ import { AuthGuard } from "../../common/auth/guards/auth.guard";
 import { AuthenticatedRequest } from "../../types/auth.type";
 import { GetNotiticationDto } from "./dto/get-notification.dto";
 import { SetReadNotificationDto } from "./dto/set-read-notification.dto";
-
+import { ApiBearerAuth } from "@nestjs/swagger";
+@ApiBearerAuth("JWT-auth")
 @Controller('notification')
 export class NotificationsController {
   constructor(
