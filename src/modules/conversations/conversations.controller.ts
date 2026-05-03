@@ -1,15 +1,15 @@
 import { Body, Controller, HttpCode, Post, Req, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
-import { AuthGuard } from "src/common/auth/guards/auth.guard";
-import type { AuthenticatedRequest } from "src/types/auth.type";
+import { AuthGuard } from "../../common/auth/guards/auth.guard";
+import type { AuthenticatedRequest } from "../../types/auth.type";
 import { SendMessageDto } from "./dto/send-message.dto";
 import { ConversationsService } from "./conversations.service";
-import { FileInterceptor } from "@nestjs/platform-express";
-import 'multer';
-import { APP_RESPONSE } from "src/common/constants/response.constants";
+import { APP_RESPONSE } from "../../common/constants/response.constants";
 import { GetListConvDto } from "./dto/get-list-conversation.dto";
 import { GetConvDto } from "./dto/get-conversation.dto";
 import { SetReadMessageDto } from "./dto/set-read-message.dto";
+import { ApiBearerAuth } from "@nestjs/swagger";
 
+@ApiBearerAuth("JWT-auth")
 @Controller("conversation")
 export class ConversationsController {
   constructor(

@@ -22,7 +22,7 @@ export class Appeal {
   @Column('text', { nullable: true })
   reason: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   status: string | null;
 
   @Column('decimal', { nullable: true })

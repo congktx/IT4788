@@ -18,10 +18,10 @@ export class BattleProof {
   @Column()
   user_id: number;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   video_url: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   image_url: string | null;
 
   @Column('text', { nullable: true })
@@ -33,7 +33,7 @@ export class BattleProof {
   @Column('decimal', { nullable: true })
   reward_coin: number | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   battle_type: string | null;
 
   @Column('decimal', { nullable: true })
@@ -45,25 +45,25 @@ export class BattleProof {
   @Column('text', { nullable: true })
   ai_reason: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   model_version: string | null;
 
   @Column('text', { nullable: true })
   ai_raw_output: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   admin_battle_type: string | null;
 
   @Column('decimal', { nullable: true })
   admin_evidence_quality: number | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'boolean', nullable: true })
   is_duplicate: boolean | null;
 
   @Column('decimal', { nullable: true })
   approved_coin: number | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'int', nullable: true })
   reviewed_by: number | null;
 
   @Column({ type: 'timestamp', nullable: true })
@@ -72,7 +72,7 @@ export class BattleProof {
   @Column('text', { nullable: true })
   admin_note: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   status: string | null;
 
   @CreateDateColumn()

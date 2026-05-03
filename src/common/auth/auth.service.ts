@@ -23,7 +23,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly redisService: RedisService,
-  ) {}
+  ) { }
 
   private buildActive(user: User): number {
     return user.fullname && user.avatar ? 1 : -1;
@@ -66,15 +66,6 @@ export class AuthService {
 
   private buildResetPasswordVerifiedKey(phoneNumber: string): string {
     return `reset_password_verified:${phoneNumber}`;
-  }
-
-  private extractBearerToken(authorization?: string): string | null {
-    if (!authorization) return null;
-  
-    const [type, token] = authorization.split(' ');
-    if (type !== 'Bearer' || !token) return null;
-  
-    return token;
   }
 
   private isValidUsername(username: string): boolean {
@@ -311,49 +302,31 @@ export class AuthService {
     return this.buildLoginResponse(updatedUser as User, token);
   }
 
-  async changePassword(
-    dto: ChangePasswordDto,
-    authorization?: string,
-  ) {
+  async changePassword(dto: ChangePasswordDto, userId: number) {
     try {
-      const headerToken = this.extractBearerToken(authorization);
-      const accessToken = headerToken || dto.token;
-  
-      if (!accessToken) {
-        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
-      }
-  
-      let payload: any;
-  
-      try {
-        payload = await this.jwtService.verifyAsync(accessToken);
-      } catch (error) {
-        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
-      }
-  
-      const user = await this.usersService.findByIdWithPassword(payload.sub);
-  
+      const user = await this.usersService.findByIdWithPassword(userId);
+
       if (!user) {
         return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
       }
-  
+
       let isPasswordMatched = false;
       const isHashedPassword = /^\$2[aby]\$/.test(user.password);
-  
+
       if (isHashedPassword) {
         isPasswordMatched = await bcrypt.compare(dto.password, user.password);
       } else {
         isPasswordMatched = user.password === dto.password;
       }
-  
+
       if (!isPasswordMatched) {
         return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
       }
-  
+
       if (dto.password === dto.new_password) {
         return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
       }
-  
+
       if (isHashedPassword) {
         const isSameOldPassword = await bcrypt.compare(
           dto.new_password,
@@ -363,10 +336,10 @@ export class AuthService {
           return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
         }
       }
-  
+
       const hashedPassword = await bcrypt.hash(dto.new_password, 10);
       await this.usersService.updatePassword(user.id, hashedPassword);
-  
+
       return buildResponse(APP_RESPONSE.OK, 'OK');
     } catch (error) {
       console.error('changePassword error:', error);
@@ -374,48 +347,30 @@ export class AuthService {
     }
   }
 
-  async changeInfoAfterSignup(
-    dto: ChangeInfoAfterSignupDto,
-    authorization?: string,
-  ) {
+  async changeInfoAfterSignup(dto: ChangeInfoAfterSignupDto, userId: number) {
     try {
-      const headerToken = this.extractBearerToken(authorization);
-      const accessToken = headerToken || dto.token;
-  
-      if (!accessToken || accessToken.trim().length < 10) {
-        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
-      }
-  
-      let payload: any;
-  
-      try {
-        payload = await this.jwtService.verifyAsync(accessToken);
-      } catch (error) {
-        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
-      }
-  
-      const user = await this.usersService.findById(payload.sub);
-  
+      const user = await this.usersService.findById(userId);
+
       if (!user) {
         return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
       }
-  
+
       const username = dto.username.trim();
-  
+
       if (!this.isValidUsername(username)) {
         return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
       }
-  
+
       await this.usersService.updateInfoAfterSignup(user.id, {
         username,
         avatar: dto.avatar ?? user.avatar ?? null,
       });
-  
+
       const updatedUser = await this.usersService.findById(user.id);
       if (!updatedUser) {
         return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
       }
-  
+
       return buildResponse(APP_RESPONSE.OK, {
         id: String(updatedUser.id),
         username: updatedUser.username,
@@ -432,29 +387,17 @@ export class AuthService {
     }
   }
 
-  async logout(token?: string) {
+  async logout(userId: number) {
     try {
-      if (!token || token.trim().length < 10) {
-        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
-      }
-  
-      let payload: any;
-  
-      try {
-        payload = await this.jwtService.verifyAsync(token);
-      } catch (error) {
-        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
-      }
-  
-      const user = await this.usersService.findById(payload.sub);
-  
+      const user = await this.usersService.findById(userId);
+
       if (!user) {
         return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
       }
-  
+
       // OPTIONAL: xoá dev_token để không nhận push nữa
       // await this.devTokensService.deleteByUserId(user.id);
-  
+
       return buildResponse(APP_RESPONSE.OK, null);
     } catch (error) {
       console.error('logout error:', error);

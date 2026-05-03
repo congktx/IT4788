@@ -10,8 +10,9 @@ import { Report } from './entities/report.entity';
 import { ProductVariant } from './entities/product_variant.entity';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Product, Comment, User, Like, Report, ProductVariant])],
-    controllers: [ProductsController],
-    providers: [ProductsService],
-  })
-  export class ProductsModule {}
+  imports: [TypeOrmModule.forFeature([Product, Comment, User, Like, Report, ProductVariant])],
+  controllers: [ProductsController],
+  providers: [ProductsService],
+  exports: [ProductsService]
+})
+export class ProductsModule { }

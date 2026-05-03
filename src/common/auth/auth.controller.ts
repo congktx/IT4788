@@ -5,12 +5,10 @@ import {
   Post,
   Req,
   UseGuards,
-  Headers,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
-import { LogoutDto } from './dto/logout.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CreateCodeResetPasswordDto } from './dto/create-code-reset-password.dto';
 import { CheckCodeResetPasswordDto } from './dto/check-code-reset-password.dto';
@@ -21,15 +19,6 @@ import { ChangeInfoAfterSignupDto } from './dto/change-info-after-signup.dto';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-
-  private extractBearerToken(authorization?: string): string | null {
-    if (!authorization) return null;
-
-    const [type, token] = authorization.split(' ');
-    if (type !== 'Bearer' || !token) return null;
-
-    return token;
-  }
 
   @Post('signup')
   async signup(@Body() signupDto: SignupDto) {
@@ -66,30 +55,32 @@ export class AuthController {
     return this.authService.resetPassword(dto);
   }
 
+  @UseGuards(AuthGuard)
   @Post('change_password')
   async changePassword(
     @Body() dto: ChangePasswordDto,
-    @Headers('authorization') authorization?: string,
+    @Req() req: any,
   ) {
-    return this.authService.changePassword(dto, authorization);
+    return this.authService.changePassword(dto, req.user.userId ?? req.user.id);
   }
 
+  @UseGuards(AuthGuard)
   @Post('change_info_after_signup')
   async changeInfoAfterSignup(
     @Body() dto: ChangeInfoAfterSignupDto,
-    @Headers('authorization') authorization?: string,
+    @Req() req: any,
   ) {
-    return this.authService.changeInfoAfterSignup(dto, authorization);
+    return this.authService.changeInfoAfterSignup(
+      dto,
+      req.user.userId ?? req.user.id,
+    );
   }
 
+  @UseGuards(AuthGuard)
   @Post('logout')
   async logout(
-    @Body() dto: LogoutDto,
-    @Headers('authorization') authorization?: string,
+    @Req() req: any,
   ) {
-    const headerToken = this.extractBearerToken(authorization);
-    const accessToken = headerToken || dto.token;
-
-    return this.authService.logout(accessToken);
+    return this.authService.logout(req.user.userId ?? req.user.id);
   }
 }

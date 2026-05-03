@@ -12,6 +12,7 @@ import { SetUserFollowDto } from './dto/set-user-follow.dto';
 import { GetListFollowedDto } from './dto/get-list-followed.dto';
 import { FollowService } from './follow.service';
 import { GetListFollowingDto } from './dto/get-list-following.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -21,9 +22,10 @@ type AuthenticatedRequest = Request & {
   };
 };
 
+@ApiBearerAuth("JWT-auth")
 @Controller()
 export class FollowController {
-  constructor(private readonly followService: FollowService) {}
+  constructor(private readonly followService: FollowService) { }
 
   @Post('set_user_follow')
   @HttpCode(200)

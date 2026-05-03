@@ -11,7 +11,7 @@ import { Shipping } from './entities/shipping.entity';
 import { Product } from '../products/entities/product.entity';
 import { User } from '../users/entities/user.entity';
 import { Address as OrderAddress } from './entities/address.entity';
-import { Address } from '../addresses/entities/address.entity';
+import { Address } from '../orders/entities/address.entity';
 import { Ward } from './entities/ward.entity';
 import { Province } from './entities/province.entity';
 import { Warehouse } from './entities/warehouse.entity';
@@ -51,9 +51,9 @@ function calculateDistance(
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -101,7 +101,7 @@ export class OrdersService {
 
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
-  ) {}
+  ) { }
 
   async createOrder(body: CreateOrderDto, userId: number) {
     const buyer = await this.userRepository.findOne({
@@ -562,7 +562,7 @@ export class OrdersService {
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed[0];
       }
-    } catch (_) {}
+    } catch (_) { }
 
     return imageUrls;
   }

@@ -22,7 +22,7 @@ import { Shipping } from './src/modules/orders/entities/shipping.entity';
 import { OrderTimeline } from './src/modules/orders/entities/order-timeline.entity';
 import { Conversation } from './src/modules/conversations/entities/conversation.entity';
 import { Message } from './src/modules/conversations/entities/message.entity';
-import { Address } from './src/modules/addresses/entities/address.entity';
+import { Address } from './src/modules/orders/entities/address.entity';
 import { News } from './src/modules/news/entities/news.entity';
 import { Status } from './src/modules/orders/entities/status_order.entities';
 import { Ward } from './src/modules/orders/entities/ward.entity';
@@ -48,13 +48,14 @@ export const dataSourceOptions: DataSourceOptions = {
   password: SecretConfig.database.password,
   database: SecretConfig.database.name,
   entities: [
-    User,
-    UserCode,
-    Wallet,
-    Transaction,
-    RewardProof,
-    RewardAppeal,
-    RewardRule,
+    User, UserCode,
+    Wallet, Transaction,
+    RewardProof, RewardAppeal, RewardRule,
+    Product, Like, Comment, Report, ProductVariant,
+    Order, OrderItem, Shipping,
+    Conversation, Message,
+    UserFollow, UserBlock,
+    Notification,
     Product,
     Like,
     Comment,
@@ -73,6 +74,8 @@ export const dataSourceOptions: DataSourceOptions = {
     OrderTimeline,
     Address,
     News,
+    Conversation,
+    Message,
     Ward,
     Status,
     Province,
@@ -85,7 +88,7 @@ export const dataSourceOptions: DataSourceOptions = {
     SavedSearch,
   ],
   migrations: ['src/migrations/*.ts'],
-  synchronize: false,
+  synchronize: true,
 };
 
 const dataSource = new DataSource(dataSourceOptions);

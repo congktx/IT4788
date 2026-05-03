@@ -5,10 +5,10 @@ export class RewardRule {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   battle_type: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   label: string | null;
 
   @Column('decimal', { nullable: true })

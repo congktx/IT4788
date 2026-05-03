@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { r2Client } from "src/config/config";
+import { r2Client } from "../../config/config";
 import { v4 as uuidv4 } from 'uuid';
-import { SecretConfig } from "src/config/secret";
+import { SecretConfig } from "../../config/secret";
 
 @Injectable()
 export class UploadService {

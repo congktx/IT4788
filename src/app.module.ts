@@ -1,6 +1,6 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LoggerMiddleware } from './common/logger.middleware';
@@ -25,7 +25,6 @@ import { SearchesModule } from './modules/searches/searches.module';
 import { RewardsModule } from './modules/rewards/rewards.module';
 import { BattleProofsModule } from './modules/battle_proofs/battle_proofs.module';
 import { JwtModule } from '@nestjs/jwt';
-
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -47,6 +46,7 @@ import { JwtModule } from '@nestjs/jwt';
     ConversationsModule,
     UploadModule,
     NotificationsModule,
+    OrdersModule,
     AddressesModule,
     WalletsModule,
     RewardsModule,
@@ -54,16 +54,22 @@ import { JwtModule } from '@nestjs/jwt';
     PushSettingsModule,
     RatesModule,
     SearchesModule,
-    JwtModule.register({
-      secret: 'SECRET_KEY',
-      signOptions: { expiresIn: '1d' },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET', 'dev-secret'),
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN', '7d') as any,
+        },
+      }),
     }),
     ConfigModule.forRoot({
       isGlobal: true, // Để các module khác (như AuthModule) không cần import lại
     }),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService]
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

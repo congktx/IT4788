@@ -1,10 +1,7 @@
 import { IsIn, IsOptional, IsString } from 'class-validator';
+//Header để Authorization: Bearer <token>
 
 export class SetPushSettingDto {
-  @IsOptional()
-  @IsString({ message: '1003' })
-  token?: string;
-
   @IsOptional()
   @IsString({ message: '1003' })
   @IsIn(['0', '1'], { message: '1004' })

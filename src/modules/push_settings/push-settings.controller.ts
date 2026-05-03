@@ -1,61 +1,27 @@
-import { Body, Controller, Headers, Post } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '../users/users.service';
+import { Body, Controller, Req, Post, UseGuards } from '@nestjs/common';
 import {
   APP_RESPONSE,
   buildResponse,
 } from '../../common/constants/response.constants';
-import { GetPushSettingDto } from './dto/get-push-setting.dto';
 import { PushSettingsService } from './push-settings.service';
 import { SetPushSettingDto } from './dto/set-push-setting.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { AuthGuard } from '../../common/auth/guards/auth.guard';
 
+@ApiBearerAuth("JWT-auth")
+@UseGuards(AuthGuard)
 @Controller('push_settings')
 export class PushSettingsController {
   constructor(
     private readonly pushSettingsService: PushSettingsService,
-    private readonly usersService: UsersService,
-    private readonly jwtService: JwtService,
-  ) {}
-
-  private extractBearerToken(authorization?: string): string | null {
-    if (!authorization) return null;
-
-    const [type, token] = authorization.split(' ');
-    if (type !== 'Bearer' || !token) return null;
-
-    return token;
-  }
+  ) { }
 
   @Post('get_push_setting')
-  async getPushSetting(
-    @Body() dto: GetPushSettingDto,
-    @Headers('authorization') authorization?: string,
-  ) {
+  async getPushSetting(@Req() req: any){
     try {
-      const headerToken = this.extractBearerToken(authorization);
-      const accessToken = headerToken || dto.token;
+      const userId = req.user.userId ?? req.user.id;
 
-      if (!accessToken || accessToken.trim().length < 10) {
-        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
-      }
-
-      let payload: any;
-
-      try {
-        payload = await this.jwtService.verifyAsync(accessToken);
-      } catch (error) {
-        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
-      }
-
-      const user = await this.usersService.findById(payload.sub);
-
-      if (!user) {
-        return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
-      }
-
-      const setting = await this.pushSettingsService.findOrCreateByUserId(
-        user.id,
-      );
+      const setting = await this.pushSettingsService.findOrCreateByUserId(userId);
 
       return buildResponse(APP_RESPONSE.OK, {
         like: String(setting.like),
@@ -72,32 +38,9 @@ export class PushSettingsController {
   }
 
   @Post('set_push_setting')
-  async setPushSetting(
-    @Body() dto: SetPushSettingDto,
-    @Headers('authorization') authorization?: string,
-  ) {
+  async setPushSetting(@Req() req: any, @Body() dto: SetPushSettingDto) {
     try {
-      const headerToken = this.extractBearerToken(authorization);
-      const accessToken = headerToken || dto.token;
-
-      if (!accessToken || accessToken.trim().length < 10) {
-        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
-      }
-
-      let payload: any;
-
-      try {
-        payload = await this.jwtService.verifyAsync(accessToken);
-      } catch (error) {
-        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
-      }
-
-      const user = await this.usersService.findById(payload.sub);
-
-      if (!user) {
-        return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
-      }
-
+      const userId = req.user.userId ?? req.user.id;
       const hasAtLeastOneField =
         dto.like !== undefined ||
         dto.comment !== undefined ||
@@ -110,7 +53,7 @@ export class PushSettingsController {
         return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
       }
 
-      await this.pushSettingsService.updatePushSetting(user.id, {
+      await this.pushSettingsService.updatePushSetting(userId, {
         like: dto.like,
         comment: dto.comment,
         transaction: dto.transaction,
