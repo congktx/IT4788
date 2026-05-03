@@ -1,27 +1,27 @@
 export const APP_RESPONSE = {
   OK: {
     code: '1000',
-    message: 'OK',
+    message: 'OK.',
   },
   SPAM: {
     code: '9991',
-    message: 'Spam',
+    message: 'Spam.',
   },
   PRODUCT_NOT_EXISTED: {
     code: '9992',
-    message: 'Product is not existed',
+    message: 'Product is not existed.',
   },
   CODE_VERIFY_INCORRECT: {
     code: '9993',
-    message: 'Code verify is incorrect',
+    message: 'Code verify is incorrect.',
   },
   NO_DATA_OR_END_OF_LIST: {
     code: '9994',
-    message: 'No Data or end of list data',
+    message: 'No Data or end of list data.',
   },
   USER_NOT_VALIDATED: {
     code: '9995',
-    message: 'User is not validated',
+    message: 'User is not validated.',
   },
   USER_EXISTED: {
     code: '9996',
@@ -29,7 +29,7 @@ export const APP_RESPONSE = {
   },
   METHOD_INVALID: {
     code: '9997',
-    message: 'Method is invalid',
+    message: 'Method is invalid.',
   },
   TOKEN_INVALID: {
     code: '9998',
@@ -45,7 +45,7 @@ export const APP_RESPONSE = {
   },
   PARAMETER_NOT_ENOUGH: {
     code: '1002',
-    message: 'Parameter is not enought.',
+    message: 'Parameter is not enough.',
   },
   PARAMETER_TYPE_INVALID: {
     code: '1003',
@@ -89,7 +89,7 @@ export const APP_RESPONSE = {
   },
   USER_NOT_EXIST: {
     code: '1013',
-    message: 'User does not exist',
+    message: 'User does not exist.',
   },
   PROMOTIONAL_CODE_EXPIRED: {
     code: '1014',
@@ -101,15 +101,15 @@ export const APP_RESPONSE = {
   },
   POLICY_VIOLATION: {
     code: '1016',
-    message: 'Policy Violation, not support weight over 20KG & price over 30M',
+    message: 'Policy Violation, not support weight over 20KG & price over 30M.',
   },
   CHANGE_USERNAME_MIN_30_DAYS: {
     code: '1017',
-    message: 'Change Username: requires minimum 30 days',
+    message: 'Change Username: requires minimum 30 days.',
   },
   CHANGE_USERNAME_SAME_OTHER_NAME: {
     code: '1018',
-    message: 'Change Username: same other name',
+    message: 'Change Username: same other name.',
   },
 } as const;
 

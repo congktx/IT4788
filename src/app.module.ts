@@ -22,6 +22,8 @@ import { DevTokensModule } from './modules/dev_tokens/dev-tokens.module';
 import { PushSettingsModule } from './modules/push_settings/push-settings.module';
 import { RatesModule } from './modules/rates/rates.module';
 import { SearchesModule } from './modules/searches/searches.module';
+import { RewardsModule } from './modules/rewards/rewards.module';
+import { BattleProofsModule } from './modules/battle_proofs/battle_proofs.module';
 import { JwtModule } from '@nestjs/jwt';
 
 @Module({
@@ -44,10 +46,11 @@ import { JwtModule } from '@nestjs/jwt';
     BlocksModule,
     ConversationsModule,
     UploadModule,
-    NotificationsModule
-    OrdersModule,
+    NotificationsModule,
     AddressesModule,
     WalletsModule,
+    RewardsModule,
+    BattleProofsModule,
     PushSettingsModule,
     RatesModule,
     SearchesModule,

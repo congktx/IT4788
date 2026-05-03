@@ -11,6 +11,8 @@ import { UserCode } from './user_code.entity';
 import { Wallet } from '../../wallets/entities/wallet.entity';
 import { RewardProof } from '../../rewards/entities/reward_proof.entity';
 import { RewardAppeal } from '../../rewards/entities/reward_appeal.entity';
+import { BattleProof } from '../../battle_proofs/entities/battle_proof.entity';
+import { Appeal as BattleAppeal } from '../../battle_proofs/entities/appeal.entity';
 import { Product } from '../../products/entities/product.entity';
 import { Comment } from '../../products/entities/comment.entity';
 import { Like } from '../../products/entities/like.entity';
@@ -65,6 +67,12 @@ export class User {
 
   @OneToMany(() => RewardAppeal, (appeal) => appeal.user)
   appeals: RewardAppeal[];
+
+  @OneToMany(() => BattleProof, (proof) => proof.user)
+  battle_proofs: BattleProof[];
+
+  @OneToMany(() => BattleAppeal, (appeal) => appeal.user)
+  battle_appeals: BattleAppeal[];
 
   @OneToMany(() => Product, (product) => product.seller)
   products: Product[];

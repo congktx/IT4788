@@ -33,10 +33,12 @@ import { Category } from './src/modules/products/entities/category.entity';
 import { DevToken } from './src/modules/dev_tokens/entities/dev-token.entity';
 import { UserFollow } from './src/modules/follow/entities/user-follow.entity';
 import { UserBlock } from './src/modules/blocks/entities/user-block.entity';
-import { Notification } from 'src/modules/notifications/entities/notification.entity';
+import { Notification } from './src/modules/notifications/entities/notification.entity';
 import { PushSetting } from './src/modules/push_settings/entities/push-setting.entity';
 import { Rate } from './src/modules/rates/entities/rate.entity';
 import { SavedSearch } from './src/modules/searches/entities/saved_search.entity';
+import { BattleProof } from './src/modules/battle_proofs/entities/battle_proof.entity';
+import { Appeal } from './src/modules/battle_proofs/entities/appeal.entity';
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'mysql',
@@ -46,16 +48,13 @@ export const dataSourceOptions: DataSourceOptions = {
   password: SecretConfig.database.password,
   database: SecretConfig.database.name,
   entities: [
-    User, UserCode,
-    Wallet, Transaction,
-    RewardProof, RewardAppeal, RewardRule,
-    Product, Like, Comment, Report, ProductVariant,
-    Order, OrderItem, Shipping,
-    Conversation, Message,
-    UserFollow, UserBlock,
-    Notification
-    BattleProof,
-    Appeal,
+    User,
+    UserCode,
+    Wallet,
+    Transaction,
+    RewardProof,
+    RewardAppeal,
+    RewardRule,
     Product,
     Like,
     Comment,
@@ -64,12 +63,16 @@ export const dataSourceOptions: DataSourceOptions = {
     Order,
     OrderItem,
     Shipping,
+    Conversation,
+    Message,
+    UserFollow,
+    UserBlock,
+    Notification,
+    BattleProof,
+    Appeal,
     OrderTimeline,
     Address,
     News,
-    Conversation,
-    UserConversation,
-    Message,
     Ward,
     Status,
     Province,
@@ -77,14 +80,12 @@ export const dataSourceOptions: DataSourceOptions = {
     Brand,
     Category,
     DevToken,
-    UserBlock,
-    UserFollow,
     PushSetting,
     Rate,
     SavedSearch,
   ],
   migrations: ['src/migrations/*.ts'],
-  synchronize: true,
+  synchronize: false,
 };
 
 const dataSource = new DataSource(dataSourceOptions);
