@@ -38,4 +38,28 @@ export class AddOrderAddress {
   })
   @IsNumber()
   lng: number;
+
+  @ApiProperty({
+    description: 'Họ và tên người nhận',
+  })
+  @IsString()
+  receiver_name: string;
+
+  @ApiProperty({
+    description: 'Số điện thoại',
+  })
+  @IsString()
+  phone: string;
+
+  @ApiProperty({
+    description: 'cả địa chỉ',
+  })
+  @IsString()
+  full_address: string;
+
+  @ApiProperty({
+    description: 'address detail',
+  })
+  @IsString()
+  address_detail: string;
 }
