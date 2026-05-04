@@ -12,7 +12,7 @@ import { ProductsService } from './products.service';
 import { AuthGuard } from '../../common/auth/guards/auth.guard';
 import { CreateProductDto } from './dto/create_product.dto';
 import { UpdateProductDto } from './dto/update_product.dto';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { GetUserListingsDto } from './dto/get_user_listing.dto';
 import { APP_RESPONSE, buildResponse } from '../constants/response.constants';
 
@@ -22,9 +22,10 @@ interface RequestWithUser extends Request {
   };
 }
 
+@ApiBearerAuth("JWT-auth")
 @Controller('api')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(private readonly productsService: ProductsService) { }
 
   @Post('get_categories')
   async getCategories(@Body() body: any) {
