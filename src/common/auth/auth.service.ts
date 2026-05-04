@@ -215,7 +215,7 @@ export class AuthService {
       // TODO: thay bằng service SMS thật
       await this.mockSendSms(normalizedPhoneNumber, otp);
 
-      return buildResponse(APP_RESPONSE.OK, null);
+      return buildResponse(APP_RESPONSE.OK, { otp: otp });
     } catch (error) {
       console.error('createCodeResetPassword error:', error);
       return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
