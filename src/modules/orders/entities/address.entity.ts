@@ -52,4 +52,13 @@ export class Address {
   @ManyToOne(() => Ward, (ward) => ward.addresses)
   @JoinColumn({ name: 'ward_id' })
   ward: Ward;
+
+  @Column()
+  receiver_name: string;
+
+  @Column()
+  phone: string;
+
+  @Column('text')
+  full_address: string;
 }

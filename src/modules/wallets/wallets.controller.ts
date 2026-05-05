@@ -3,10 +3,12 @@ import { WalletsService } from './wallets.service';
 import { AuthGuard } from '../../common/auth/guards/auth.guard';
 import { GetCurrentBalanceDto } from './dto/get-current-balance.dto';
 import { GetBalanceHistoryDto } from './dto/get-balance-history.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth("JWT-auth")
 @Controller('wallets')
 export class WalletsController {
-  constructor(private readonly walletsService: WalletsService) {}
+  constructor(private readonly walletsService: WalletsService) { }
 
   @UseGuards(AuthGuard)
   @Post('get_current_balance')

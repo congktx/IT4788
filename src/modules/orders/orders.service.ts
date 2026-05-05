@@ -11,7 +11,7 @@ import { Shipping } from './entities/shipping.entity';
 import { Product } from '../products/entities/product.entity';
 import { User } from '../users/entities/user.entity';
 import { Address as OrderAddress } from './entities/address.entity';
-import { Address } from '../addresses/entities/address.entity';
+import { Address } from '../orders/entities/address.entity';
 import { Ward } from './entities/ward.entity';
 import { Province } from './entities/province.entity';
 import { Warehouse } from './entities/warehouse.entity';
@@ -409,7 +409,17 @@ export class OrdersService {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
-    const { address, is_default, address_id, lng, lat } = query;
+    const {
+      address,
+      is_default,
+      address_id,
+      lng,
+      lat,
+      receiver_name,
+      phone,
+      full_address,
+      address_detail,
+    } = query;
     if (is_default) {
       await this.orderAddressRepository.update(
         { user_id, is_default: true },
@@ -423,6 +433,10 @@ export class OrdersService {
       ward_id: address_id[0],
       lat,
       lng,
+      address_detail,
+      receiver_name,
+      phone,
+      full_address,
     });
     await this.orderAddressRepository.save(new_address);
 
@@ -434,7 +448,17 @@ export class OrdersService {
     id: number,
     query: UpdateOrderAddressDto,
   ) {
-    const { address: address_name, is_default, address_id, lng, lat } = query;
+    const {
+      address: address_name,
+      is_default,
+      address_id,
+      lng,
+      lat,
+      phone,
+      full_address,
+      receiver_name,
+      address_detail,
+    } = query;
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
@@ -474,6 +498,10 @@ export class OrdersService {
       ...(address_id && { ward_id: address_id[0] }),
       ...(lat && { lat }),
       ...(lng && { lng }),
+      ...(phone && { phone }),
+      ...(full_address && { full_address }),
+      ...(receiver_name && { receiver_name }),
+      ...(address_detail && { address_detail }),
     });
     return APP_RESPONSE.OK;
   }
