@@ -4,14 +4,16 @@ import { UsersService } from '../users/users.service';
 import { APP_RESPONSE, buildResponse } from '../../common/constants/response.constants';
 import { SetDevtokenDto } from './dto/set-devtoken.dto';
 import { DevTokensService } from './dev-tokens.service';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth("JWT-auth")
 @Controller('dev_tokens')
 export class DevTokensController {
   constructor(
     private readonly devTokensService: DevTokensService,
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   private extractBearerToken(authorization?: string): string | null {
     if (!authorization) return null;

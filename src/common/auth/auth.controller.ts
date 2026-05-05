@@ -20,7 +20,7 @@ import { ChangeInfoAfterSignupDto } from './dto/change-info-after-signup.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   private extractBearerToken(authorization?: string): string | null {
     if (!authorization) return null;
@@ -33,6 +33,7 @@ export class AuthController {
 
   @Post('signup')
   async signup(@Body() signupDto: SignupDto) {
+    console.log("signup")
     return this.authService.signup(signupDto);
   }
 

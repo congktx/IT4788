@@ -8,14 +8,16 @@ import {
 import { GetPushSettingDto } from './dto/get-push-setting.dto';
 import { PushSettingsService } from './push-settings.service';
 import { SetPushSettingDto } from './dto/set-push-setting.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth("JWT-auth")
 @Controller('push_settings')
 export class PushSettingsController {
   constructor(
     private readonly pushSettingsService: PushSettingsService,
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   private extractBearerToken(authorization?: string): string | null {
     if (!authorization) return null;

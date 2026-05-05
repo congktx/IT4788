@@ -11,6 +11,7 @@ import { AuthGuard } from '../../common/auth/guards/auth.guard';
 import { SetUserBlockDto } from './dto/set-user-block.dto';
 import { BlocksService } from './blocks.service';
 import { GetListBlocksDto } from './dto/get-list-blocks.dto';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
 type AuthenticatedRequest = Request & {
   user?: {
@@ -20,9 +21,10 @@ type AuthenticatedRequest = Request & {
   };
 };
 
+@ApiBearerAuth("JWT-auth")
 @Controller()
 export class BlocksController {
-  constructor(private readonly blocksService: BlocksService) {}
+  constructor(private readonly blocksService: BlocksService) { }
 
   @Post('set_user_block')
   @HttpCode(200)
