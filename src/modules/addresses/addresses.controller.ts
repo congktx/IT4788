@@ -4,17 +4,14 @@ import { CreateAddressDto } from './dto/create-address.dto';
 import { AuthGuard } from '../../common/auth/guards/auth.guard';
 import { ApiBearerAuth } from '@nestjs/swagger';
 
-@ApiBearerAuth("JWT-auth")
+@ApiBearerAuth('JWT-auth')
 @Controller('addresses')
 export class AddressesController {
-  constructor(private readonly addressesService: AddressesService) { }
+  constructor(private readonly addressesService: AddressesService) {}
 
   @UseGuards(AuthGuard)
   @Post('create')
-  create(
-    @Body() body: CreateAddressDto,
-    @Req() req: any,
-  ) {
+  create(@Body() body: CreateAddressDto, @Req() req: any) {
     const userId = req.user.userId;
     return this.addressesService.createAddress(userId, body);
   }

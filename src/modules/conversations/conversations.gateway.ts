@@ -1,11 +1,18 @@
-import { WebSocketGateway, WebSocketServer, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+} from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 
 @WebSocketGateway({ cors: { origin: '*' } })
-export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ConversationsGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -15,7 +22,7 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   async handleConnection(client: Socket) {
     try {

@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "types": ["node", "express"],
+    "types": ["node", "express", "jest", "jest-expect-message"],
     "module": "commonjs",
     "moduleResolution": "node",
     // "resolvePackageJsonExports": true,
