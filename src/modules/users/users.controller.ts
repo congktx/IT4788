@@ -44,12 +44,14 @@ export class UsersController {
     @Body() body: SetUserInfoDto,
   ) {
     try {
+      console.log(body)
       const currentUserId = Number(
         req.user?.id ?? req.user?.userId ?? req.user?.sub,
       );
 
       return await this.usersService.setUserInfo(currentUserId, body);
     } catch (err: any) {
+      console.log(err)
       return {
         code: APP_RESPONSE.UNKNOWN_ERROR.code,
         message: APP_RESPONSE.UNKNOWN_ERROR.message,

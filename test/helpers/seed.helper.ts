@@ -13,7 +13,7 @@ import { Warehouse } from '../../src/modules/orders/entities/warehouse.entity';
 import { Product } from '../../src/modules/products/entities/product.entity';
 
 export class SeedHelper {
-  constructor(private dataSource: DataSource) {}
+  constructor(private dataSource: DataSource) { }
 
   /**
    * Hàm tổng hợp để nạp toàn bộ dữ liệu mẫu
@@ -269,7 +269,7 @@ export class SeedHelper {
     await this.dataSource.query('TRUNCATE TABLE notifications');
     await this.dataSource.query('TRUNCATE TABLE messages');
     await this.dataSource.query('TRUNCATE TABLE conversations_users_users');
-    await this.dataSource.query('TRUNCATE TABLE user_conversations');
+    // await this.dataSource.query('TRUNCATE TABLE user_conversations');
     await this.dataSource.query('TRUNCATE TABLE conversations');
     await this.dataSource.query('TRUNCATE TABLE user_follows');
     await this.dataSource.query('TRUNCATE TABLE user_blocks');

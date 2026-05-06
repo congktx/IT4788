@@ -1,11 +1,13 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Allow } from "class-validator";
+import { Allow, IsNotEmpty } from "class-validator";
+import { APP_RESPONSE } from "../../constants/response.constants";
 
 export class SendMessageDto {
   @ApiProperty({
     description: "ID người nhận tin nhắn",
     example: 1
   })
+  @IsNotEmpty({ message: "1002" })
   @Allow()
   to_id: number;
 
@@ -13,6 +15,7 @@ export class SendMessageDto {
     description: "Nội dung tin nhắn",
     example: "hello bae"
   })
+  @IsNotEmpty({ message: "1002" })
   @Allow()
   message: string;
 
@@ -20,6 +23,7 @@ export class SendMessageDto {
     description: "Kiểu tin nhắn",
     example: "text, image, video, file"
   })
+  @IsNotEmpty({ message: "1002" })
   @Allow()
   type_message: string;
 

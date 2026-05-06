@@ -39,7 +39,13 @@ export class ConversationsService {
     return {
       code,
       message,
-      data: "ERROR",
+      data: null,
+    };
+  }
+
+  private success(obj: any): ApiResponse<any> {
+    return {
+      ...obj
     };
   }
 
@@ -111,7 +117,6 @@ export class ConversationsService {
       content = String(sendMessageDto.product_id);
       type = "product_id";
     }
-
     const message = this.messageRepo.create({
       content: content,
       type: type,
@@ -154,7 +159,7 @@ export class ConversationsService {
     userIds.sort((a, b) => a - b);
 
     let conversation = await this.findConversationBetweenUsers(userIds);
-    if (conversation && conversation["data"] === "ERROR")
+    if (conversation && conversation["code"])
       return conversation;
     if (!conversation || conversation == null) {
       conversation = await this.createConversation(userIds);
@@ -169,11 +174,10 @@ export class ConversationsService {
 
     this.conversationsGateway.notifyUser(sendMessageDto.to_id, 'new_message', message);
 
-    return {
-      code: APP_RESPONSE.OK.code,
-      message: APP_RESPONSE.OK.message,
+    return this.success({
+      ...APP_RESPONSE.OK,
       data: data_res
-    }
+    })
   }
 
   async getListConversation(currentUserId: number, getListConvDto: GetListConvDto) {
@@ -228,12 +232,12 @@ export class ConversationsService {
         num_new_message++;
     }
 
-    return {
+    return this.success({
       code: APP_RESPONSE.OK.code,
       message: APP_RESPONSE.OK.message,
       data: listConv,
       num_new_message: num_new_message
-    }
+    })
   }
 
   async getConversation(currentUserId: number, getConvDto: GetConvDto) {
@@ -246,7 +250,7 @@ export class ConversationsService {
           APP_RESPONSE.PARAMETER_VALUE_INVALID.message
         )
       conversation = await this.findConversationBetweenUsers([currentUserId, getConvDto.partner_id]);
-      if (conversation && conversation['data'] === "ERROR")
+      if (conversation && conversation['code'])
         return conversation;
       if (!conversation)
         return {
@@ -317,13 +321,13 @@ export class ConversationsService {
 
     let can_send_message = (block) ? false : true;
 
-    return {
+    return this.success({
       ...APP_RESPONSE.OK,
       data: {
         messages: formatedMessages,
         can_send_message: can_send_message
       }
-    }
+    })
   }
 
   async setReadMessage(currentUserId: number, getConvDto: SetReadMessageDto) {
@@ -347,9 +351,9 @@ export class ConversationsService {
 
     this.conversationsGateway.notifyUser(partner.id, 'read_message', { conversation_id: conversation.id });
 
-    return {
+    return this.success({
       ...APP_RESPONSE.OK,
       data: []
-    }
+    })
   }
 }

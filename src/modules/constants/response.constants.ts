@@ -1,7 +1,7 @@
 export const APP_RESPONSE = {
   OK: {
     code: '1000',
-    message: 'OK.',
+    message: 'OK',
   },
   SPAM: {
     code: '9991',
