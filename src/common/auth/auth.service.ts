@@ -3,12 +3,15 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../../modules/users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 import { User } from '../../modules/users/entities/user.entity';
+import { UserCode } from '../../modules/users/entities/user_code.entity';
 import { APP_RESPONSE, buildResponse } from '../constants/response.constants';
 import { CreateCodeResetPasswordDto } from './dto/create-code-reset-password.dto';
 import { RedisService } from '../redis/redis.service';
@@ -23,6 +26,8 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly redisService: RedisService,
+    @InjectRepository(UserCode)
+    private readonly userCodeRepository: Repository<UserCode>,
   ) { }
 
   private buildActive(user: User): number {
@@ -40,9 +45,14 @@ export class AuthService {
   }
 
   private generateOtp(length = 6): string {
-    const min = Math.pow(10, length - 1);
-    const max = Math.pow(10, length) - 1;
-    return Math.floor(min + Math.random() * (max - min)).toString();
+    // 1. Tính toán giá trị lớn nhất (Ví dụ: 10^6 = 1,000,000)
+    const max = Math.pow(10, length);
+
+    // 2. Lấy ngẫu nhiên từ 0 đến 999,999
+    const randomNum = Math.floor(Math.random() * max);
+
+    // 3. Nếu số nhỏ hơn 6 chữ số (VD: 1234), tự động bù số 0 vào đầu (VD: 001234)
+    return randomNum.toString().padStart(length, '0');
   }
 
   private buildResetPasswordRedisKey(phoneNumber: string): string {
@@ -73,8 +83,16 @@ export class AuthService {
   }
 
   async signup(signupDto: SignupDto) {
+    const normalizedPhoneNumber = this.normalizePhoneNumber(signupDto.phone_number);
+
+    if (!this.isValidVietnamesePhoneNumber(normalizedPhoneNumber)) {
+      throw new BadRequestException(
+        buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null),
+      );
+    }
+
     const existedUser = await this.usersService.findByPhone(
-      signupDto.phone_number,
+      normalizedPhoneNumber,
     );
 
     if (existedUser) {
@@ -86,11 +104,11 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(signupDto.password, 10);
 
     const user = await this.usersService.create({
-      phone_number: signupDto.phone_number,
+      phone_number: normalizedPhoneNumber,
       password: hashedPassword,
       uuid: signupDto.uuid,
       role: 'soldier',
-      username: signupDto.phone_number,
+      username: normalizedPhoneNumber,
     });
 
     return buildResponse(APP_RESPONSE.OK, {
@@ -102,8 +120,10 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
+    const normalizedPhoneNumber = this.normalizePhoneNumber(loginDto.phone_number);
+
     const user = await this.usersService.findByPhoneWithPassword(
-      loginDto.phone_number,
+      normalizedPhoneNumber,
     );
 
     if (!user) {
@@ -200,13 +220,20 @@ export class AuthService {
       // lưu OTP vào redis
       await this.redisService.set(redisKey, otp, otpTtl);
 
+      // lưu lịch sử OTP vào database (Mục đích: xem lịch sử/tra soát)
+      await this.userCodeRepository.save({
+        user_id: user.id,
+        code: otp,
+        expired_at: new Date(Date.now() + otpTtl * 1000),
+      });
+
       // lưu cooldown chống spam
       await this.redisService.set(cooldownKey, '1', otpCooldown);
 
       // TODO: thay bằng service SMS thật
       await this.mockSendSms(normalizedPhoneNumber, otp);
 
-      return buildResponse(APP_RESPONSE.OK, { otp: otp });
+      return buildResponse(APP_RESPONSE.OK, null);
     } catch (error) {
       console.error('createCodeResetPassword error:', error);
       return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
@@ -349,7 +376,28 @@ export class AuthService {
 
   async changeInfoAfterSignup(dto: ChangeInfoAfterSignupDto, userId: number) {
     try {
-      const user = await this.usersService.findById(userId);
+      const headerToken = this.extractBearerToken(authorization);
+      const accessToken = headerToken || dto.token;
+
+      console.log('[DEBUG] dto:', dto, 'headerToken:', headerToken, 'accessToken:', accessToken);
+
+      if (!accessToken) {
+        return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
+      }
+
+      if (accessToken.trim().length < 10) {
+        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
+      }
+
+      let payload: any;
+
+      try {
+        payload = await this.jwtService.verifyAsync(accessToken);
+      } catch (error) {
+        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
+      }
+
+      const user = await this.usersService.findById(payload.sub);
 
       if (!user) {
         return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);

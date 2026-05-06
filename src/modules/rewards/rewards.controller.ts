@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Post, Req, UseGuards } from "@nestjs/common";
 import { RewardsService } from "./rewards.service";
 import { AuthGuard } from "../../common/auth/guards/auth.guard";
-import { AuthenticatedRequest } from "../../types/auth.type";
+import type { AuthenticatedRequest } from "../../types/auth.type";
 import { GetRewardHistoryDto } from "./dto/get-reward-history.dto";
 import { APP_RESPONSE } from "../constants/response.constants";
 import { CreateRewardAppealDto } from "./dto/create-reward-appeal.dto";

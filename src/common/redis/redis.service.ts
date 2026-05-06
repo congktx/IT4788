@@ -36,6 +36,7 @@ export class RedisService implements OnModuleDestroy {
   }
 
   async onModuleDestroy() {
-    await this.redis.quit();
+    // disconnect() sẽ đóng kết nối ngay lập tức, quit() có thể chờ lệnh hàng đợi
+    this.redis.disconnect();
   }
 }

@@ -1,22 +1,39 @@
-import { Allow } from "class-validator";
+import { IsString, IsEmail, IsOptional } from "class-validator";
 
 export class SetUserInfoDto {
-  @Allow()
-  email!: string;
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 
-  username!: string;
+  @IsOptional()
+  @IsString()
+  username?: string;
 
-  status!: string;
+  @IsOptional()
+  @IsString()
+  status?: string;
 
-  avatar!: string;
+  @IsOptional()
+  @IsString()
+  avatar?: string;
 
-  firstname!: string;
+  @IsOptional()
+  @IsString()
+  firstname?: string;
 
-  lastname!: string;
+  @IsOptional()
+  @IsString()
+  lastname?: string;
 
-  address!: string;
+  @IsOptional()
+  @IsString()
+  address?: string;
 
-  cover_image!: string;
+  @IsOptional()
+  @IsString()
+  cover_image?: string;
 
-  cover_image_web!: string;
+  @IsOptional()
+  @IsString()
+  cover_image_web?: string;
 }

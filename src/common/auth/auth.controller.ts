@@ -35,7 +35,7 @@ export class AuthController {
   async me(@Req() req: any) {
     return {
       code: '1000',
-      message: 'OK',
+      message: 'OK.',
       data: req.user,
     };
   }

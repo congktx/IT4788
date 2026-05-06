@@ -1,9 +1,9 @@
 import { Body, Controller, HttpCode, Post, Req, UseGuards } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { AuthGuard } from "../../common/auth/guards/auth.guard";
-import { AuthenticatedRequest } from "../../types/auth.type";
+import type { AuthenticatedRequest } from "../../types/auth.type";
 import { GetUserInfoDto } from "./dto/get-user-info.dto";
-import { APP_RESPONSE } from "../constants/response.constants";
+import { APP_RESPONSE } from "../../common/constants/response.constants";
 import { SetUserInfoDto } from "./dto/set-user-info.dto";
 import { ApiBearerAuth } from "@nestjs/swagger";
 
@@ -31,7 +31,7 @@ export class UsersController {
       return {
         code: APP_RESPONSE.UNKNOWN_ERROR.code,
         message: APP_RESPONSE.UNKNOWN_ERROR.message,
-        data: err.to_string()
+        data: err.toString()
       }
     }
   }
@@ -53,7 +53,7 @@ export class UsersController {
       return {
         code: APP_RESPONSE.UNKNOWN_ERROR.code,
         message: APP_RESPONSE.UNKNOWN_ERROR.message,
-        data: err.to_string()
+        data: err.toString()
       }
     }
   }

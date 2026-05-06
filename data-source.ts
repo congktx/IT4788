@@ -81,7 +81,7 @@ export const dataSourceOptions: DataSourceOptions = {
     SavedSearch,
   ],
   migrations: ['src/migrations/*.ts'],
-  synchronize: true,
+  synchronize: process.env.NODE_ENV === 'test' ? true : false,
 };
 
 const dataSource = new DataSource(dataSourceOptions);
