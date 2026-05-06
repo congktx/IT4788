@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -57,6 +58,7 @@ export class OrdersController {
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Phí ship' })
   @Post('order/get_ship_fee')
+  @HttpCode(200)
   getShipFee(@Body() query: GetShipFeeDto, @Req() req: RequestWithUser) {
     return this.ordersService.getShipFee(this.getUserId(req), query);
   }
@@ -71,6 +73,7 @@ export class OrdersController {
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Thêm địa chỉ người dùng' })
   @Post('order/add_order_address')
+  @HttpCode(200)
   addOrderAddress(@Req() req: RequestWithUser, @Body() dto: AddOrderAddress) {
     return this.ordersService.addOrderAddress(this.getUserId(req), dto);
   }

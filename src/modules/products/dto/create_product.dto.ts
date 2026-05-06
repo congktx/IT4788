@@ -14,10 +14,18 @@ import * as classTransformer from 'class-transformer';
 import { CreateProductVariantDto } from './create_productVariants.dto';
 const Type = (classTransformer as any).Type;
 export class VideoDto {
-  @IsUrl({}, { message: 'Đường dẫn vieo không hợp lệ' })
+  @ApiProperty({
+    description: 'https://example.com/video.mp4',
+    example: 'https://example.com/video.mp4',
+  })
   @IsString()
+  @IsOptional()
   url: string;
 
+  @ApiProperty({
+    description: 'https://example.com/image2.mp4',
+    example: 'https://example.com/video.mp4',
+  })
   @IsString()
   @IsOptional()
   thumb: string;
@@ -52,8 +60,9 @@ export class CreateProductDto {
   @IsNotEmpty()
   @IsNumber()
   @Min(0)
+  @IsOptional()
   @Type(() => Number)
-  price_discount: number;
+  price_new: number;
 
   @ApiProperty({
     description: 'Product description',
@@ -65,7 +74,7 @@ export class CreateProductDto {
 
   @ApiProperty({
     description: 'Product image url',
-    example: 'https://...',
+    example: 'https://example.com/image.mp4',
     required: false,
   })
   @IsArray()
@@ -94,6 +103,7 @@ export class CreateProductDto {
 
   @ApiProperty({
     description: 'category',
+    example: 1,
   })
   @IsNumber()
   @IsOptional()

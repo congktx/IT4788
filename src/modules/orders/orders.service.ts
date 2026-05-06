@@ -292,8 +292,30 @@ export class OrdersService {
 
   async getShipFrom(query: GetShipFromQueryDto) {
     const { level, index, count, parent_id } = query;
+    const leveldefault = level ?? 2;
+    if (index === undefined || count === undefined || parent_id === undefined) {
+      return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+    }
+
+    const levelNum = Number(leveldefault);
+    const indexNum = Number(index);
+    const countNum = Number(count);
     const parentIdNum = Number(parent_id);
-    if (level == 1) {
+
+    if (
+      isNaN(indexNum) ||
+      isNaN(countNum) ||
+      isNaN(parentIdNum) ||
+      isNaN(levelNum)
+    ) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+
+    if (indexNum < 0 || countNum <= 0) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+    if (!parentIdNum) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    if (leveldefault == 1) {
       const province = await this.provinceRepository.findOne({
         where: { id: Number(parent_id) },
       });
@@ -308,9 +330,12 @@ export class OrdersService {
         return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
     }
+    if (index < 0) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
     const queryBuilder =
       this.warehouseRepository.createQueryBuilder('warehouse');
-    if (level == 1) {
+    if (leveldefault == 1) {
       queryBuilder
         .innerJoin('warehouse.ward', 'ward')
         .where('ward.provinces_id = :provinceId', { provinceId: parentIdNum });
@@ -319,8 +344,10 @@ export class OrdersService {
         wardId: parentIdNum,
       });
     }
+
+    const offset = indexNum * countNum;
     const [warehouses] = await queryBuilder
-      .skip(index)
+      .skip(offset)
       .take(count)
       .getManyAndCount();
     const list_address = warehouses.map((wh) => ({
@@ -329,7 +356,7 @@ export class OrdersService {
       pick_support: wh.pick_support ? '1' : '0',
       message_pick_support: wh.pick_support ? '1-Có' : '0-Không',
     }));
-    return buildResponse(APP_RESPONSE.OK, { list_address });
+    return buildResponse(APP_RESPONSE.OK, list_address);
   }
 
   async getShipFee(user_id: number, query: GetShipFeeDto) {
@@ -338,21 +365,31 @@ export class OrdersService {
     }
     const { product_id, address_id } = query;
 
+    if (isNaN(Number(product_id))) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     const product = await this.productRepository.findOne({
       where: { id: Number(product_id) },
       relations: ['ship_from'],
     });
-    if (!product || !product.ship_from) {
+    const addressIdNum =
+      address_id !== undefined ? Number(query.address_id) : null;
+    if (!addressIdNum) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    if (query.address_id !== undefined && isNaN(addressIdNum)) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+    if (!product || !product?.ship_from) {
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
 
     const sellerLat = Number(product.ship_from.lat);
     const sellerLng = Number(product.ship_from.lng);
 
+    if (!sellerLat) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    if (!sellerLng) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+
     let buyerAddress: OrderAddress | null = null;
-    if (address_id) {
+    if (addressIdNum) {
       buyerAddress = await this.orderAddressRepository.findOne({
-        where: { id: Number(address_id), user_id },
+        where: { id: addressIdNum, user_id },
       });
     } else {
       buyerAddress = await this.orderAddressRepository.findOne({
@@ -409,6 +446,7 @@ export class OrdersService {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
+    if (!query) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
     const {
       address,
       is_default,
@@ -426,16 +464,41 @@ export class OrdersService {
         { is_default: false },
       );
     }
+    if (
+      address === undefined ||
+      lat === undefined ||
+      lng === undefined ||
+      receiver_name === undefined ||
+      phone === undefined ||
+      full_address === undefined ||
+      address_detail === undefined
+    )
+      return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+    if (
+      typeof address !== 'string' ||
+      typeof receiver_name !== 'string' ||
+      typeof phone !== 'string' ||
+      typeof full_address !== 'string'
+    ) {
+      return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+    }
+    if (!Array.isArray(address_id) || address_id.length < 1) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+    const [ward_id, province_id] = address_id;
+    if (!ward_id || !province_id) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+    if (typeof lat !== 'number' || typeof lng !== 'number')
+      return APP_RESPONSE.PARAMETER_TYPE_INVALID;
     const new_address = this.orderAddressRepository.create({
       user_id,
       address_name: address,
       is_default,
-      ward_id: address_id[0],
-      lat,
-      lng,
+      ward_id: ward_id,
+      lat: Number(lat),
+      lng: Number(lng),
       address_detail,
       receiver_name,
-      phone,
+      phone: phone,
       full_address,
     });
     await this.orderAddressRepository.save(new_address);
@@ -448,6 +511,7 @@ export class OrdersService {
     id: number,
     query: UpdateOrderAddressDto,
   ) {
+    if (isNaN(Number(id))) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     const {
       address: address_name,
       is_default,
@@ -462,27 +526,47 @@ export class OrdersService {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
+    const address = query.address;
 
+    if (address_id !== undefined) {
+      if (!Array.isArray(address_id) || address_id.length < 1) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+      const [ward_id, province_id] = address_id;
+      if (!ward_id && !province_id) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+    }
+    if (
+      (typeof lat !== 'number' && lat !== undefined) ||
+      (typeof lng !== 'number' && lng !== undefined) ||
+      (typeof receiver_name === 'number' && receiver_name !== undefined) ||
+      (Array.isArray(phone) && phone !== undefined) ||
+      (typeof full_address === 'number' && full_address !== undefined) ||
+      (Array.isArray(address_detail) && address_detail !== undefined) ||
+      (typeof is_default === 'string' && is_default !== undefined)
+    )
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    if (typeof address === 'number' && address !== undefined)
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     const addressUpdate = await this.orderAddressRepository.findOne({
       where: { id: Number(id), user_id },
     });
     if (!addressUpdate) {
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
-    if (address_id && address_id.length > 0) {
+    if (address_id !== undefined && address_id.length > 0) {
       const newWardId = Number(address_id[0]);
 
-      if (
-        addressUpdate.ward_id === newWardId &&
-        addressUpdate.address_name === address_name
-      ) {
-        return APP_RESPONSE.ACTION_DONE_PREVIOUSLY;
-      }
       const ward = await this.wardRepository.findOne({
         where: { id: Number(address_id[0]) },
       });
       if (!ward) {
         return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+      if (
+        addressUpdate.ward_id === newWardId &&
+        addressUpdate.address_name === address_name
+      ) {
+        return APP_RESPONSE.ACTION_DONE_PREVIOUSLY;
       }
     }
 
@@ -510,6 +594,7 @@ export class OrdersService {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
+    if (isNaN(Number(id))) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     const address = await this.orderAddressRepository.findOne({
       where: { id: Number(id), user_id: Number(user_id) },
     });

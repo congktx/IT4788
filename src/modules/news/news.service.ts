@@ -11,6 +11,7 @@ export class newsService {
     private newsRepo: Repository<News>,
   ) {}
   async getNews(id: number) {
+    if (isNaN(Number(id))) return APP_RESPONSE.PARAMETER_TYPE_INVALID;
     const news = await this.newsRepo.findOne({
       where: { id: Number(id) },
     });
@@ -33,8 +34,13 @@ export class newsService {
         data: list_news,
       };
     }
+    if (isNaN(Number(index)) || isNaN(Number(count))) {
+      return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+    }
+    if (Number(index) * Number(count))
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     const [news, total] = await this.newsRepo.findAndCount({
-      skip: Number(index),
+      skip: Number(Number(index) * Number(count)),
       take: Number(count),
       order: { id: 'DESC' },
     });

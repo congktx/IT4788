@@ -25,7 +25,7 @@ interface RequestWithUser extends Request {
 @ApiBearerAuth('JWT-auth')
 @Controller('api')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) { }
+  constructor(private readonly productsService: ProductsService) {}
 
   @Post('get_categories')
   async getCategories(@Body() body: any) {
@@ -274,8 +274,8 @@ export class ProductsController {
   })
   @UseGuards(AuthGuard)
   @Delete('delete/:id')
-  async remove(@Param('id') id: number) {
-    return await this.productsService.remove(id);
+  async remove(@Param('id') id: number, @Req() req: RequestWithUser) {
+    return await this.productsService.remove(id, req.user?.id);
   }
 
   @ApiOperation({

@@ -17,7 +17,6 @@ export class GetUserListingsDto {
   @ApiProperty({
     description: 'user_id',
   })
-  @IsNumber()
   @IsOptional()
   user_id: number;
 
