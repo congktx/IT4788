@@ -376,28 +376,30 @@ export class AuthService {
 
   async changeInfoAfterSignup(dto: ChangeInfoAfterSignupDto, userId: number) {
     try {
-      const headerToken = this.extractBearerToken(authorization);
-      const accessToken = headerToken || dto.token;
+      // const headerToken = this.extractBearerToken(authorization);
+      // const accessToken = headerToken || dto.token;
 
-      console.log('[DEBUG] dto:', dto, 'headerToken:', headerToken, 'accessToken:', accessToken);
+      // console.log('[DEBUG] dto:', dto, 'headerToken:', headerToken, 'accessToken:', accessToken);
 
-      if (!accessToken) {
-        return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
-      }
+      // if (!accessToken) {
+      //   return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
+      // }
 
-      if (accessToken.trim().length < 10) {
-        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
-      }
+      // if (accessToken.trim().length < 10) {
+      //   return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
+      // }
 
-      let payload: any;
+      // let payload: any;
 
-      try {
-        payload = await this.jwtService.verifyAsync(accessToken);
-      } catch (error) {
-        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
-      }
+      // try {
+      //   payload = await this.jwtService.verifyAsync(accessToken);
+      // } catch (error) {
+      //   return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
+      // }
 
-      const user = await this.usersService.findById(payload.sub);
+      // const user = await this.usersService.findById(payload.sub);
+
+      const user = await this.usersService.findById(userId);
 
       if (!user) {
         return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
