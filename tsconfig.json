@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
-    "types": ["node", "express"],
+    "types": ["node", "express", "jest"],
     "module": "commonjs",
     "moduleResolution": "node",
-    // "resolvePackageJsonExports": true,
+    "resolvePackageJsonExports": true,
     "esModuleInterop": true,
     "isolatedModules": true,
     "declaration": true,
