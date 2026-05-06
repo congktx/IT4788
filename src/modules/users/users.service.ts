@@ -106,8 +106,8 @@ export class UsersService {
     });
     let check_block = await this.blocksRepo.count({
       where: {
-        blocked: { id: currentUserId },
-        blocker: { id: user_id }
+        blocked: { id: user_id },
+        blocker: { id: currentUserId }
       }
     });
     let info: any = {};
