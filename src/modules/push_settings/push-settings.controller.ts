@@ -1,10 +1,4 @@
-<<<<<<< HEAD
 import { Body, Controller, Req, Post, UseGuards } from '@nestjs/common';
-=======
-import { Body, Controller, Headers, Post } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '../users/users.service';
->>>>>>> tyn/e2etest
 import {
   APP_RESPONSE,
   buildResponse,
