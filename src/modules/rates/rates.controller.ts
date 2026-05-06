@@ -1,40 +1,34 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { RatesService } from './rates.service';
+import { AuthGuard } from '../../common/auth/guards/auth.guard';
+import {
+  APP_RESPONSE,
+  buildResponse,
+} from '../../common/constants/response.constants';
 
 @Controller('api')
 export class RatesController {
   constructor(private readonly ratesService: RatesService) {}
 
   @Post('get_rates')
-  async getRates(@Body() body: any) {
+  @UseGuards(AuthGuard)
+  async getRates(@Body() body: any, @Req() req: any) {
     try {
       if (
-        body.token === undefined ||
         body.index === undefined ||
         body.count === undefined
       ) {
-        return {
-          code: 1002,
-          message: 'Parameter is not enought.',
-        };
-      }
-
-      if (!body.token || body.token === 'invalid') {
-        return {
-          code: 9998,
-          message: 'Token is invalid.',
-        };
+        return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
       }
 
       const userId =
-        body.user_id !== undefined ? Number(body.user_id) : 1;
+        body.user_id !== undefined
+          ? Number(body.user_id)
+          : (req.user.userId ?? req.user.id);
 
       const userExists = await this.ratesService.getUserExists(userId);
       if (!userExists) {
-        return {
-          code: 9994,
-          message: 'No Data or end of list data',
-        };
+        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, null);
       }
 
       const data = await this.ratesService.getRates(
@@ -45,56 +39,33 @@ export class RatesController {
       );
 
       if (!data || data.length === 0) {
-        return {
-          code: 9994,
-          message: 'No Data or end of list data',
-        };
+        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, null);
       }
 
-      return {
-        code: 1000,
-        message: 'OK',
-        data,
-      };
+      return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
       console.error('get_rates error:', error);
 
-      return {
-        code: 9999,
-        message: 'Exception error.',
-      };
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
 
   @Post('set_rates')
-  async setRates(@Body() body: any) {
+  @UseGuards(AuthGuard)
+  async setRates(@Body() body: any, @Req() req: any) {
     try {
       if (
-        body.token === undefined ||
         body.user_id === undefined ||
         body.level === undefined ||
         body.content === undefined
       ) {
-        return {
-          code: 1002,
-          message: 'Parameter is not enought.',
-        };
-      }
-
-      if (!body.token || body.token === 'invalid') {
-        return {
-          code: 9998,
-          message: 'Token is invalid.',
-        };
+        return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
       }
 
       const level = Number(body.level);
 
       if (![1, 2, 3, 4, 5].includes(level)) {
-        return {
-          code: 1004,
-          message: 'Parameter value is invalid.',
-        };
+        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
       }
 
       const userExists = await this.ratesService.getUserExists(
@@ -102,33 +73,23 @@ export class RatesController {
       );
 
       if (!userExists) {
-        return {
-          code: 9994,
-          message: 'No Data or end of list data',
-        };
+        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, null);
       }
 
       const data = await this.ratesService.setRate(
         Number(body.user_id),
-        1,
+        req.user.userId ?? req.user.id,
         level,
         body.content,
         body.product_id !== undefined ? Number(body.product_id) : undefined,
         body.purchase_id !== undefined ? Number(body.purchase_id) : undefined,
       );
 
-      return {
-        code: 1000,
-        message: 'OK',
-        data,
-      };
+      return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
       console.error('set_rates error:', error);
 
-      return {
-        code: 9999,
-        message: 'Exception error.',
-      };
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
 }

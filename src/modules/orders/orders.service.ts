@@ -51,9 +51,9 @@ function calculateDistance(
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * (Math.PI / 180)) *
-    Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) *
-    Math.sin(dLon / 2);
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -101,7 +101,7 @@ export class OrdersService {
 
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
-  ) { }
+  ) {}
 
   async createOrder(body: CreateOrderDto, userId: number) {
     const buyer = await this.userRepository.findOne({
@@ -409,7 +409,17 @@ export class OrdersService {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
-    const { address, is_default, address_id, lng, lat } = query;
+    const {
+      address,
+      is_default,
+      address_id,
+      lng,
+      lat,
+      receiver_name,
+      phone,
+      full_address,
+      address_detail,
+    } = query;
     if (is_default) {
       await this.orderAddressRepository.update(
         { user_id, is_default: true },
@@ -423,6 +433,10 @@ export class OrdersService {
       ward_id: address_id[0],
       lat,
       lng,
+      address_detail,
+      receiver_name,
+      phone,
+      full_address,
     });
     await this.orderAddressRepository.save(new_address);
 
@@ -434,7 +448,17 @@ export class OrdersService {
     id: number,
     query: UpdateOrderAddressDto,
   ) {
-    const { address: address_name, is_default, address_id, lng, lat } = query;
+    const {
+      address: address_name,
+      is_default,
+      address_id,
+      lng,
+      lat,
+      phone,
+      full_address,
+      receiver_name,
+      address_detail,
+    } = query;
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
@@ -474,6 +498,10 @@ export class OrdersService {
       ...(address_id && { ward_id: address_id[0] }),
       ...(lat && { lat }),
       ...(lng && { lng }),
+      ...(phone && { phone }),
+      ...(full_address && { full_address }),
+      ...(receiver_name && { receiver_name }),
+      ...(address_detail && { address_detail }),
     });
     return APP_RESPONSE.OK;
   }
@@ -562,7 +590,7 @@ export class OrdersService {
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed[0];
       }
-    } catch (_) { }
+    } catch (_) {}
 
     return imageUrls;
   }

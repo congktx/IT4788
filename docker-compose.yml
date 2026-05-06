@@ -1,4 +1,9 @@
+version: '3.8'
+
 services:
+  # ---------------------------------------------------
+  # 1. DATABASE CHÍNH (Cổng 3306)
+  # ---------------------------------------------------
   mysql:
     image: mysql:8.0
     container_name: it4788_mysql
@@ -13,23 +18,29 @@ services:
       - mysql_data:/var/lib/mysql
     restart: always
 
-  redis:
-    image: redis:latest
+  # ---------------------------------------------------
+  # 2. DATABASE TEST (Cổng 3307)
+  # ---------------------------------------------------
+  mysql-test:
+    image: mysql:8.0
+    container_name: it4788_mysql_test
+    environment:
+      MYSQL_ROOT_PASSWORD: test_root
+      MYSQL_DATABASE: it4788_db_test
     ports:
-      - "${REDIS_PORT}:6379"
+      - "3307:3306"
+    tmpfs:
+      - /var/lib/mysql
 
-  app:
-    build: .
-    container_name: it4788_app
+  # ---------------------------------------------------
+  # 3. REDIS SERVER (Cổng 6379)
+  # ---------------------------------------------------
+  redis:
+    image: redis:alpine
+    container_name: it4788_redis
     ports:
-      - "${PORT}:${PORT}"
-    volumes:
-      - .:/app
-      - /app/node_modules
-    command: npm run start:dev
-    depends_on:
-      - mysql
-      - redis
+      - "6379:6379"
     restart: always
+
 volumes:
   mysql_data:

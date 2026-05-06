@@ -1,11 +1,7 @@
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, MinLength } from 'class-validator';
 
 export class ChangePasswordDto {
-  @IsOptional()
-  @IsString({ message: '1003' })
-  token?: string;
-
   @Transform(({ value, obj }) => value ?? obj.old_password ?? obj.current_password)
   @IsNotEmpty({ message: '1002' })
   @IsString({ message: '1003' })

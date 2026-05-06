@@ -1,0 +1,18 @@
+[
+  {
+    "title": "SIGNUP-01: (Thành công) - Lưu user mới vào Database",
+    "msg": "Error: data and hash arguments required\n    at Object.compare (D:\\IT4788\\node_modules\\bcrypt\\bcrypt.js:204:17)\n    at D:\\IT4788\\node_modules\\bcrypt\\promises.js:26:12\n    at new Promise (<anonymous>)\n    at Object.promise (D:\\IT4788\\node_modules\\bcrypt\\promises.js:17:12)\n    at Object.compare (D:\\IT4788\\node_modules\\bcrypt\\bcrypt.js:200:25)\n    at Object.<anonymous> (D:\\IT4788\\test\\auth\\1-signup.e2e-spec.ts:62:36)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)"
+  },
+  {
+    "title": "SIGNUP-03: (Thất bại) - Lỗi 1002 khi thiếu điện thoại hoặc mật khẩu",
+    "msg": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: \"1002\"\nReceived: undefined\n    at Object.<anonymous> (D:\\IT4788\\test\\auth\\1-signup.e2e-spec.ts:97:28)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)"
+  },
+  {
+    "title": "SIGNUP-04: (Thất bại) - Lỗi 1003 khi sai kiểu dữ liệu",
+    "msg": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: \"1003\"\nReceived: undefined\n    at Object.<anonymous> (D:\\IT4788\\test\\auth\\1-signup.e2e-spec.ts:118:27)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)"
+  },
+  {
+    "title": "SIGNUP-05: (Thất bại) - Lỗi 1004 khi giá trị tham số bất thường (VD: format sai)",
+    "msg": "Error: expect(received).toBe(expected) // Object.is equality\n\nExpected: \"1004\"\nReceived: undefined\n    at Object.<anonymous> (D:\\IT4788\\test\\auth\\1-signup.e2e-spec.ts:130:27)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)"
+  }
+]

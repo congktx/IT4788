@@ -21,6 +21,12 @@ npm install
 
 Dự án sử dụng file `.env` để lưu trữ các thông tin bảo mật và cấu hình môi trường. Hãy đảm bảo file `.env` đã tồn tại ở thư mục gốc với nội dung tương tự với file `.env.example`.
 
+**Dành cho môi trường Test (E2E Test):**
+Để chạy các bài test (sử dụng db test độc lập), dự án sử dụng thêm file cấu hình riêng `.env.test`. Các thành viên khi pull code về cần tạo file này dựa trên file mẫu có sẵn:
+```bash
+cp .env.test.example .env.test
+```
+
 ### 3. Chạy MySQL bằng Docker
 
 Dự án đã đính kèm sẵn `docker-compose.yml`. Để khởi chạy MySQL Server độc lập ở dưới nền, hãy gõ lệnh:

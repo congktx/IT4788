@@ -22,7 +22,7 @@ interface RequestWithUser extends Request {
   };
 }
 
-@ApiBearerAuth("JWT-auth")
+@ApiBearerAuth('JWT-auth')
 @Controller('api')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) { }
