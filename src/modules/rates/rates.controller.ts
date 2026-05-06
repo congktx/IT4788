@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { RatesService } from './rates.service';
 import { AuthGuard } from '../../common/auth/guards/auth.guard';
@@ -6,17 +5,12 @@ import {
   APP_RESPONSE,
   buildResponse,
 } from '../../common/constants/response.constants';
-=======
-import { Body, Controller, Post } from '@nestjs/common';
-import { RatesService } from './rates.service';
->>>>>>> tyn/e2etest
 
 @Controller('api')
 export class RatesController {
   constructor(private readonly ratesService: RatesService) { }
 
   @Post('get_rates')
-<<<<<<< HEAD
   @UseGuards(AuthGuard)
   async getRates(@Body() body: any, @Req() req: any) {
     try {
@@ -35,37 +29,6 @@ export class RatesController {
       const userExists = await this.ratesService.getUserExists(userId);
       if (!userExists) {
         return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, null);
-=======
-  async getRates(@Body() body: any) {
-    try {
-      if (
-        body.token === undefined ||
-        body.index === undefined ||
-        body.count === undefined
-      ) {
-        return {
-          code: 1002,
-          message: 'Parameter is not enought.',
-        };
-      }
-
-      if (!body.token || body.token === 'invalid') {
-        return {
-          code: 9998,
-          message: 'Token is invalid.',
-        };
-      }
-
-      const userId =
-        body.user_id !== undefined ? Number(body.user_id) : 1;
-
-      const userExists = await this.ratesService.getUserExists(userId);
-      if (!userExists) {
-        return {
-          code: 9994,
-          message: 'No Data or end of list data',
-        };
->>>>>>> tyn/e2etest
       }
 
       const data = await this.ratesService.getRates(
@@ -76,7 +39,6 @@ export class RatesController {
       );
 
       if (!data || data.length === 0) {
-<<<<<<< HEAD
         return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, null);
       }
 
@@ -85,26 +47,6 @@ export class RatesController {
       console.error('get_rates error:', error);
 
       return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
-=======
-        return {
-          code: 9994,
-          message: 'No Data or end of list data',
-        };
-      }
-
-      return {
-        code: 1000,
-        message: 'OK',
-        data,
-      };
-    } catch (error) {
-      console.error('get_rates error:', error);
-
-      return {
-        code: 9999,
-        message: 'Exception error.',
-      };
->>>>>>> tyn/e2etest
     }
   }
 

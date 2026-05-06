@@ -5,10 +5,6 @@ import {
   Post,
   Req,
   UseGuards,
-<<<<<<< HEAD
-=======
-  Headers,
->>>>>>> tyn/e2etest
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -70,7 +66,6 @@ export class AuthController {
     return this.authService.resetPassword(dto);
   }
 
-<<<<<<< HEAD
   @UseGuards(AuthGuard)
   @Post('change_password')
   async changePassword(
@@ -98,32 +93,5 @@ export class AuthController {
     @Req() req: any,
   ) {
     return this.authService.logout(req.user.userId ?? req.user.id);
-=======
-  @Post('change_password')
-  async changePassword(
-    @Body() dto: ChangePasswordDto,
-    @Headers('authorization') authorization?: string,
-  ) {
-    return this.authService.changePassword(dto, authorization);
-  }
-
-  @Post('change_info_after_signup')
-  async changeInfoAfterSignup(
-    @Body() dto: ChangeInfoAfterSignupDto,
-    @Headers('authorization') authorization?: string,
-  ) {
-    return this.authService.changeInfoAfterSignup(dto, authorization);
-  }
-
-  @Post('logout')
-  async logout(
-    @Body() dto: LogoutDto,
-    @Headers('authorization') authorization?: string,
-  ) {
-    const headerToken = this.extractBearerToken(authorization);
-    const accessToken = headerToken || dto.token;
-
-    return this.authService.logout(accessToken);
->>>>>>> tyn/e2etest
   }
 }
