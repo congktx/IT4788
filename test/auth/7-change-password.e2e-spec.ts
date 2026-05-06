@@ -46,10 +46,7 @@ describe('Auth - Change Password (e2e)', () => {
     }
   }, 20000);
 
-  // ─────────────────────────────────────────────
   // NHÓM 1: Kiểm tra Token (Xác thực danh tính)
-  // ─────────────────────────────────────────────
-
   it('CHANGE-PWD-01: (Token) - Lỗi 9998 khi không có Token', async () => {
     const res = await request(app.getHttpServer())
       .post('/auth/change_password')
@@ -65,14 +62,11 @@ describe('Auth - Change Password (e2e)', () => {
       .set('Authorization', 'Bearer token_gia_mao_123')
       .send({ password: TEST_PASSWORD, new_password: NEW_PASSWORD });
 
-    expect(res.body.code).toBe('9998'); // TOKEN_INVALID
+    expect(res.body.code).toBe('9998');
     expect(res.body.message).toBe('Token is invalid.');
   });
 
-  // ─────────────────────────────────────────────
   // NHÓM 2: Kiểm tra Validation (Thiếu trường / Sai format)
-  // ─────────────────────────────────────────────
-
   it('CHANGE-PWD-03: (Validation) - Lỗi 1002 khi thiếu password (mật khẩu hiện tại)', async () => {
     const res = await request(app.getHttpServer())
       .post('/auth/change_password')
@@ -103,10 +97,7 @@ describe('Auth - Change Password (e2e)', () => {
     expect(res.body.message).toBe('Parameter value is invalid.');
   });
 
-  // ─────────────────────────────────────────────
   // NHÓM 3: Kiểm tra Logic Nghiệp vụ
-  // ─────────────────────────────────────────────
-
   it('CHANGE-PWD-06: (Logic) - Lỗi 1004 khi mật khẩu hiện tại SAI', async () => {
     const res = await request(app.getHttpServer())
       .post('/auth/change_password')
@@ -127,10 +118,7 @@ describe('Auth - Change Password (e2e)', () => {
     expect(res.body.message).toBe('Parameter value is invalid.');
   });
 
-  // ─────────────────────────────────────────────
   // NHÓM 4: Kịch bản Thành công & Xác thực hậu kỳ
-  // ─────────────────────────────────────────────
-
   it('CHANGE-PWD-08: (Thành công) - Đổi mật khẩu thành công', async () => {
     const res = await request(app.getHttpServer())
       .post('/auth/change_password')

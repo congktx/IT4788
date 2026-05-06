@@ -129,8 +129,10 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
+    const normalizedPhoneNumber = this.normalizePhoneNumber(loginDto.phone_number);
+
     const user = await this.usersService.findByPhoneWithPassword(
-      loginDto.phone_number,
+      normalizedPhoneNumber,
     );
 
     if (!user) {

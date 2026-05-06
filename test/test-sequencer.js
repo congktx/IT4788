@@ -12,6 +12,8 @@ const ORDER = [
   '9-set-devtoken.e2e-spec.ts',
   '10-get-push-settings.e2e-spec.ts',
   '11-set-push-settings.e2e-spec.ts',
+  '13-set-user-info.e2e-spec.ts',
+  '12-get-user-info.e2e-spec.ts',
 ];
 
 class CustomSequencer extends Sequencer {
@@ -26,7 +28,7 @@ class CustomSequencer extends Sequencer {
       if (indexA === indexB) return 0;
       if (indexA === -1) return 1; // File không khai báo chạy cuối
       if (indexB === -1) return -1;
-      
+
       return indexA < indexB ? -1 : 1;
     });
   }
