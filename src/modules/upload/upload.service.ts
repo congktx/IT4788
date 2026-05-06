@@ -9,7 +9,7 @@ export class UploadService {
   constructor() { }
 
   async uploadFile(file: Express.Multer.File) {
-    const key = `files/${uuidv4()}-${file.originalname}`;
+    const key = `files/${uuidv4()}-${String(file.originalname).replaceAll(' ', '-')}`;
 
     let result = await r2Client.send(
       new PutObjectCommand({
