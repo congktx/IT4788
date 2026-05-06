@@ -1,6 +1,11 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { SearchesService } from './searches.service';
+import { AuthGuard } from '../../common/auth/guards/auth.guard';
 import { ProductsService } from '../products/products.service';
+import {
+  APP_RESPONSE,
+  buildResponse,
+} from '../../common/constants/response.constants';
 
 @Controller('api')
 export class SearchesController {
@@ -10,107 +15,65 @@ export class SearchesController {
     ) {}
 
   @Post('save_search')
-  async saveSearch(@Body() body: any) {
+  @UseGuards(AuthGuard)
+  async saveSearch(@Body() body: any, @Req() req: any) {
     try {
-      if (body.token === undefined || body.keyword === undefined) {
-        return {
-          code: 1002,
-          message: 'Parameter is not enought.',
-        };
+      if (body.keyword === undefined) {
+        return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
       }
 
-      if (!body.token || body.token === 'invalid') {
-        return {
-          code: 9998,
-          message: 'Token is invalid.',
-        };
-      }
+      const userId = req.user.userId ?? req.user.id;
 
-      const data = await this.searchesService.saveSearch(1, body.keyword);
+      const data = await this.searchesService.saveSearch(userId, body.keyword);
 
-      return {
-        code: 1000,
-        message: 'OK',
-        data,
-      };
+      return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
       console.error('save_search error:', error);
 
-      return {
-        code: 9999,
-        message: 'Exception error.',
-      };
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
 
   @Post('get_list_saved_search')
-  async getListSavedSearch(@Body() body: any) {
+  @UseGuards(AuthGuard)
+  async getListSavedSearch(@Body() body: any, @Req() req: any) {
     try {
       if (
-        body.token === undefined ||
         body.index === undefined ||
         body.count === undefined
       ) {
-        return {
-          code: 1002,
-          message: 'Parameter is not enought.',
-        };
+        return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
       }
 
-      if (!body.token || body.token === 'invalid') {
-        return {
-          code: 9998,
-          message: 'Token is invalid.',
-        };
-      }
+      const userId = req.user.userId ?? req.user.id;
 
       const data = await this.searchesService.getListSavedSearch(
-        1,
+        userId,
         Number(body.index),
         Number(body.count),
       );
 
       if (!data || data.length === 0) {
-        return {
-          code: 9994,
-          message: 'No Data or end of list data',
-        };
+        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, null);
       }
 
-      return {
-        code: 1000,
-        message: 'OK',
-        data,
-      };
+      return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
       console.error('get_list_saved_search error:', error);
 
-      return {
-        code: 9999,
-        message: 'Exception error.',
-      };
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
 
   @Post('search')
+  @UseGuards(AuthGuard)
   async search(@Body() body: any) {
     try {
       if (
-        body.token === undefined ||
         body.index === undefined ||
         body.count === undefined
       ) {
-        return {
-          code: 1002,
-          message: 'Parameter is not enought.',
-        };
-      }
-
-      if (!body.token || body.token === 'invalid') {
-        return {
-          code: 9998,
-          message: 'Token is invalid.',
-        };
+        return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
       }
 
       const hasCondition =
@@ -121,10 +84,7 @@ export class SearchesController {
         body.price_max !== undefined;
 
       if (!hasCondition) {
-        return {
-          code: 1002,
-          message: 'Parameter is not enought.',
-        };
+        return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
       }
 
       const data = await this.productsService.searchProducts(
@@ -138,24 +98,14 @@ export class SearchesController {
       );
 
       if (!data || data.length === 0) {
-        return {
-          code: 9994,
-          message: 'No Data or end of list data',
-        };
+        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, null);
       }
 
-      return {
-        code: 1000,
-        message: 'OK',
-        data,
-      };
+      return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
       console.error('search error:', error);
 
-      return {
-        code: 9999,
-        message: 'Exception error.',
-      };
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
 }

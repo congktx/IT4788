@@ -1,12 +1,8 @@
 {
   "compilerOptions": {
-    "types": [
-      "node",
-      "express",
-      "jest"
-    ],
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
+    "types": ["node", "express", "jest"],
+    "module": "commonjs",
+    "moduleResolution": "node",
     "resolvePackageJsonExports": true,
     "esModuleInterop": true,
     "isolatedModules": true,

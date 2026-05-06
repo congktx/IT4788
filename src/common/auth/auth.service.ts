@@ -78,15 +78,6 @@ export class AuthService {
     return `reset_password_verified:${phoneNumber}`;
   }
 
-  private extractBearerToken(authorization?: string): string | null {
-    if (!authorization) return null;
-
-    const [type, token] = authorization.split(' ');
-    if (type !== 'Bearer' || !token) return null;
-
-    return token;
-  }
-
   private isValidUsername(username: string): boolean {
     return /^[a-zA-Z0-9_. ]{3,50}$/.test(username);
   }
@@ -338,27 +329,9 @@ export class AuthService {
     return this.buildLoginResponse(updatedUser as User, token);
   }
 
-  async changePassword(
-    dto: ChangePasswordDto,
-    authorization?: string,
-  ) {
+  async changePassword(dto: ChangePasswordDto, userId: number) {
     try {
-      const headerToken = this.extractBearerToken(authorization);
-      const accessToken = headerToken || dto.token;
-
-      if (!accessToken) {
-        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
-      }
-
-      let payload: any;
-
-      try {
-        payload = await this.jwtService.verifyAsync(accessToken);
-      } catch (error) {
-        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
-      }
-
-      const user = await this.usersService.findByIdWithPassword(payload.sub);
+      const user = await this.usersService.findByIdWithPassword(userId);
 
       if (!user) {
         return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
@@ -401,10 +374,7 @@ export class AuthService {
     }
   }
 
-  async changeInfoAfterSignup(
-    dto: ChangeInfoAfterSignupDto,
-    authorization?: string,
-  ) {
+  async changeInfoAfterSignup(dto: ChangeInfoAfterSignupDto, userId: number) {
     try {
       const headerToken = this.extractBearerToken(authorization);
       const accessToken = headerToken || dto.token;
@@ -465,21 +435,9 @@ export class AuthService {
     }
   }
 
-  async logout(token?: string) {
+  async logout(userId: number) {
     try {
-      if (!token || token.trim().length < 10) {
-        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
-      }
-
-      let payload: any;
-
-      try {
-        payload = await this.jwtService.verifyAsync(token);
-      } catch (error) {
-        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
-      }
-
-      const user = await this.usersService.findById(payload.sub);
+      const user = await this.usersService.findById(userId);
 
       if (!user) {
         return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
