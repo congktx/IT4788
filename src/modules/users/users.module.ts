@@ -14,4 +14,4 @@ import { UserBlock } from '../blocks/entities/user-block.entity';
   providers: [UsersService],
   exports: [UsersService, TypeOrmModule],
 })
-export class UsersModule { }
+export class UsersModule { }

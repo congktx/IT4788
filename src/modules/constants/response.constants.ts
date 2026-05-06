@@ -89,7 +89,11 @@ export const APP_RESPONSE = {
   },
   USER_NOT_EXIST: {
     code: '1013',
+<<<<<<< HEAD
     message: 'User does not exist.',
+=======
+    message: 'User does not exist',
+>>>>>>> tyn/e2etest
   },
   PROMOTIONAL_CODE_EXPIRED: {
     code: '1014',
@@ -101,6 +105,7 @@ export const APP_RESPONSE = {
   },
   POLICY_VIOLATION: {
     code: '1016',
+<<<<<<< HEAD
     message: 'Policy Violation, not support weight over 20KG & price over 30M.',
   },
   CHANGE_USERNAME_MIN_30_DAYS: {
@@ -110,6 +115,17 @@ export const APP_RESPONSE = {
   CHANGE_USERNAME_SAME_OTHER_NAME: {
     code: '1018',
     message: 'Change Username: same other name.',
+=======
+    message: 'Policy Violation, not support weight over 20KG & price over 30M',
+  },
+  CHANGE_USERNAME_MIN_30_DAYS: {
+    code: '1017',
+    message: 'Change Username: requires minimum 30 days',
+  },
+  CHANGE_USERNAME_SAME_OTHER_NAME: {
+    code: '1018',
+    message: 'Change Username: same other name',
+>>>>>>> tyn/e2etest
   },
 } as const;
 

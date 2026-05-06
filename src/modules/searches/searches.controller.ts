@@ -9,10 +9,10 @@ import {
 
 @Controller('api')
 export class SearchesController {
-    constructor(
-        private readonly searchesService: SearchesService,
-        private readonly productsService: ProductsService,
-    ) {}
+  constructor(
+    private readonly searchesService: SearchesService,
+    private readonly productsService: ProductsService,
+  ) { }
 
   @Post('save_search')
   @UseGuards(AuthGuard)

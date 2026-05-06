@@ -1,4 +1,10 @@
+<<<<<<< HEAD
 import { Body, Controller, Req, Post, UseGuards } from '@nestjs/common';
+=======
+import { Body, Controller, Headers, Post } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { UsersService } from '../users/users.service';
+>>>>>>> tyn/e2etest
 import {
   APP_RESPONSE,
   buildResponse,
@@ -17,7 +23,7 @@ export class PushSettingsController {
   ) { }
 
   @Post('get_push_setting')
-  async getPushSetting(@Req() req: any){
+  async getPushSetting(@Req() req: any) {
     try {
       const userId = req.user.userId ?? req.user.id;
 

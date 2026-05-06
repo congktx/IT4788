@@ -12,4 +12,4 @@ import { DevTokensController } from './dev-tokens.controller';
   controllers: [DevTokensController],
   exports: [DevTokensService],
 })
-export class DevTokensModule {}
+export class DevTokensModule { }

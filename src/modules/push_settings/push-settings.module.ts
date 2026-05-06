@@ -12,4 +12,4 @@ import { PushSettingsController } from './push-settings.controller';
   controllers: [PushSettingsController],
   exports: [PushSettingsService],
 })
-export class PushSettingsModule {}
+export class PushSettingsModule { }
