@@ -4,7 +4,7 @@ import { IsNotEmpty, IsString, Matches, MinLength } from 'class-validator';
 const PHONE_REGEX = /^(0|\+84)[0-9]{9,10}$/;
 
 export class SignupDto {
-  @Transform(({ value, obj }) => value ?? obj.phonenumber ?? obj.phoneNumber)
+  @Transform(({ value, obj }) => value ?? obj.phonenumber ?? obj.phoneNumber ?? obj.phone_number)
   @IsNotEmpty({ message: '1002' })
   @IsString({ message: '1003' })
   @Matches(PHONE_REGEX, { message: '1004' })
@@ -15,7 +15,7 @@ export class SignupDto {
   @MinLength(6, { message: '1004' })
   password: string;
 
-  @Transform(({ value, obj }) => value ?? obj.devtoken ?? obj.device_id)
+  @Transform(({ value, obj }) => value ?? obj.devtoken ?? obj.device_id ?? obj.uuid)
   @IsNotEmpty({ message: '1002' })
   @IsString({ message: '1003' })
   uuid: string;

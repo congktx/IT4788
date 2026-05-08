@@ -20,6 +20,9 @@ import { AddressesModule } from '../../src/modules/addresses/addresses.module';
 import { OrdersModule } from '../../src/modules/orders/orders.module';
 import { ProductsModule } from '../../src/modules/products/products.module';
 import { NotificationsModule } from '../../src/modules/notifications/notifications.module';
+import { ValidationPipe } from '../../src/common/validation.pipe';
+import { LoggingInterceptor } from '../../src/common/logging.interceptor';
+import { AllExceptionsFilter } from '../../src/all-exceptions.filter';
 
 export async function createTestApp(): Promise<{
   app: INestApplication;
@@ -50,6 +53,10 @@ export async function createTestApp(): Promise<{
   }).compile();
 
   const app = module.createNestApplication();
+
+  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalInterceptors(new LoggingInterceptor());
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // Bắt signal shutdown để đóng DB connection đúng cách
   app.enableShutdownHooks();

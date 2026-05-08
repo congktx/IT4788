@@ -111,7 +111,7 @@ export class UsersService {
       }
     });
     let info: any = {};
-    if (!body.user_id) {
+    if (body.user_id == currentUserId) {
       info["email"] = user.email;
       info["phonenumber"] = user.phone_number;
       info["firstname"] = user.firstname;
@@ -141,10 +141,11 @@ export class UsersService {
   }
 
   async setUserInfo(currentUserId: number, body: SetUserInfoDto) {
-    await this.usersRepository.update(
-      { id: currentUserId },
-      body
-    );
+    if (body)
+      await this.usersRepository.update(
+        { id: currentUserId },
+        body
+      );
 
     return {
       ...APP_RESPONSE.OK,

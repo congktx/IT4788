@@ -5,7 +5,7 @@ import { APP_RESPONSE } from "../../common/constants/response.constants";
 import { AuthGuard } from "../../common/auth/guards/auth.guard";
 import type { AuthenticatedRequest } from "../../types/auth.type";
 import 'multer'
-import { ApiBearerAuth } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation } from "@nestjs/swagger";
 
 @ApiBearerAuth("JWT-auth")
 @Controller("upload")
@@ -15,6 +15,21 @@ export class UploadController {
   @Post("file")
   @UseGuards(AuthGuard)
   @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload file lên server' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Chọn file để upload',
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+      required: ['file'],
+    },
+  })
   async upload(
     @Req() req: AuthenticatedRequest,
     @UploadedFile() file: Express.Multer.File
