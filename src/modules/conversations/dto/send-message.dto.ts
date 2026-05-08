@@ -15,7 +15,6 @@ export class SendMessageDto {
     description: "Nội dung tin nhắn",
     example: "hello bae"
   })
-  @IsNotEmpty({ message: "1002" })
   @Allow()
   message: string;
 

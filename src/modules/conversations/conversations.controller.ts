@@ -23,7 +23,6 @@ export class ConversationsController {
     @Req() req: AuthenticatedRequest,
     @Body() body: SendMessageDto,
   ) {
-    console.log(body)
     try {
       const currentUserId = Number(
         req.user?.id ?? req.user?.userId ?? req.user?.sub,
@@ -33,7 +32,6 @@ export class ConversationsController {
     } catch (err: any) {
       console.log(err);
       return {
-        status: 200,
         code: APP_RESPONSE.UNKNOWN_ERROR.code,
         message: APP_RESPONSE.UNKNOWN_ERROR.message,
         data: err.toString()
@@ -56,7 +54,6 @@ export class ConversationsController {
     } catch (err: any) {
       console.log(err);
       return {
-        status: 200,
         code: APP_RESPONSE.UNKNOWN_ERROR.code,
         message: APP_RESPONSE.UNKNOWN_ERROR.message,
         data: err.toString()
@@ -80,7 +77,6 @@ export class ConversationsController {
     } catch (err: any) {
       console.log(err);
       return {
-        status: 200,
         code: APP_RESPONSE.UNKNOWN_ERROR.code,
         message: APP_RESPONSE.UNKNOWN_ERROR.message,
         data: err.toString()
@@ -104,7 +100,6 @@ export class ConversationsController {
     } catch (err: any) {
       console.log(err);
       return {
-        status: 200,
         code: APP_RESPONSE.UNKNOWN_ERROR.code,
         message: APP_RESPONSE.UNKNOWN_ERROR.message,
         data: err.toString()

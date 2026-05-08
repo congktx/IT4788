@@ -91,13 +91,21 @@ export class ConversationsService {
       );
     }
 
-    return await this.conversationRepo
+    const result = await this.conversationRepo
       .createQueryBuilder('conversation')
       .leftJoin('conversation.users', 'user')
       .where('user.id IN (:...userIds)', { userIds })
       .groupBy('conversation.id')
       .having('COUNT(user.id) = :count', { count: userIds.length })
-      .getOne();
+      .select('conversation.id')
+      .getRawOne();
+
+    if (!result) return null;
+
+    return await this.conversationRepo.findOne({
+      where: { id: result.conversation_id },
+      relations: ['users']
+    });
   }
 
   async findConversationById(id: number) {
@@ -137,6 +145,12 @@ export class ConversationsService {
   }
 
   async sendMessage(currentUserId: number, sendMessageDto: SendMessageDto) {
+    if (!sendMessageDto.message && !sendMessageDto.product_id)
+      return {
+        ...APP_RESPONSE.PARAMETER_NOT_ENOUGH,
+        data: null
+      }
+
     if (currentUserId === sendMessageDto["to_id"])
       return this.fail(
         APP_RESPONSE.PARAMETER_VALUE_INVALID.code,
@@ -343,13 +357,12 @@ export class ConversationsService {
         APP_RESPONSE.PARAMETER_VALUE_INVALID.message
       )
     let conversation: any = await this.findConversationBetweenUsers([partner.id, currentUserId]);
-    if (conversation && !conversation['data']) {
+    if (conversation && conversation["id"]) {
       await this.conversationRepo.update(conversation.id, {
         time_last_seen: Math.floor(Date.now() / 1000)
       });
+      this.conversationsGateway.notifyUser(partner.id, 'read_message', { conversation_id: conversation.id });
     }
-
-    this.conversationsGateway.notifyUser(partner.id, 'read_message', { conversation_id: conversation.id });
 
     return this.success({
       ...APP_RESPONSE.OK,
