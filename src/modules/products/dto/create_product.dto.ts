@@ -18,6 +18,7 @@ export class VideoDto {
     description: 'https://example.com/video.mp4',
     example: 'https://example.com/video.mp4',
   })
+  @IsUrl()
   @IsString()
   @IsOptional()
   url: string;
@@ -36,9 +37,9 @@ export class CreateProductDto {
     example: 'Name',
     maxLength: 255,
   })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(255)
+  @IsString({ message: '1003' })
+  @IsNotEmpty({ message: '1002' })
+  @MaxLength(255, { message: '1004' })
   title: string;
 
   @ApiProperty({
@@ -46,9 +47,9 @@ export class CreateProductDto {
     example: 100000.2,
     minimum: 0,
   })
-  @IsNotEmpty()
-  @IsNumber()
-  @Min(0)
+  @IsNotEmpty({ message: '1002' })
+  @IsNumber({}, { message: '1003' })
+  @Min(0, { message: '1004' })
   @Type(() => Number)
   price: number;
 
@@ -57,9 +58,8 @@ export class CreateProductDto {
     example: 100000.2,
     minimum: 0,
   })
-  @IsNotEmpty()
-  @IsNumber()
-  @Min(0)
+  @IsNumber({}, { message: '1003' })
+  @Min(0, { message: '1004' })
   @IsOptional()
   @Type(() => Number)
   price_new: number;
@@ -68,8 +68,8 @@ export class CreateProductDto {
     description: 'Product description',
     example: 'description',
   })
-  @IsString()
-  @IsNotEmpty()
+  @IsString({ message: '1003' })
+  @IsNotEmpty({ message: '1002' })
   description: string;
 
   @ApiProperty({
@@ -77,17 +77,17 @@ export class CreateProductDto {
     example: 'https://example.com/image.mp4',
     required: false,
   })
-  @IsArray()
+  @IsArray({ message: '1003' })
   @IsOptional()
-  @IsString({ each: true })
-  @MaxLength(255, { each: true })
+  @IsString({ each: true, message: '1003' })
+  @MaxLength(255, { each: true, message: '1004' })
   image_urls?: string[];
 
   @ApiProperty({
     description: 'ID of the brand',
     example: 1,
   })
-  @IsNumber()
+  @IsNumber({}, { message: '1003' })
   @IsOptional()
   brand_id: number;
 
@@ -95,8 +95,8 @@ export class CreateProductDto {
     type: [CreateProductVariantDto],
     description: 'Product variants',
   })
-  @IsArray()
-  @IsNotEmpty()
+  @IsArray({ message: '1003' })
+  @IsNotEmpty({ message: '1002' })
   @ValidateNested({ each: true })
   @Type(() => CreateProductVariantDto)
   variants: CreateProductVariantDto[];
@@ -105,7 +105,7 @@ export class CreateProductDto {
     description: 'category',
     example: 1,
   })
-  @IsNumber()
+  @IsNumber({}, { message: '1003' })
   @IsOptional()
   category_id: number;
 
@@ -113,8 +113,8 @@ export class CreateProductDto {
     description: 'ID of the shipping address (Warehouse)',
     example: 5,
   })
-  @IsNotEmpty()
-  @IsNumber()
+  @IsNotEmpty({ message: '1002' })
+  @IsNumber({}, { message: '1003' })
   ship_from_id: number;
   @ApiProperty({
     description: 'Đường link video và thumb',

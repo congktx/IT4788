@@ -40,7 +40,7 @@ export class newsService {
     if (Number(index) * Number(count))
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     const [news, total] = await this.newsRepo.findAndCount({
-      skip: Number(Number(index) * Number(count)),
+      skip: Number(index) * Number(count),
       take: Number(count),
       order: { id: 'DESC' },
     });

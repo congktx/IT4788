@@ -11,27 +11,27 @@ export class CreateProductVariantDto {
   @ApiProperty({
     description: 'kích cỡ của mặt hàng',
   })
-  @IsString()
+  @IsString({ message: '1003' })
   size: string;
 
   @ApiProperty({
     description: 'số hàng trong kho',
     example: 1,
   })
-  @IsInt()
-  @Min(0)
+  @IsInt({ message: '1003' })
+  @Min(0, { message: '1004' })
   stock: number;
 
   @ApiProperty({
     description: 'Màu sắc',
   })
-  @IsString()
+  @IsString({ message: '1003' })
   color: string;
 
   @ApiProperty({
     description: 'Khối lượng',
     example: 0.5,
   })
-  @IsNumber()
+  @IsNumber({}, { message: '1003' })
   weight: number;
 }

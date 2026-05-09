@@ -64,8 +64,7 @@ export class ProductsService {
         dto.price === undefined ||
         dto.category_id === undefined ||
         dto.variants === undefined ||
-        dto.ship_from_id === undefined ||
-        dto.brand_id === undefined
+        dto.ship_from_id === undefined
       ) {
         return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
       }
@@ -75,7 +74,7 @@ export class ProductsService {
         typeof dto.price !== 'number' ||
         typeof dto.category_id !== 'number' ||
         typeof dto.ship_from_id !== 'number' ||
-        typeof dto.brand_id !== 'number' ||
+        (typeof dto.brand_id !== 'number' && dto.brand_id !== undefined) ||
         !Array.isArray(dto.variants)
       ) {
         return APP_RESPONSE.PARAMETER_TYPE_INVALID;
@@ -86,14 +85,14 @@ export class ProductsService {
       }
 
       if (dto.variants.length === 0) {
-        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
       }
       if (dto.videos !== undefined) {
         if (!Array.isArray(dto.videos)) {
           return APP_RESPONSE.PARAMETER_TYPE_INVALID;
         }
         const invalidVideo = dto.videos.some((v) => {
-          return !v.url || !v.thumb;
+          return !v.url;
         });
         if (invalidVideo) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
       }
@@ -147,6 +146,7 @@ export class ProductsService {
       const variantEntities = dto.variants.map((v) =>
         this.variantRepo.create({
           ...v,
+          id: undefined,
           product: product,
         }),
       );
@@ -222,17 +222,18 @@ export class ProductsService {
           return APP_RESPONSE.PARAMETER_TYPE_INVALID;
         }
         const invalidVideo = dto.videos.some((v) => {
-          return !v.url || !v.thumb;
+          return !v.url;
         });
         if (invalidVideo) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
       }
       if (dto.variants !== undefined) {
         if (!Array.isArray(dto.variants) || dto.variants.length === 0) {
-          return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+          return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
         }
 
         const isInvalidVariant = dto.variants.some((v) => {
           return (
+            (v.id !== undefined && typeof v.id !== 'number') ||
             typeof v.stock !== 'number' ||
             v.stock < 0 ||
             typeof v.size !== 'string' ||
@@ -298,14 +299,14 @@ export class ProductsService {
       }
 
       if (dto.variants !== undefined) {
-        if (!Array.isArray(variants))
+        if (!Array.isArray(dto.variants))
           return APP_RESPONSE.PARAMETER_TYPE_INVALID;
         for (const v of dto.variants) {
-          if (v.id) {
-            const variants = await this.variantRepo.find({
-              where: { id: Number(v.id) },
+          if (v.id !== undefined) {
+            const variant = await this.variantRepo.findOne({
+              where: { id: Number(v.id), product: { id: Number(id) } },
             });
-            if (!variants) {
+            if (!variant) {
               return APP_RESPONSE.PARAMETER_VALUE_INVALID;
             }
 
@@ -444,7 +445,7 @@ export class ProductsService {
     });
     return {
       code: 1000,
-      message: 'OK',
+      message: 'OK.',
       data: data,
     };
   }
