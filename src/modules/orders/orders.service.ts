@@ -472,8 +472,10 @@ export class OrdersService {
       phone === undefined ||
       full_address === undefined ||
       address_detail === undefined
-    )
+    ) {
       return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+    }
+
     if (
       typeof address !== 'string' ||
       typeof receiver_name !== 'string' ||
@@ -482,13 +484,31 @@ export class OrdersService {
     ) {
       return APP_RESPONSE.PARAMETER_TYPE_INVALID;
     }
-    if (!Array.isArray(address_id) || address_id.length < 1) {
-      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
-    }
-    const [ward_id, province_id] = address_id;
-    if (!ward_id || !province_id) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
-    if (typeof lat !== 'number' || typeof lng !== 'number')
+
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
       return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+    }
+
+    let ward_id = 1;
+
+    if (address_id !== undefined) {
+      if (!Array.isArray(address_id)) {
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+      }
+
+      if (address_id.length < 2) {
+        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+      }
+
+      const [wardId, provinceId] = address_id;
+
+      if (typeof wardId !== 'number' || typeof provinceId !== 'number') {
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+      }
+
+      ward_id = wardId;
+    }
+
     const new_address = this.orderAddressRepository.create({
       user_id,
       address_name: address,
