@@ -18,7 +18,6 @@ describe('DevTokens - Set Devtoken (e2e)', () => {
   let PLAIN_PASSWORD: string;
 
   beforeAll(async () => {
-    // Đọc thông tin login từ test-context giống các file e2e khác
     const contextPath = path.join(__dirname, 'test-context.json');
     if (!fs.existsSync(contextPath)) {
       throw new Error(

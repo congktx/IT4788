@@ -1,10 +1,6 @@
 import { IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class ChangeInfoAfterSignupDto {
-  @IsOptional()
-  @IsString({ message: '1003' })
-  token?: string;
-
   @IsNotEmpty({ message: '1002' })
   @IsString({ message: '1003' })
   @MinLength(3, { message: '1004' })

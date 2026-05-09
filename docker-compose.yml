@@ -1,9 +1,8 @@
 version: '3.8'
 
 services:
-  # ---------------------------------------------------
+ 
   # 1. DATABASE CHÍNH (Cổng 3306)
-  # ---------------------------------------------------
   mysql:
     image: mysql:8.0
     container_name: it4788_mysql
@@ -18,9 +17,8 @@ services:
       - mysql_data:/var/lib/mysql
     restart: always
 
-  # ---------------------------------------------------
+
   # 2. DATABASE TEST (Cổng 3307)
-  # ---------------------------------------------------
   mysql-test:
     image: mysql:8.0
     container_name: it4788_mysql_test
@@ -31,10 +29,7 @@ services:
       - "3307:3306"
     tmpfs:
       - /var/lib/mysql
-
-  # ---------------------------------------------------
   # 3. REDIS SERVER (Cổng 6379)
-  # ---------------------------------------------------
   redis:
     image: redis:alpine
     container_name: it4788_redis

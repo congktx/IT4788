@@ -3,15 +3,12 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../../modules/users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 import { User } from '../../modules/users/entities/user.entity';
-import { UserCode } from '../../modules/users/entities/user_code.entity';
 import { APP_RESPONSE, buildResponse } from '../constants/response.constants';
 import { CreateCodeResetPasswordDto } from './dto/create-code-reset-password.dto';
 import { RedisService } from '../redis/redis.service';
@@ -26,8 +23,6 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly redisService: RedisService,
-    @InjectRepository(UserCode)
-    private readonly userCodeRepository: Repository<UserCode>,
   ) { }
 
   private buildActive(user: User): number {
@@ -64,27 +59,25 @@ export class AuthService {
   }
 
   private isValidVietnamesePhoneNumber(phoneNumber: string): boolean {
-    return /^(0|\+84)(3|5|7|8|9)[0-9]{8}$/.test(phoneNumber);
+    return /^0(3|5|7|8|9)[0-9]{8}$/.test(phoneNumber);
   }
 
   private normalizePhoneNumber(phoneNumber: string): string {
-    if (phoneNumber.startsWith('+84')) {
-      return '0' + phoneNumber.slice(3);
+    const trimmedPhoneNumber = phoneNumber.trim();
+
+    if (trimmedPhoneNumber.startsWith('+84')) {
+      return '0' + trimmedPhoneNumber.slice(3);
     }
-    return phoneNumber;
+
+    if (trimmedPhoneNumber.startsWith('84')) {
+      return '0' + trimmedPhoneNumber.slice(2);
+    }
+
+    return trimmedPhoneNumber;
   }
 
   private buildResetPasswordVerifiedKey(phoneNumber: string): string {
     return `reset_password_verified:${phoneNumber}`;
-  }
-
-  private extractBearerToken(authorization?: string): string | null {
-    if (!authorization) return null;
-
-    const [type, token] = authorization.split(' ');
-    if (type !== 'Bearer' || !token) return null;
-
-    return token;
   }
 
   private isValidUsername(username: string): boolean {
@@ -92,7 +85,9 @@ export class AuthService {
   }
 
   async signup(signupDto: SignupDto) {
-    const normalizedPhoneNumber = this.normalizePhoneNumber(signupDto.phone_number);
+    const normalizedPhoneNumber = this.normalizePhoneNumber(
+      signupDto.phone_number,
+    );
 
     if (!this.isValidVietnamesePhoneNumber(normalizedPhoneNumber)) {
       throw new BadRequestException(
@@ -129,7 +124,9 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
-    const normalizedPhoneNumber = this.normalizePhoneNumber(loginDto.phone_number);
+    const normalizedPhoneNumber = this.normalizePhoneNumber(
+      loginDto.phone_number,
+    );
 
     const user = await this.usersService.findByPhoneWithPassword(
       normalizedPhoneNumber,
@@ -228,13 +225,6 @@ export class AuthService {
 
       // lưu OTP vào redis
       await this.redisService.set(redisKey, otp, otpTtl);
-
-      // lưu lịch sử OTP vào database (Mục đích: xem lịch sử/tra soát)
-      await this.userCodeRepository.save({
-        user_id: user.id,
-        code: otp,
-        expired_at: new Date(Date.now() + otpTtl * 1000),
-      });
 
       // lưu cooldown chống spam
       await this.redisService.set(cooldownKey, '1', otpCooldown);
@@ -338,27 +328,9 @@ export class AuthService {
     return this.buildLoginResponse(updatedUser as User, token);
   }
 
-  async changePassword(
-    dto: ChangePasswordDto,
-    authorization?: string,
-  ) {
+  async changePassword(dto: ChangePasswordDto, userId: number) {
     try {
-      const headerToken = this.extractBearerToken(authorization);
-      const accessToken = headerToken || dto.token;
-
-      if (!accessToken) {
-        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
-      }
-
-      let payload: any;
-
-      try {
-        payload = await this.jwtService.verifyAsync(accessToken);
-      } catch (error) {
-        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
-      }
-
-      const user = await this.usersService.findByIdWithPassword(payload.sub);
+      const user = await this.usersService.findByIdWithPassword(userId);
 
       if (!user) {
         return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
@@ -401,33 +373,9 @@ export class AuthService {
     }
   }
 
-  async changeInfoAfterSignup(
-    dto: ChangeInfoAfterSignupDto,
-    authorization?: string,
-  ) {
+  async changeInfoAfterSignup(dto: ChangeInfoAfterSignupDto, userId: number) {
     try {
-      const headerToken = this.extractBearerToken(authorization);
-      const accessToken = headerToken || dto.token;
-
-      console.log('[DEBUG] dto:', dto, 'headerToken:', headerToken, 'accessToken:', accessToken);
-
-      if (!accessToken) {
-        return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
-      }
-
-      if (accessToken.trim().length < 10) {
-        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
-      }
-
-      let payload: any;
-
-      try {
-        payload = await this.jwtService.verifyAsync(accessToken);
-      } catch (error) {
-        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
-      }
-
-      const user = await this.usersService.findById(payload.sub);
+      const user = await this.usersService.findById(userId);
 
       if (!user) {
         return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
@@ -465,21 +413,9 @@ export class AuthService {
     }
   }
 
-  async logout(token?: string) {
+  async logout(userId: number) {
     try {
-      if (!token || token.trim().length < 10) {
-        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
-      }
-
-      let payload: any;
-
-      try {
-        payload = await this.jwtService.verifyAsync(token);
-      } catch (error) {
-        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
-      }
-
-      const user = await this.usersService.findById(payload.sub);
+      const user = await this.usersService.findById(userId);
 
       if (!user) {
         return buildResponse(APP_RESPONSE.USER_NOT_VALIDATED, null);
