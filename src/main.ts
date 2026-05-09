@@ -3,11 +3,13 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from './common/validation.pipe';
 import { LoggingInterceptor } from './common/logging.interceptor';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { AllExceptionsFilter } from './all-exceptions.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.useGlobalPipes(new ValidationPipe());
   app.useGlobalInterceptors(new LoggingInterceptor());
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   const config = new DocumentBuilder()
     .setTitle('IT 4788 API')

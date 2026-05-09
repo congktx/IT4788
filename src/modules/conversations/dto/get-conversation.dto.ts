@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Allow } from "class-validator";
+import { Allow, IsNotEmpty } from "class-validator";
 
 export class GetConvDto {
   @ApiProperty({
@@ -20,6 +20,7 @@ export class GetConvDto {
     description: "Số thứ tự trang tin nhắn tải về (phân trang)",
     example: 1
   })
+  @IsNotEmpty({ message: "1002" })
   @Allow()
   index: number;
 
@@ -27,6 +28,7 @@ export class GetConvDto {
     description: "Số lượng tin nhắn trong một trang",
     example: 10
   })
+  @IsNotEmpty({ message: "1002" })
   @Allow()
   count: number;
 }

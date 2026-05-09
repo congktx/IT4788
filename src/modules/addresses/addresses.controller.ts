@@ -3,7 +3,7 @@ import { AddressesService } from './addresses.service';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { AuthGuard } from '../../common/auth/guards/auth.guard';
 import { ApiBearerAuth } from '@nestjs/swagger';
-
+import { HttpCode } from '@nestjs/common';
 @ApiBearerAuth("JWT-auth")
 @Controller('addresses')
 export class AddressesController {
@@ -11,8 +11,9 @@ export class AddressesController {
 
   @UseGuards(AuthGuard)
   @Post('create')
+  @HttpCode(200)
   create(
-    @Body() body: CreateAddressDto,
+    @Body() body: any,
     @Req() req: any,
   ) {
     const userId = req.user.userId;
