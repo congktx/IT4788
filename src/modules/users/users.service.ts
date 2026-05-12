@@ -82,7 +82,9 @@ export class UsersService {
   }
 
   async getUserInfo(currentUserId: number, body: GetUserInfoDto) {
+    console.log(body)
     let user_id = body.user_id ? body.user_id : currentUserId;
+    console.log(user_id)
     let user = await this.usersRepository.findOne({
       where: {
         id: user_id
@@ -98,18 +100,22 @@ export class UsersService {
     let order_count = await this.ordersRepo.count({
       where: { seller: { id: user_id } }
     });
-    let check_follow = await this.followsRepo.count({
-      where: {
-        follower: { id: currentUserId },
-        followee: { id: user_id }
-      }
-    });
-    let check_block = await this.blocksRepo.count({
-      where: {
-        blocked: { id: user_id },
-        blocker: { id: currentUserId }
-      }
-    });
+    let check_follow = 0;
+    let check_block = 0;
+    if (user_id && currentUserId) {
+      check_follow = await this.followsRepo.count({
+        where: {
+          follower: { id: currentUserId },
+          followee: { id: user_id }
+        }
+      });
+      check_block = await this.blocksRepo.count({
+        where: {
+          blocked: { id: user_id },
+          blocker: { id: currentUserId }
+        }
+      });
+    }
     let info: any = {};
     if (body.user_id == currentUserId) {
       info["email"] = user.email;
@@ -117,10 +123,13 @@ export class UsersService {
       info["firstname"] = user.firstname;
       info["lastname"] = user.lastname;
       info["address"] = user.address;
+      info["city"] = user.city;
     }
     info["id"] = user.id;
+    info["username"] = user.username;
     info["listing"] = order_count;
     info["status"] = user.status;
+    info["avatar"] = user.avatar;
     info["cover_image"] = user.cover_image;
     info["cover_image_web"] = user.cover_image_web;
     info["followed"] = check_follow > 0;
