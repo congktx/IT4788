@@ -269,7 +269,6 @@ export class SeedHelper {
     await this.dataSource.query('TRUNCATE TABLE notifications');
     await this.dataSource.query('TRUNCATE TABLE messages');
     await this.dataSource.query('TRUNCATE TABLE conversations_users_users');
-    await this.dataSource.query('TRUNCATE TABLE user_conversations');
     await this.dataSource.query('TRUNCATE TABLE conversations');
     await this.dataSource.query('TRUNCATE TABLE user_follows');
     await this.dataSource.query('TRUNCATE TABLE user_blocks');
