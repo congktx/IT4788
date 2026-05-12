@@ -80,6 +80,25 @@ export class ProductsService {
         return APP_RESPONSE.PARAMETER_TYPE_INVALID;
       }
 
+      if (dto.image_urls !== undefined && dto.videos !== undefined) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+
+      if (dto.image_urls !== undefined) {
+        if (!Array.isArray(dto.image_urls)) {
+          return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+        }
+        if (dto.image_urls.length > 4) {
+          return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+        }
+      }
+      const finalImage = [...(dto.image_urls || [])];
+      const hasDuplicateImages = new Set(finalImage).size !== finalImage.length;
+
+      if (hasDuplicateImages) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+
       if (dto.price < 0) {
         return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
@@ -117,11 +136,6 @@ export class ProductsService {
       });
       if (!category) {
         return APP_RESPONSE.PARAMETER_VALUE_INVALID;
-      }
-      if (dto.price_new !== undefined && typeof dto.price_new !== 'number')
-        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
-      if (!dto.price_new) {
-        dto.price_new = dto.price;
       }
 
       const brand = await this.brandRepo.findOne({
@@ -203,6 +217,17 @@ export class ProductsService {
         return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
 
+      if (dto.price_discount !== undefined) {
+        if (dto.price !== undefined) {
+          if (dto.price < dto.price_discount) {
+            return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+          }
+        } else {
+          if (dto.price_discount > product.price) {
+            return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+          }
+        }
+      }
       if (
         dto.category_id !== undefined &&
         typeof dto.category_id !== 'number'
@@ -248,6 +273,14 @@ export class ProductsService {
         }
       }
 
+      if (dto.brand_id !== undefined) {
+        const brand = await this.brandRepo.findOne({
+          where: { id: dto.brand_id },
+        });
+        if (!brand) {
+          return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+        }
+      }
       if (dto.category_id !== undefined) {
         const category = await this.categoryRepo.findOne({
           where: { id: dto.category_id },
@@ -264,6 +297,20 @@ export class ProductsService {
 
       let finalImages = [...(product.image_urls || [])];
 
+      const imageUrlsDel = dto.image_urls_del;
+      if (imageUrlsDel !== undefined) {
+        if (
+          !Array.isArray(dto.image_urls_del) ||
+          dto.image_urls_del.some((i) => typeof i !== 'string')
+        ) {
+          return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+        }
+        const invalidDelete = dto.image_urls_del.some(
+          (img) => !finalImages.includes(img),
+        );
+        if (invalidDelete) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+        finalImages = finalImages.filter((url) => !imageUrlsDel.includes(url));
+      }
       if (dto.image_urls !== undefined) {
         if (
           !Array.isArray(dto.image_urls) ||
@@ -273,16 +320,22 @@ export class ProductsService {
         }
         finalImages = finalImages = [...finalImages, ...dto.image_urls];
       }
+      const hasDuplicateImages =
+        new Set(finalImages).size !== finalImages.length;
 
-      const imageUrlsDel = dto.image_urls_del;
-      if (imageUrlsDel !== undefined) {
-        if (
-          !Array.isArray(dto.image_urls_del) ||
-          dto.image_urls_del.some((i) => typeof i !== 'string')
-        ) {
-          return APP_RESPONSE.PARAMETER_TYPE_INVALID;
-        }
-        finalImages = finalImages.filter((url) => !imageUrlsDel.includes(url));
+      if (hasDuplicateImages) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+      if (finalImages.length > 4) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+
+      const finalVideos =
+        dto.videos !== undefined ? dto.videos : product.videos || [];
+
+      const hasVideos = finalVideos.length > 0;
+      if (finalImages.length > 0 && hasVideos) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
 
       const { variants, image_urls, image_urls_del, ...productUpdateData } =
@@ -431,8 +484,8 @@ export class ProductsService {
         name: p.title || '',
         price: p.price ? p.price.toString() : '0',
         price_new:
-          p.price_new !== undefined && p.price_new !== null
-            ? String(p.price_new)
+          p.price_discount !== undefined && p.price_discount !== null
+            ? String(p.price_discount)
             : '0',
         image: p.image_urls && p.image_urls.length > 0 ? p.image_urls[0] : null,
         video: p.videos && p.videos.length > 0 ? p.videos[0] : null,
