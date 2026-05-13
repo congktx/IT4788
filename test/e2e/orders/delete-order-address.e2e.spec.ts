@@ -9,14 +9,17 @@ import { TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import * as jwt from 'jsonwebtoken';
 import { DataSource } from 'typeorm';
-import { createTestApp } from '../helpers/create-test-app';
-import { SeedHelper } from '../helpers/seed.helper';
-import { generateAuthToken } from '../helpers/auth.helper';
-import { Address } from '../../src/modules/orders/entities/address.entity';
+import { createTestApp } from '../../helpers/create-test-app';
+import { SeedHelper } from '../../helpers/seed.helper';
+import { generateAuthToken } from '../../helpers/auth.helper';
+import { Address } from '../../../src/modules/orders/entities/address.entity';
 
 const RESPONSE = {
-  OK: { code: '1000' },
-  PARAMETER_VALUE_INVALID: { code: '1004' },
+  OK: { code: '1000', message: 'OK' },
+  PARAMETER_VALUE_INVALID: {
+    code: '1004',
+    message: 'Parameter value is invalid.',
+  },
 };
 
 let app: INestApplication;

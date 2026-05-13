@@ -10,9 +10,9 @@ import { TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import * as jwt from 'jsonwebtoken';
 import { DataSource } from 'typeorm';
-import { createTestApp } from '../helpers/create-test-app';
-import { SeedHelper } from '../helpers/seed.helper';
-import { generateAuthToken } from '../helpers/auth.helper';
+import { createTestApp } from '../../helpers/create-test-app';
+import { SeedHelper } from '../../helpers/seed.helper';
+import { generateAuthToken } from '../../helpers/auth.helper';
 
 const RESPONSE = {
   OK: { code: '1000', message: 'OK' },

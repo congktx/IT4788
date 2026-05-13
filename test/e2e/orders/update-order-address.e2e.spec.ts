@@ -10,14 +10,20 @@ import { TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import * as jwt from 'jsonwebtoken';
 import { DataSource } from 'typeorm';
-import { createTestApp } from '../helpers/create-test-app';
-import { SeedHelper } from '../helpers/seed.helper';
-import { generateAuthToken } from '../helpers/auth.helper';
+import { createTestApp } from '../../helpers/create-test-app';
+import { SeedHelper } from '../../helpers/seed.helper';
+import { generateAuthToken } from '../../helpers/auth.helper';
 
 const RESPONSE = {
-  OK: { code: '1000' },
-  PARAMETER_VALUE_INVALID: { code: '1004' }, // Lỗi Validation sai kiểu dữ liệu hoặc không tồn tại sẽ trả mã này
-  ACTION_DONE_PREVIOUSLY: { code: '1010' }, // Lỗi khi gửi trùng lặp data
+  OK: { code: '1000', message: 'OK' },
+  PARAMETER_VALUE_INVALID: {
+    code: '1004',
+    message: 'Parameter value is invalid.',
+  },
+  ACTION_DONE_PREVIOUSLY: {
+    code: '1010',
+    message: 'action has been done previously by this user.',
+  },
 };
 
 let app: INestApplication;
@@ -43,7 +49,7 @@ beforeEach(async () => {
 
 function callApi(token: string | null, id: number | string, body: object) {
   const req = request(app.getHttpServer())
-    .patch(`/order/update/${id}`)
+    .post(`/order/update/${id}`)
     .send(body);
   if (token) req.set('Authorization', `Bearer ${token}`);
   return req;
@@ -53,7 +59,7 @@ function failMsg(res: any): string {
   return `\nFull response: ${JSON.stringify(res.body, null, 2)}`;
 }
 
-describe('PATCH /order/update/:id', () => {
+describe('POST /order/update/:id', () => {
   /**
    * ─────────────────────────────────────────────
    * THÀNH CÔNG
