@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Phát Video từ Cloudflare R2</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+        background-color: #f0f2f5;
+      }
+      .video-container {
+        max-width: 800px;
+        width: 90%;
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+      video {
+        width: 100%;
+        border-radius: 8px;
+        background-color: #000; /* Nền đen trong lúc chờ load video */
+        outline: none;
+      }
+      h1 {
+        font-size: 1.5rem;
+        color: #333;
+        margin-top: 0;
+        margin-bottom: 20px;
+      }
+      .instruction {
+        margin-top: 15px;
+        font-size: 0.9rem;
+        color: #666;
+        text-align: left;
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 6px;
+        border-left: 4px solid #007bff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="video-container">
+      <h1>Video Player (Cloudflare R2)</h1>
+
+      <!-- 
+      - controls: Hiển thị thanh điều khiển (play, pause, volume, fullscreen).
+      - preload="metadata": Chỉ tải meta (kích thước, độ dài...) lúc đầu, tiết kiệm băng thông.
+      - crossorigin="anonymous": Rất quan trọng nếu sau này bạn muốn dùng Canvas để can thiệp vào video (tránh lỗi CORS).
+      - #t=0.5: Mẹo lấy frame ở giây 0.5 làm hình nền hiển thị.
+    -->
+      <video
+        controls
+        preload="metadata"
+        crossorigin="anonymous"
+        src="https://pub-aa0c23ea19d44e74bdd8b7719ed6c977.r2.dev/files/876a90eb-0bd2-4bfc-b825-eb3cc8677516-326255802_1336603347139978_6541566561054533605_n.mp4#t=0.5"
+      >
+        Trình duyệt của bạn không hỗ trợ thẻ video.
+      </video>
+
+      <div class="instruction">
+        <strong>Lưu ý cấu hình:</strong><br />
+        1. Thay thế URL trong thuộc tính <code>src</code> bằng Public Link R2
+        của bạn.<br />
+        2. Đảm bảo bucket R2 của bạn đã được gắn Custom Domain hoặc Public
+        R2.dev URL và file video có quyền đọc (Public).<br />
+        3. Cấu hình <strong>CORS</strong> trên bucket R2 (cho phép GET) để trình
+        duyệt không chặn khi load video.
+      </div>
+    </div>
+  </body>
+</html>
