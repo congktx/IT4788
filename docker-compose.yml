@@ -18,7 +18,10 @@ services:
   redis:
     image: redis:latest
     ports:
-      - "${REDIS_PORT}:6379"
+      - "127.0.0.1:${REDIS_PORT}:6379"
+    volumes:
+      - ./redis-data:/data
+    restart: always
 
   app:
     build: .

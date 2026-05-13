@@ -145,6 +145,7 @@ describe('Products - Get User Listings (e2e)', () => {
       .send({ index: 0, count: 10 });
 
     expect(String(res.body.code)).toBe('9998'); // TOKEN_INVALID do Guard chặn
+    expect(res.body.message).toBe('Token is invalid.');
   });
 
   it('TC-04: (Thất bại) - Lấy danh sách của user_id không tồn tại', async () => {
@@ -157,16 +158,49 @@ describe('Products - Get User Listings (e2e)', () => {
     expect(res.body.message).toBe('Parameter value is invalid.');
   });
 
-  it('TC-05: (Thành công) - Lọc sản phẩm theo keyword', async () => {
-    const res = await request(app.getHttpServer())
+  it('TC-05: (Thành công) - Lọc sản phẩm theo keyword (case-insensitive & partial match)', async () => {
+    // 1. Tìm bằng từ khóa đầy đủ
+    const res1 = await request(app.getHttpServer())
       .post('/api/get_user_listings')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({ index: 0, count: 10, keyword: 'Macbook' });
 
-    expect(String(res.body.code)).toBe('1000');
-    // Chỉ chứa kết quả có tên liên quan đến Macbook
-    expect(res.body.data.some((p: any) => p.name.includes('Macbook'))).toBe(true);
-    expect(res.body.data.some((p: any) => p.name.includes('AirPods'))).toBe(false);
+    expect(String(res1.body.code)).toBe('1000');
+    expect(res1.body.message).toBe('OK.');
+    expect(res1.body.data.some((p: any) => p.name.includes('Macbook'))).toBe(true);
+
+
+    const res2 = await request(app.getHttpServer())
+      .post('/api/get_user_listings')
+      .set('Authorization', `Bearer ${tokenUserA}`)
+      .send({ index: 0, count: 10, keyword: 'mac' });
+
+    expect(String(res2.body.code)).toBe('1000');
+    expect(res2.body.data.some((p: any) => p.name.includes('Macbook'))).toBe(true);
+    expect(res2.body.data.some((p: any) => p.name.includes('AirPods'))).toBe(false);
   });
-  //
+
+  it('TC-06: (Thất bại) - Lấy danh sách sản phẩm của người đã block mình', async () => {
+    // 1. User B tiến hành block User A
+    await request(app.getHttpServer())
+      .post('/set_user_block')
+      .set('Authorization', `Bearer ${tokenUserB}`)
+      .send({ user_id: userIdA, type: 0 });
+
+    // 2. User A cố gắng xem sản phẩm của User B
+    const res = await request(app.getHttpServer())
+      .post('/api/get_user_listings')
+      .set('Authorization', `Bearer ${tokenUserA}`)
+      .send({ index: 0, count: 10, user_id: userIdB });
+
+    // 3. Phải báo lỗi 1009 (Not Access) do đã bị block
+    expect(String(res.body.code)).toBe('1009');
+    expect(res.body.message).toBe('Not access.');
+
+    // 4. Clean up: User B unblock User A để không ảnh hưởng DB
+    await request(app.getHttpServer())
+      .post('/set_user_block')
+      .set('Authorization', `Bearer ${tokenUserB}`)
+      .send({ user_id: userIdA, type: 1 });
+  });
 });

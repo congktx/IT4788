@@ -21,6 +21,8 @@ describe('Products - Delete Product (e2e)', () => {
   let tokenUserA: string;
   let tokenUserB: string;
   let productIdA: number;
+  let validCategoryId: number;
+  let validShipFromId: number;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -71,7 +73,7 @@ describe('Products - Delete Product (e2e)', () => {
 
     let category = await categoryRepo.findOne({ where: {} });
     if (!category) category = await categoryRepo.save({ name: 'Dien tu' });
-    const validCategoryId = category.id;
+    validCategoryId = category.id;
 
     let address = await addressRepo.findOne({ where: { user_id: userIdA } });
     if (!address) {
@@ -86,7 +88,7 @@ describe('Products - Delete Product (e2e)', () => {
         phone: context.phone_number, full_address: 'Full Address'
       });
     }
-    const validShipFromId = address.id;
+    validShipFromId = address.id;
 
     // 4. Tạo sản phẩm của User A
     const productRes = await request(app.getHttpServer())
@@ -132,6 +134,7 @@ describe('Products - Delete Product (e2e)', () => {
       .delete(`/api/delete/${productIdA}`);
 
     expect(res.body.code).toBe('9998'); // TOKEN_INVALID
+    expect(res.body.message).toBe('Token is invalid.');
   });
 
   it('TC-04: (Thành công) - User A xóa đúng sản phẩm của mình', async () => {
@@ -149,5 +152,57 @@ describe('Products - Delete Product (e2e)', () => {
 
     expect(checkRes.body.code).toBe('9992');
   });
-  //
+
+  it('TC-05: (Thành công) - User A thêm 1 sản phẩm rồi ngay lập tức xóa đi', async () => {
+    // 1. Tạo mới 1 sản phẩm
+    const productRes = await request(app.getHttpServer())
+      .post('/api/add_product')
+      .set('Authorization', `Bearer ${tokenUserA}`)
+      .send({
+        title: 'Sản phẩm mới để test xóa',
+        price: 500, price_discount: 400, description: 'Mô tả',
+        category_id: validCategoryId, ship_from_id: validShipFromId,
+        variants: [{ size: 'S', color: 'Blue', stock: 5, weight: 1 }]
+      });
+
+    const newProductId = productRes.body.data.id;
+
+    // 2. Ngay lập tức xóa
+    const res = await request(app.getHttpServer())
+      .delete(`/api/delete/${newProductId}`)
+      .set('Authorization', `Bearer ${tokenUserA}`);
+
+    expect(res.body.code).toBe('1000');
+    expect(res.body.message).toBe('OK.');
+  });
+
+  it('TC-06: (Thất bại) - User A xóa 1 sản phẩm, rồi lại xóa tiếp sản phẩm đó thêm lần nữa', async () => {
+    // 1. Tạo mới 1 sản phẩm
+    const productRes = await request(app.getHttpServer())
+      .post('/api/add_product')
+      .set('Authorization', `Bearer ${tokenUserA}`)
+      .send({
+        title: 'Sản phẩm test xóa 2 lần',
+        price: 500, price_discount: 400, description: 'Mô tả',
+        category_id: validCategoryId, ship_from_id: validShipFromId,
+        variants: [{ size: 'S', color: 'Blue', stock: 5, weight: 1 }]
+      });
+
+    const newProductId = productRes.body.data.id;
+
+    // 2. Xóa lần 1
+    const res1 = await request(app.getHttpServer())
+      .delete(`/api/delete/${newProductId}`)
+      .set('Authorization', `Bearer ${tokenUserA}`);
+
+    expect(res1.body.code).toBe('1000');
+
+    // 3. Xóa lần 2
+    const res2 = await request(app.getHttpServer())
+      .delete(`/api/delete/${newProductId}`)
+      .set('Authorization', `Bearer ${tokenUserA}`);
+
+    expect(res2.body.code).toBe('9992');
+    expect(res2.body.message).toBe('Product is not existed.');
+  });
 });

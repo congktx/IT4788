@@ -177,6 +177,7 @@ describe('User - Get User Info (e2e)', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.code).toBe('1000');
+    expect(res.body.message).toBe('OK.');
 
     const data = res.body.data;
     expect(data.id).toBe(TARGET_USER_ID);

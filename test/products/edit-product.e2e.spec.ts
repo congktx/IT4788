@@ -54,7 +54,7 @@ describe('Products - Edit Product (e2e)', () => {
     // 2. Lấy User phụ từ DB (để test quyền sở hữu, không tạo rác bằng API)
     const userRepo = dataSource.getRepository(User);
     let otherUser = await userRepo.findOne({ where: { id: Not(loginRes.body.data?.id) } });
-    
+
     if (!otherUser) {
       otherUser = await userRepo.save({
         phone_number: '0988888888',
@@ -72,7 +72,6 @@ describe('Products - Edit Product (e2e)', () => {
       role: otherUser.role,
     });
 
-    // 3. Chuẩn bị dữ liệu nền (Category, Brand, Address)
     const categoryRepo = dataSource.getRepository(Category);
     const brandRepo = dataSource.getRepository(Brand);
     const provinceRepo = dataSource.getRepository(Province);
@@ -102,7 +101,6 @@ describe('Products - Edit Product (e2e)', () => {
     });
     validShipFromId = address.id;
 
-    // Tạo địa chỉ cho User phụ (other user)
     const otherUserId = otherUser.id;
     const otherAddress = await addressRepo.save({
       user_id: otherUserId,
@@ -113,7 +111,7 @@ describe('Products - Edit Product (e2e)', () => {
     });
     const otherShipFromId = otherAddress.id;
 
-    // 4. Tạo sản phẩm của User chính
+
     const myProdRes = await request(app.getHttpServer())
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -183,7 +181,6 @@ describe('Products - Edit Product (e2e)', () => {
     expect(res.body.code).toBe('1000');
     expect(res.body.message).toBe('OK.');
     expect(String(res.body.data.price)).toBe('9999');
-    // Tiêu đề cũ từ TC-01 phải còn nguyên
     expect(res.body.data.title).toBe('Sản phẩm đã đổi tên');
   });
 
@@ -220,7 +217,6 @@ describe('Products - Edit Product (e2e)', () => {
   });
 
   it('TC-06: (Thành công) - Thêm và xóa ảnh', async () => {
-    // Giả sử ban đầu sản phẩm có ảnh
     await dataSource.getRepository(Product).update(myProductId, {
       image_urls: ['img1.jpg', 'img2.jpg']
     });
@@ -238,5 +234,36 @@ describe('Products - Edit Product (e2e)', () => {
     expect(res.body.data.image_urls).toContain('img2.jpg');
     expect(res.body.data.image_urls).toContain('img3.jpg');
     expect(res.body.data.image_urls).not.toContain('img1.jpg');
+  });
+
+  it('TC-07: (Thất bại) - Sửa sản phẩm vừa bị xóa', async () => {
+    // 1. Tạo sản phẩm mới
+    const myProdRes = await request(app.getHttpServer())
+      .post('/api/add_product')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        title: 'Sản phẩm sắp bị xóa',
+        price: 1000,
+        price_discount: 900,
+        description: 'Mô tả',
+        category_id: validCategoryId,
+        ship_from_id: validShipFromId,
+        variants: [{ size: 'M', color: 'Red', stock: 10, weight: 1 }]
+      });
+    const tempProductId = myProdRes.body.data?.id;
+
+    // 2. Xóa sản phẩm
+    await request(app.getHttpServer())
+      .delete(`/api/delete/${tempProductId}`)
+      .set('Authorization', `Bearer ${accessToken}`);
+
+    // 3. Cố gắng update sản phẩm đã xóa
+    const res = await request(app.getHttpServer())
+      .patch(`/api/update/${tempProductId}`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ title: 'Cố gắng sửa' });
+
+    expect(res.body.code).toBe('9992'); // PRODUCT_NOT_EXISTED
+    expect(res.body.message).toBe('Product is not existed.');
   });
 });
