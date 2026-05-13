@@ -8,10 +8,18 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { ProductsService } from './products.service';
 import { AuthGuard } from '../../common/auth/guards/auth.guard';
 import { CreateProductDto } from './dto/create_product.dto';
 import { UpdateProductDto } from './dto/update_product.dto';
+import { GetCommentsProductDto } from './dto/get_comments_product.dto';
+import { SetCommentsProductDto } from './dto/set_comments_product.dto';
+import { LikeProductDto } from './dto/like_product.dto';
+import { ReportProductDto } from './dto/report_product.dto';
+import { GetProductsDto } from './dto/get_products.dto';
+import { GetListProductsDto } from './dto/get_list_products.dto';
+import { SearchDto } from '../searches/dto/search.dto';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { GetUserListingsDto } from './dto/get_user_listing.dto';
 import { APP_RESPONSE, buildResponse } from '../constants/response.constants';
@@ -28,222 +36,249 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post('get_categories')
-  async getCategories(@Body() body: any) {
-    const data = await this.productsService.getCategories();
-
-    if (!data || data.length === 0) {
-      return APP_RESPONSE.NO_DATA_OR_END_OF_LIST;
-    }
-
-    return buildResponse(APP_RESPONSE.OK, data);
-  }
-
-  @Post('get_list_brands')
-  async getListBrands(@Body() body: any) {
-    const data = await this.productsService.getListBrands();
-
-    if (!data || data.length === 0) {
-      return APP_RESPONSE.NO_DATA_OR_END_OF_LIST;
-    }
-
-    return buildResponse(APP_RESPONSE.OK, data);
-  }
-
-  @Post('get_products')
-  async getProducts(@Body() body: any) {
+  async getCategories() {
     try {
-      if (!body.id) {
-        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
-      }
+      const data = await this.productsService.getCategories();
 
-      const data = await this.productsService.getProductById(body.id);
-
-      if (!data) {
-        return APP_RESPONSE.PRODUCT_NOT_EXISTED;
+      if (!data || data.length === 0) {
+        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, []);
       }
 
       return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
-      return APP_RESPONSE.EXCEPTION_ERROR;
+      console.error('get_categories error:', error);
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
+    }
+  }
+
+  @Post('get_list_brands')
+  async getListBrands() {
+    try {
+      const data = await this.productsService.getListBrands();
+
+      if (!data || data.length === 0) {
+        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, []);
+      }
+
+      return buildResponse(APP_RESPONSE.OK, data);
+    } catch (error) {
+      console.error('get_list_brands error:', error);
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
+    }
+  }
+
+  @Post('get_products')
+  async getProducts(@Body() dto: GetProductsDto) {
+    try {
+      const data = await this.productsService.getProductById(dto.id, true);
+
+      if (!data) {
+        return buildResponse(APP_RESPONSE.PRODUCT_NOT_EXISTED, null);
+      }
+
+      return buildResponse(APP_RESPONSE.OK, data);
+    } catch (error) {
+      console.error('get_products error:', error);
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
 
   @Post('get_list_products')
-  async getListProducts(@Body() body: any) {
+  async getListProducts(@Body() dto: GetListProductsDto) {
     try {
-      if (body.index === undefined || body.count === undefined) {
-        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
-      }
-
       const data = await this.productsService.getListProducts(
-        Number(body.index),
-        Number(body.count),
+        dto.index,
+        dto.count,
       );
 
       if (!data || data.length === 0) {
-        return APP_RESPONSE.NO_DATA_OR_END_OF_LIST;
+        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, []);
       }
 
       return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
-      return APP_RESPONSE.EXCEPTION_ERROR;
+      console.error('get_list_products error:', error);
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
 
   @Post('get_comments_product')
-  async getCommentsProduct(@Body() body: any) {
+  async getCommentsProduct(@Body() dto: GetCommentsProductDto) {
     try {
-      if (
-        body.product_id === undefined ||
-        body.index === undefined ||
-        body.count === undefined
-      ) {
-        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
-      }
-
-      const product = await this.productsService.getProductById(
-        Number(body.product_id),
-      );
+      const product = await this.productsService.getProductById(dto.product_id);
 
       if (!product) {
-        return APP_RESPONSE.PRODUCT_NOT_EXISTED;
+        return buildResponse(APP_RESPONSE.PRODUCT_NOT_EXISTED, null);
       }
 
       const data = await this.productsService.getCommentsProduct(
-        Number(body.product_id),
-        Number(body.index),
-        Number(body.count),
+        dto.product_id,
+        dto.index,
+        dto.count,
       );
 
       if (!data || data.length === 0) {
-        return APP_RESPONSE.NO_DATA_OR_END_OF_LIST;
+        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, []);
       }
 
       return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
-      return APP_RESPONSE.EXCEPTION_ERROR;
+      console.error('get_comments_product error:', error);
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
 
   @Post('set_comments_product')
-  async setCommentsProduct(@Body() body: any) {
+  @UseGuards(AuthGuard)
+  async setCommentsProduct(
+    @Req() req: RequestWithUser,
+    @Body() dto: SetCommentsProductDto,
+  ) {
     try {
-      if (
-        body.product_id === undefined ||
-        body.user_id === undefined ||
-        body.content === undefined ||
-        body.index === undefined ||
-        body.count === undefined
-      ) {
-        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
       }
 
-      const product = await this.productsService.getProductById(
-        Number(body.product_id),
-      );
+      const product = await this.productsService.getProductById(dto.product_id);
 
       if (!product) {
-        return APP_RESPONSE.PRODUCT_NOT_EXISTED;
+        return buildResponse(APP_RESPONSE.PRODUCT_NOT_EXISTED, null);
       }
 
-      const user = await this.productsService.getUserById(Number(body.user_id));
+      const user = await this.productsService.getUserById(userId);
 
       if (!user) {
-        return APP_RESPONSE.NO_DATA_OR_END_OF_LIST;
+        return buildResponse(APP_RESPONSE.USER_NOT_EXIST, null);
       }
 
       const data = await this.productsService.setCommentsProduct(
-        Number(body.product_id),
-        Number(body.user_id),
-        body.content,
-        Number(body.index),
-        Number(body.count),
+        dto.product_id,
+        userId,
+        dto.content,
+        dto.index,
+        dto.count,
       );
 
       return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
       console.error('set_comments_product error:', error);
-
-      return APP_RESPONSE.EXCEPTION_ERROR;
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
 
   @Post('like_product')
-  async likeProduct(@Body() body: any) {
+  @UseGuards(AuthGuard)
+  async likeProduct(
+    @Req() req: RequestWithUser,
+    @Body() dto: LikeProductDto,
+  ) {
     try {
-      if (body.product_id === undefined || body.user_id === undefined) {
-        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
       }
 
-      const product = await this.productsService.getProductById(
-        Number(body.product_id),
-      );
+      const product = await this.productsService.getProductById(dto.product_id);
 
       if (!product) {
-        return APP_RESPONSE.PRODUCT_NOT_EXISTED;
+        return buildResponse(APP_RESPONSE.PRODUCT_NOT_EXISTED, null);
       }
 
-      const user = await this.productsService.getUserById(Number(body.user_id));
+      const user = await this.productsService.getUserById(userId);
 
       if (!user) {
-        return APP_RESPONSE.NO_DATA_OR_END_OF_LIST;
+        return buildResponse(APP_RESPONSE.USER_NOT_EXIST, null);
       }
 
       const data = await this.productsService.likeProduct(
-        Number(body.product_id),
-        Number(body.user_id),
+        dto.product_id,
+        userId,
       );
 
       return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
       console.error('like_product error:', error);
-
-      return APP_RESPONSE.EXCEPTION_ERROR;
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
 
   @Post('report_product')
-  async reportProduct(@Body() body: any) {
+  @UseGuards(AuthGuard)
+  async reportProduct(
+    @Req() req: RequestWithUser,
+    @Body() dto: ReportProductDto,
+  ) {
     try {
-      if (
-        body.product_id === undefined ||
-        body.user_id === undefined ||
-        body.subject === undefined ||
-        body.details === undefined
-      ) {
-        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
       }
 
-      const product = await this.productsService.getProductById(
-        Number(body.product_id),
-      );
+      const product = await this.productsService.getProductById(dto.product_id);
 
       if (!product) {
-        return APP_RESPONSE.PRODUCT_NOT_EXISTED;
+        return buildResponse(APP_RESPONSE.PRODUCT_NOT_EXISTED, null);
       }
 
-      const user = await this.productsService.getUserById(Number(body.user_id));
+      const user = await this.productsService.getUserById(userId);
 
       if (!user) {
-        return APP_RESPONSE.NO_DATA_OR_END_OF_LIST;
+        return buildResponse(APP_RESPONSE.USER_NOT_EXIST, null);
       }
 
       const data = await this.productsService.reportProduct(
-        Number(body.product_id),
-        Number(body.user_id),
-        body.subject,
-        body.details,
+        dto.product_id,
+        userId,
+        dto.subject,
+        dto.details,
       );
 
       return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
       console.error('report_product error:', error);
-
-      return APP_RESPONSE.EXCEPTION_ERROR;
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
 
-  // ===== Seller endpoints (require authentication) =====
+  @Post('search')
+  async search(@Body() dto: SearchDto) {
+    try {
+      const hasCondition =
+        (dto.keyword !== undefined && dto.keyword !== '') ||
+        dto.category_id !== undefined ||
+        dto.brand_id !== undefined ||
+        dto.price_min !== undefined ||
+        dto.price_max !== undefined;
+
+      if (!hasCondition) {
+        return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
+      }
+
+      const data = await this.productsService.searchProducts(
+        dto.keyword,
+        dto.category_id,
+        dto.brand_id,
+        dto.price_min,
+        dto.price_max,
+        dto.index,
+        dto.count,
+      );
+
+      if (!data || data.length === 0) {
+        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, []);
+      }
+
+      return buildResponse(APP_RESPONSE.OK, data);
+    } catch (error) {
+      console.error('search error:', error);
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
+    }
+  }
+
   @ApiOperation({
     summary: 'Người bán thêm sản phẩm',
   })
@@ -264,9 +299,9 @@ export class ProductsController {
   async update(
     @Param('id') id: number,
     @Req() req: RequestWithUser,
-    @Body() upateProductDto: UpdateProductDto,
+    @Body() updateProductDto: UpdateProductDto,
   ): Promise<any> {
-    return this.productsService.update(req.user?.id, id, upateProductDto);
+    return this.productsService.update(req.user?.id, id, updateProductDto);
   }
 
   @ApiOperation({
@@ -275,7 +310,7 @@ export class ProductsController {
   @UseGuards(AuthGuard)
   @Delete('delete/:id')
   async remove(@Param('id') id: number, @Req() req: RequestWithUser) {
-    return await this.productsService.remove(id, req.user?.id);
+    return this.productsService.remove(id, req.user?.id);
   }
 
   @ApiOperation({
@@ -287,6 +322,6 @@ export class ProductsController {
     @Req() req: RequestWithUser,
     @Body() query: GetUserListingsDto,
   ) {
-    return await this.productsService.get_listing(req.user?.id, query);
+    return this.productsService.get_listing(req.user?.id, query);
   }
 }
