@@ -138,11 +138,13 @@ export class ProductsService {
         return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
 
-      const brand = await this.brandRepo.findOne({
-        where: { id: dto.brand_id },
-      });
-      if (!brand) {
-        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      if (dto.brand_id !== undefined) {
+        const brand = await this.brandRepo.findOne({
+          where: { id: dto.brand_id },
+        });
+        if (!brand) {
+          return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+        }
       }
 
       const shipFrom = await this.addressRepo.findOne({
@@ -167,7 +169,7 @@ export class ProductsService {
 
       await this.variantRepo.save(variantEntities);
 
-      return product;
+      return { code: '1000', message: 'OK.', data: product };
     } catch (e) {
       console.error('CREATE PRODUCT ERROR:', e);
       console.log(e);
@@ -380,7 +382,11 @@ export class ProductsService {
         }
       }
 
-      return await this.getProductById(id, true);
+      return {
+        code: '1000',
+        message: 'OK.',
+        data: await this.getProductById(id, true),
+      };
     } catch (e) {
       console.error('UPDATE PRODUCT ERROR:', e);
       return APP_RESPONSE.EXCEPTION_ERROR;
@@ -393,7 +399,7 @@ export class ProductsService {
       return APP_RESPONSE.TOKEN_INVALID;
     }
     if (isNaN(Number(id))) {
-      return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+      return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
     }
     const product = await this.productRepo.findOne({
       where: { id: Number(id) },
@@ -405,7 +411,7 @@ export class ProductsService {
     if (product.seller_id !== user_id) {
       return APP_RESPONSE.NOT_ACCESS;
     }
-    await this.variantRepo.delete({ product: { id: id } });
+    await this.variantRepo.delete({ product: { id: Number(id) } });
     await this.productRepo.delete(id);
     return APP_RESPONSE.OK;
   }
@@ -497,7 +503,7 @@ export class ProductsService {
       };
     });
     return {
-      code: 1000,
+      code: '1000',
       message: 'OK.',
       data: data,
     };
