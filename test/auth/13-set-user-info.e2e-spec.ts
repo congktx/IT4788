@@ -54,6 +54,7 @@ describe('User - Set User Info (e2e)', () => {
 
     expect(res.status).toBe(401);
     expect(res.body.code).toBeDefined();
+    expect(res.body.message).toBeDefined();
   });
 
   it('SET-INFO-02: (Thất bại) - Email sai định dạng → code 1004', async () => {

@@ -14,6 +14,7 @@ describe('Auth - Signup (e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let currentTestPhone: string;
+  let baseURL: string | any;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -25,6 +26,7 @@ describe('Auth - Signup (e2e)', () => {
     await app.init();
 
     dataSource = app.get<DataSource>(DataSource);
+    baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // Sinh SĐT hợp lệ và đảm bảo chưa tồn tại trong DB (retry nếu trùng)
     const validPrefixes = ['3', '5', '7', '8', '9'];
@@ -69,7 +71,7 @@ describe('Auth - Signup (e2e)', () => {
     };
 
     // Bắn request
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/signup')
       .send(signupData);
 
@@ -106,7 +108,7 @@ describe('Auth - Signup (e2e)', () => {
     };
 
     // DB đang chứa sẵn user từ test SIGNUP-01, không cần đẩy tay nữa
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/signup')
       .send(signupData);
 
@@ -121,7 +123,7 @@ describe('Auth - Signup (e2e)', () => {
 
   it('SIGNUP-03: (Thất bại) - Lỗi 1002 khi thiếu điện thoại hoặc mật khẩu', async () => {
     // Thiếu phone_number
-    const res1 = await request(app.getHttpServer())
+    const res1 = await request(baseURL)
       .post('/auth/signup')
       .send({
         password: 'password123',
@@ -131,7 +133,7 @@ describe('Auth - Signup (e2e)', () => {
     expect(res1.body.message).toBe('Parameter is not enough.');
 
     // Thiếu password
-    const res2 = await request(app.getHttpServer())
+    const res2 = await request(baseURL)
       .post('/auth/signup')
       .send({
         phone_number: '0888999777',
@@ -141,7 +143,7 @@ describe('Auth - Signup (e2e)', () => {
     expect(res2.body.message).toBe('Parameter is not enough.');
 
     // Thiếu hoàn toàn cả phone lẫn password
-    const res3 = await request(app.getHttpServer())
+    const res3 = await request(baseURL)
       .post('/auth/signup')
       .send({
         uuid: 'device-id-123'
@@ -152,7 +154,7 @@ describe('Auth - Signup (e2e)', () => {
 
   it('SIGNUP-04: (Thất bại) - Lỗi 1003 khi sai kiểu dữ liệu', async () => {
     // Truyền phone_number là kiểu Number thay vì String
-    const res1 = await request(app.getHttpServer())
+    const res1 = await request(baseURL)
       .post('/auth/signup')
       .send({
         phone_number: 987654321,
@@ -163,7 +165,7 @@ describe('Auth - Signup (e2e)', () => {
     expect(res1.body.message).toBe('Parameter type is invalid.');
 
     // Truyền password sai kiểu dữ liệu (Number)
-    const res2 = await request(app.getHttpServer())
+    const res2 = await request(baseURL)
       .post('/auth/signup')
       .send({
         phone_number: '0888999777',
@@ -174,7 +176,7 @@ describe('Auth - Signup (e2e)', () => {
     expect(res2.body.message).toBe('Parameter type is invalid.');
 
     // Truyền sai kiểu cả 2 trường
-    const res3 = await request(app.getHttpServer())
+    const res3 = await request(baseURL)
       .post('/auth/signup')
       .send({
         phone_number: 987654321,
@@ -187,7 +189,7 @@ describe('Auth - Signup (e2e)', () => {
 
   it('SIGNUP-05: (Thất bại) - Lỗi 1004 khi giá trị tham số bất thường (VD: format sai)', async () => {
     // Cả điện thoại và pass đều sai định dạng
-    const res1 = await request(app.getHttpServer())
+    const res1 = await request(baseURL)
       .post('/auth/signup')
       .send({
         phone_number: '098', // quá ngắn
@@ -198,7 +200,7 @@ describe('Auth - Signup (e2e)', () => {
     expect(res1.body.message).toBe('Parameter value is invalid.');
 
     // SĐT sai chuẩn, password đúng chuẩn
-    const res2 = await request(app.getHttpServer())
+    const res2 = await request(baseURL)
       .post('/auth/signup')
       .send({
         phone_number: '098', // quá ngắn
@@ -209,7 +211,7 @@ describe('Auth - Signup (e2e)', () => {
     expect(res2.body.message).toBe('Parameter value is invalid.');
 
     // SĐT đúng chuẩn, password sai chuẩn
-    const res3 = await request(app.getHttpServer())
+    const res3 = await request(baseURL)
       .post('/auth/signup')
       .send({
         phone_number: '0888999777',
@@ -221,7 +223,7 @@ describe('Auth - Signup (e2e)', () => {
   });
 
   it('SIGNUP-06: (Thất bại) - Lỗi 1004 khi SĐT đúng định dạng 10 số nhưng sai đầu số nhà mạng VN (VD: 01, 02...)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/signup')
       .send({
         phone_number: '0123456789', // Đầu số 01 không hợp lệ (cũ)

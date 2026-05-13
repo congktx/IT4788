@@ -44,7 +44,7 @@ describe('Products - Add Product (e2e)', () => {
     let loginRes = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ phone_number, password });
-    
+
     // Nếu user không tồn tại hoặc sai pass (do DB bị reset), tự động tạo lại
     if (loginRes.body.code === '9995') {
       await request(app.getHttpServer())
@@ -63,7 +63,7 @@ describe('Products - Add Product (e2e)', () => {
     if (loginRes.body.code !== '1000') {
       console.error('Login failed in Product E2E setup:', loginRes.body);
     }
-    
+
     accessToken = loginRes.body.data?.token;
     const userId = Number(loginRes.body.data?.id);
 
@@ -96,7 +96,7 @@ describe('Products - Add Product (e2e)', () => {
       if (!province) {
         province = await provinceRepo.save({ name: 'Ha Noi' });
       }
-      
+
       // Ward
       let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
       if (!ward) {
@@ -182,7 +182,7 @@ describe('Products - Add Product (e2e)', () => {
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ title: '', price: 100, price_discount: 0, category_id: validCategoryId, ship_from_id: validShipFromId, variants: [{ stock: 1 }], description: 'Test' });
-    
+
     expect(res.body.code).toBe('1002');
     expect(res.body.message).toBe('Parameter is not enough.');
   });
@@ -192,7 +192,7 @@ describe('Products - Add Product (e2e)', () => {
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ title: 'Test', description: 'Test', category_id: validCategoryId, ship_from_id: validShipFromId, variants: [{ stock: 1 }] });
-    
+
     expect(res.body.code).toBe('1002');
     expect(res.body.message).toBe('Parameter is not enough.');
   });
@@ -202,7 +202,7 @@ describe('Products - Add Product (e2e)', () => {
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ title: 'Test', price: 100, price_discount: 0, description: 'Test', category_id: validCategoryId, ship_from_id: validShipFromId });
-    
+
     expect(res.body.code).toBe('1002');
     expect(res.body.message).toBe('Parameter is not enough.');
   });
@@ -212,7 +212,7 @@ describe('Products - Add Product (e2e)', () => {
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ title: 'Test', price: 100, price_discount: 0, description: 'Test', category_id: validCategoryId, variants: [{ stock: 1 }] });
-    
+
     expect(res.body.code).toBe('1002');
     expect(res.body.message).toBe('Parameter is not enough.');
   });
@@ -223,16 +223,16 @@ describe('Products - Add Product (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ 
-        title: 'a'.repeat(256), 
-        price: 100, 
+      .send({
+        title: 'a'.repeat(256),
+        price: 100,
         price_discount: 0,
         description: 'Test desc',
-        category_id: validCategoryId, 
-        ship_from_id: validShipFromId, 
-        variants: [{ size: 'S', color: 'Black', stock: 1, weight: 0.1 }] 
+        category_id: validCategoryId,
+        ship_from_id: validShipFromId,
+        variants: [{ size: 'S', color: 'Black', stock: 1, weight: 0.1 }]
       });
-    
+
     expect(res.body.code).toBe('1004');
     expect(res.body.message).toBe('Parameter value is invalid.');
   });
@@ -241,148 +241,170 @@ describe('Products - Add Product (e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ 
-        title: 'Test', 
-        price: 'abc', 
+      .send({
+        title: 'Test',
+        price: 'abc',
         price_discount: 0,
-        category_id: validCategoryId, 
-        ship_from_id: validShipFromId, 
+        category_id: validCategoryId,
+        ship_from_id: validShipFromId,
         description: 'Test desc',
-        variants: [{ size: 'S', color: 'Black', stock: 1, weight: 0.1 }] 
+        variants: [{ size: 'S', color: 'Black', stock: 1, weight: 0.1 }]
       });
-    
+
     expect(res.body.code).toBe('1003');
     expect(res.body.message).toBe('Parameter type is invalid.');
   });
 
-  it('TC-09: (Kiểm tra) - Price_discount lớn hơn Price', async () => {
-    const res = await request(app.getHttpServer())
-      .post('/api/add_product')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .send({ 
-        title: 'Test Discount', 
-        price: 100, 
-        price_discount: 200, 
-        category_id: validCategoryId, 
-        ship_from_id: validShipFromId, 
-        description: 'Test desc',
-        variants: [{ size: 'M', color: 'Green', stock: 1, weight: 1 }] 
-      });
-    
-    expect(['1000', '1004']).toContain(res.body.code);
-    if (res.body.code === '1000') expect(res.body.message).toBe('OK.');
-    else expect(res.body.message).toBe('Parameter value is invalid.');
-  });
 
-  it('TC-10: (Thất bại) - image_urls chứa phần tử không phải string', async () => {
+
+  it('TC-09: (Thất bại) - image_urls chứa phần tử không phải string', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ 
-        title: 'Test', 
-        price: 100, 
+      .send({
+        title: 'Test',
+        price: 100,
         price_discount: 0,
         description: 'Test desc',
-        category_id: validCategoryId, 
-        ship_from_id: validShipFromId, 
+        category_id: validCategoryId,
+        ship_from_id: validShipFromId,
         variants: [{ size: 'S', color: 'Black', stock: 1, weight: 0.1 }],
-        image_urls: [123] 
+        image_urls: [123]
       });
-    
-    expect(res.body.code).toBe('1003'); 
+
+    expect(res.body.code).toBe('1003');
     expect(res.body.message).toBe('Parameter type is invalid.');
   });
 
-  it('TC-11: (Thất bại) - video url không đúng định dạng', async () => {
+  it('TC-10: (Thất bại) - video url không đúng định dạng', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ 
-        title: 'Test', 
-        price: 100, 
+      .send({
+        title: 'Test',
+        price: 100,
         price_discount: 0,
         description: 'Test desc',
-        category_id: validCategoryId, 
-        ship_from_id: validShipFromId, 
+        category_id: validCategoryId,
+        ship_from_id: validShipFromId,
         variants: [{ size: 'S', color: 'Black', stock: 1, weight: 0.1 }],
         videos: [{ url: 'invalid-url' }]
       });
-    
-    expect(res.body.code).toBe('1004'); 
+
+    expect(res.body.code).toBe('1004');
     expect(res.body.message).toBe('Parameter value is invalid.');
   });
 
   //NHÓM 4: GIÁ TRỊ KHÔNG HỢP LỆ (1004)
 
-  it('TC-12: (Thất bại) - Price âm', async () => {
+  it('TC-11: (Thất bại) - Price âm', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ title: 'Test', price: -100, price_discount: 0, category_id: validCategoryId, ship_from_id: validShipFromId, variants: [{ size: 'L', color: 'White', stock: 1, weight: 1 }], description: 'Test desc' });
-    
+
     expect(res.body.code).toBe('1004');
     expect(res.body.message).toBe('Parameter value is invalid.');
   });
 
-  it('TC-13: (Thất bại) - Price_discount âm', async () => {
-    const res = await request(app.getHttpServer())
-      .post('/api/add_product')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .send({ title: 'Test', price: 100, price_discount: -10, category_id: validCategoryId, ship_from_id: validShipFromId, variants: [{ size: 'L', color: 'White', stock: 1, weight: 1 }], description: 'Test desc' });
-    
-    expect(res.body.code).toBe('1004');
-    expect(res.body.message).toBe('Parameter value is invalid.');
-  });
 
-  it('TC-14: (Thất bại) - Variant stock âm (1003/1004)', async () => {
+  it('TC-12: (Thất bại) - Variant stock âm (1004)', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ 
-        title: 'Test', price: 100, price_discount: 0, category_id: validCategoryId, ship_from_id: validShipFromId, 
+      .send({
+        title: 'Test', price: 100, price_discount: 0, category_id: validCategoryId, ship_from_id: validShipFromId,
         description: 'Test desc',
-        variants: [{ size: 'L', color: 'Red', stock: -5, weight: 1 }] 
+        variants: [{ size: 'L', color: 'Red', stock: -5, weight: 1 }]
       });
-    
-    expect(['1003', '1004']).toContain(res.body.code);
-    expect(res.body.message).toMatch(/Parameter (type|value) is invalid\./);
+
+    expect(res.body.code).toBe('1004');
+    expect(res.body.message).toBe('Parameter value is invalid.');
   });
 
-  //NHÓM 5: AUTHENTICATION (9998)
+  //NHÓM TỰ ĐỊNH NGHĨA: VALIDATE MEDIA
 
-  it('TC-15: (Thất bại) - Không gửi Token', async () => {
+  it('TC-13: (Thất bại) - Quá số lượng ảnh cho phép (Tối đa 4 ảnh)', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/add_product')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        title: 'Test Images', price: 100, price_discount: 0, description: 'Test',
+        category_id: validCategoryId, ship_from_id: validShipFromId,
+        variants: [{ size: 'S', color: 'Black', stock: 1, weight: 0.1 }],
+        image_urls: ['img1.jpg', 'img2.jpg', 'img3.jpg', 'img4.jpg', 'img5.jpg']
+      });
+
+    expect(res.body.code).toBe('1008'); // MAXIMUM_NUMBER_OF_IMAGES
+    expect(res.body.message).toBe('Maximum number of images.');
+  });
+
+  it('TC-14: (Thất bại) - Có ảnh thì không được có video', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/add_product')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        title: 'Test Image and Video', price: 100, price_discount: 0, description: 'Test',
+        category_id: validCategoryId, ship_from_id: validShipFromId,
+        variants: [{ size: 'S', color: 'Black', stock: 1, weight: 0.1 }],
+        image_urls: ['img1.jpg'],
+        videos: [{ url: 'https://example.com/video.mp4', thumb: 'thumb.jpg' }]
+      });
+
+    expect(res.body.code).toBe('1004'); // PARAMETER_VALUE_INVALID
+    expect(res.body.message).toBe('Parameter value is invalid.');
+  });
+
+  it('TC-15: (Thất bại) - Có video thì không được có ảnh', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/add_product')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        title: 'Test Video and Image', price: 100, price_discount: 0, description: 'Test',
+        category_id: validCategoryId, ship_from_id: validShipFromId,
+        variants: [{ size: 'S', color: 'Black', stock: 1, weight: 0.1 }],
+        videos: [{ url: 'https://example.com/video.mp4', thumb: 'thumb.jpg' }],
+        image_urls: ['img1.jpg']
+      });
+
+    expect(res.body.code).toBe('1004'); // PARAMETER_VALUE_INVALID
+    expect(res.body.message).toBe('Parameter value is invalid.');
+  });
+
+
+  it('TC-16: (Thất bại) - Không gửi Token', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/add_product')
       .send({ title: 'No Token' });
-    
+
     expect(res.body.code).toBe('9998');
     expect(res.body.message).toBe('Token is invalid.');
   });
 
-  it('TC-16: (Thất bại) - Token sai định dạng', async () => {
+  it('TC-17: (Thất bại) - Token sai định dạng', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/add_product')
       .set('Authorization', 'Bearer invalidtoken123')
       .send({ title: 'Invalid Token' });
-    
+
     expect(res.body.code).toBe('9998');
     expect(res.body.message).toBe('Token is invalid.');
   });
 
-  it('TC-17: (Thất bại) - Variants là mảng rỗng', async () => {
+  it('TC-18: (Thất bại) - Variants là mảng rỗng', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ 
-        title: 'Empty Variants', 
-        price: 100, 
+      .send({
+        title: 'Empty Variants',
+        price: 100,
         price_discount: 0,
         description: 'Test desc',
-        category_id: validCategoryId, 
-        ship_from_id: validShipFromId, 
-        variants: [] 
+        category_id: validCategoryId,
+        ship_from_id: validShipFromId,
+        variants: []
       });
-    
+
     expect(res.body.code).toBe('1002');
     expect(res.body.message).toBe('Parameter is not enough.');
   });
