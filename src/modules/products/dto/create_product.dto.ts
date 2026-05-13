@@ -18,17 +18,10 @@ export class VideoDto {
     description: 'https://example.com/video.mp4',
     example: 'https://example.com/video.mp4',
   })
+  @IsUrl()
   @IsString()
   @IsOptional()
   url: string;
-
-  @ApiProperty({
-    description: 'https://example.com/image2.mp4',
-    example: 'https://example.com/video.mp4',
-  })
-  @IsString()
-  @IsOptional()
-  thumb: string;
 }
 export class CreateProductDto {
   @ApiProperty({
