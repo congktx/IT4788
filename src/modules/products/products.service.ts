@@ -58,7 +58,6 @@ export class ProductsService {
       });
 
       if (!user) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
-      if (user.role !== 'seller') return APP_RESPONSE.NOT_ACCESS;
       if (
         dto.title === undefined ||
         dto.price === undefined ||
