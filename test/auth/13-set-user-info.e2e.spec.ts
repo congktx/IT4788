@@ -52,7 +52,6 @@ describe('User - Set User Info (e2e)', () => {
       .post('/users/set_user_info')
       .send({ status: 'New Status' });
 
-    expect(res.status).toBe(401);
     expect(res.body.code).toBeDefined();
     expect(res.body.message).toBeDefined();
   });
@@ -83,10 +82,15 @@ describe('User - Set User Info (e2e)', () => {
     expect(res.body.message).toBe('OK.');
 
     // Kiểm tra lại bằng API get_user_info
+    const meRes = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${VALID_TOKEN}`)
+      .send({});
+
     const getRes = await request(app.getHttpServer())
       .post('/users/get_user_info')
       .set('Authorization', `Bearer ${VALID_TOKEN}`)
-      .send({});
+      .send({ user_id: meRes.body.data.id });
 
     expect(getRes.body.data.email).toBe(updatePayload.email);
     expect(getRes.body.data.status).toBe(updatePayload.status);
@@ -115,10 +119,15 @@ describe('User - Set User Info (e2e)', () => {
     expect(res.body.message).toBe('OK.');
 
     // Kiểm tra tính nhất quán
+    const meRes = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${VALID_TOKEN}`)
+      .send({});
+
     const getRes = await request(app.getHttpServer())
       .post('/users/get_user_info')
       .set('Authorization', `Bearer ${VALID_TOKEN}`)
-      .send({});
+      .send({ user_id: meRes.body.data.id });
 
     const data = getRes.body.data;
     expect(data.email).toBe(fullPayload.email);

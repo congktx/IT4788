@@ -16,7 +16,7 @@ import { generateAuthToken } from '../helpers/auth.helper';
 
 const RESPONSE = {
   OK: { code: '1000', message: 'OK' },
-  PARAMETER_NOT_ENOUGH: { code: '1002', message: 'Parameter is not enought.' },
+  PARAMETER_NOT_ENOUGH: { code: '1002', message: 'Parameter is not enough.' },
   PARAMETER_TYPE_INVALID: {
     code: '1003',
     message: 'Parameter type is invalid.',

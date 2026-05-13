@@ -25,7 +25,7 @@ import { generateAuthToken } from '../helpers/auth.helper';
 
 const RESPONSE = {
   OK: { code: '1000', message: 'OK' },
-  USER_NOT_EXIST: { code: '1013', message: 'User does not exist' },
+  USER_NOT_EXIST: { code: '1013', message: 'User does not exist.' },
 };
 
 let app: INestApplication;

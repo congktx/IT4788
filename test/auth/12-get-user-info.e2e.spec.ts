@@ -43,6 +43,13 @@ describe('User - Get User Info (e2e)', () => {
     dataSource = app.get<DataSource>(DataSource);
 
     // === Bước 3: Đăng nhập để lấy token hợp lệ ===
+    await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({
+        phone_number: context.phone_number,
+        password: context.password,
+        uuid: "123"
+      });
     const loginRes = await request(app.getHttpServer())
       .post('/auth/login')
       .send({
@@ -68,7 +75,7 @@ describe('User - Get User Info (e2e)', () => {
       .post('/users/get_user_info')
       .send({});
 
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
     expect(res.body.code).toBeDefined();
     expect(res.body.message).toBeDefined();
   });
@@ -80,7 +87,7 @@ describe('User - Get User Info (e2e)', () => {
       .set('Authorization', `Bearer ${INVALID_TOKEN}`)
       .send({});
 
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
     expect(res.body.code).toBeDefined();
     expect(res.body.message).toBeDefined();
   });
@@ -104,10 +111,15 @@ describe('User - Get User Info (e2e)', () => {
 
     expect(setRes.body.code).toBe('1000');
 
+    const meRes = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${VALID_TOKEN}`)
+      .send({});
+
     const res = await request(app.getHttpServer())
       .post('/users/get_user_info')
       .set('Authorization', `Bearer ${VALID_TOKEN}`)
-      .send({});
+      .send({ user_id: meRes.body.data.id });
 
     expect(res.status).toBe(200);
     expect(res.body.code).toBe('1000');

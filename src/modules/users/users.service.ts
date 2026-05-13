@@ -82,9 +82,7 @@ export class UsersService {
   }
 
   async getUserInfo(currentUserId: number, body: GetUserInfoDto) {
-    console.log(body)
     let user_id = body.user_id ? body.user_id : currentUserId;
-    console.log(user_id)
     let user = await this.usersRepository.findOne({
       where: {
         id: user_id
