@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { GetUserInfoDto } from './dto/get-user-info.dto';
-import { APP_RESPONSE } from '../constants/response.constants';
+import { APP_RESPONSE } from '../../common/constants/response.constants';
 import { Order } from '../orders/entities/order.entity';
 import { UserFollow } from '../follow/entities/user-follow.entity';
 import { UserBlock } from '../blocks/entities/user-block.entity';
@@ -98,22 +98,18 @@ export class UsersService {
     let order_count = await this.ordersRepo.count({
       where: { seller: { id: user_id } }
     });
-    let check_follow = 0;
-    let check_block = 0;
-    if (user_id && currentUserId) {
-      check_follow = await this.followsRepo.count({
-        where: {
-          follower: { id: currentUserId },
-          followee: { id: user_id }
-        }
-      });
-      check_block = await this.blocksRepo.count({
-        where: {
-          blocked: { id: user_id },
-          blocker: { id: currentUserId }
-        }
-      });
-    }
+    let check_follow = await this.followsRepo.count({
+      where: {
+        follower_id: currentUserId,
+        followee_id: user_id
+      }
+    });
+    let check_block = await this.blocksRepo.count({
+      where: {
+        blocked: { id: user_id },
+        blocker: { id: currentUserId }
+      }
+    });
     let info: any = {};
     if (body.user_id == currentUserId) {
       info["email"] = user.email;
@@ -121,13 +117,10 @@ export class UsersService {
       info["firstname"] = user.firstname;
       info["lastname"] = user.lastname;
       info["address"] = user.address;
-      info["city"] = user.city;
     }
     info["id"] = user.id;
-    info["username"] = user.username;
     info["listing"] = order_count;
     info["status"] = user.status;
-    info["avatar"] = user.avatar;
     info["cover_image"] = user.cover_image;
     info["cover_image_web"] = user.cover_image_web;
     info["followed"] = check_follow > 0;

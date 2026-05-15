@@ -140,8 +140,7 @@ describe('Products - Add Product (e2e)', () => {
       brand_id: validBrandId,
       category_id: validCategoryId,
       ship_from_id: validShipFromId,
-      variants: [{ size: 'L', color: 'Red', stock: 10, weight: 1.2 }],
-      videos: [{ url: 'https://example.com/video.mp4', thumb: 'https://example.com/thumb.jpg' }]
+      variants: [{ size: 'L', color: 'Red', stock: 10, weight: 1.2 }]
     };
 
     const res = await request(app.getHttpServer())
