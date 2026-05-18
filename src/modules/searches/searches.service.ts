@@ -8,7 +8,7 @@ export class SearchesService {
   constructor(
     @InjectRepository(SavedSearch)
     private readonly savedSearchRepository: Repository<SavedSearch>,
-  ) { }
+  ) {}
 
   async saveSearch(userId: number, keyword: string) {
     const saved = this.savedSearchRepository.create({
