@@ -19,6 +19,8 @@ import { LikeProductDto } from './dto/like_product.dto';
 import { ReportProductDto } from './dto/report_product.dto';
 import { GetProductsDto } from './dto/get_products.dto';
 import { GetListProductsDto } from './dto/get_list_products.dto';
+import { GetListBrandsDto } from './dto/get_list_brands.dto';
+import { GetCategoriesDto } from './dto/get_categories.dto';
 import { SearchDto } from '../searches/dto/search.dto';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { GetUserListingsDto } from './dto/get_user_listing.dto';
@@ -36,9 +38,9 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post('get_categories')
-  async getCategories() {
+  async getCategories(@Body() dto: GetCategoriesDto) {
     try {
-      const data = await this.productsService.getCategories();
+      const data = await this.productsService.getCategories(dto.parent_id);
 
       if (!data || data.length === 0) {
         return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, []);
@@ -52,9 +54,13 @@ export class ProductsController {
   }
 
   @Post('get_list_brands')
-  async getListBrands() {
+  async getListBrands(@Body() dto: GetListBrandsDto) {
     try {
-      const data = await this.productsService.getListBrands();
+      const data = await this.productsService.getListBrands(
+        dto.category_id,
+        dto.index ?? 0,
+        dto.count ?? 10,
+      );
 
       if (!data || data.length === 0) {
         return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, []);
@@ -68,9 +74,15 @@ export class ProductsController {
   }
 
   @Post('get_products')
-  async getProducts(@Body() dto: GetProductsDto) {
+  @UseGuards(AuthGuard)
+  async getProducts(@Req() req: RequestWithUser, @Body() dto: GetProductsDto) {
     try {
-      const data = await this.productsService.getProductById(dto.id, true);
+      const authUserId = req.user?.id;
+
+      const data = await this.productsService.getProductDetail(
+        dto.id,
+        authUserId,
+      );
 
       if (!data) {
         return buildResponse(APP_RESPONSE.PRODUCT_NOT_EXISTED, null);
@@ -86,10 +98,7 @@ export class ProductsController {
   @Post('get_list_products')
   async getListProducts(@Body() dto: GetListProductsDto) {
     try {
-      const data = await this.productsService.getListProducts(
-        dto.index,
-        dto.count,
-      );
+      const data = await this.productsService.getListProducts(dto);
 
       if (!data || data.length === 0) {
         return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, []);
