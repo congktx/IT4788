@@ -100,8 +100,8 @@ export class UsersService {
     let order_count = await this.ordersRepo.count({
       where: { seller: { id: user_id } }
     });
-    let check_follow = 0;
-    let check_block = 0;
+    let check_follow = 0
+    let check_block = 0
     if (user_id && currentUserId) {
       check_follow = await this.followsRepo.count({
         where: {
