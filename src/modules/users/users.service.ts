@@ -156,9 +156,19 @@ export class UsersService {
         body
       );
 
+    let user = await this.usersRepository.findOne({
+      where: {
+        id: currentUserId
+      }
+    });
+
     return {
       ...APP_RESPONSE.OK,
-      data: null
+      data: {
+        avatar: user?.avatar,
+        cover_image: user?.cover_image,
+        cover_image_web: user?.cover_image_web,
+      }
     }
   }
 }
