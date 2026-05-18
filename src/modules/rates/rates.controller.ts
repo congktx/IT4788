@@ -1,94 +1,90 @@
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { RatesService } from './rates.service';
 import { AuthGuard } from '../../common/auth/guards/auth.guard';
-import {
-  APP_RESPONSE,
-  buildResponse,
-} from '../../common/constants/response.constants';
+import { APP_RESPONSE, buildResponse } from '../constants/response.constants';
+import { GetRatesDto } from './dto/get_rates.dto';
+import { SetRateDto } from './dto/set_rate.dto';
+
+interface RequestWithUser extends Request {
+  user: {
+    id?: number;
+    userId?: number;
+  };
+}
 
 @Controller('api')
 export class RatesController {
-  constructor(private readonly ratesService: RatesService) { }
+  constructor(private readonly ratesService: RatesService) {}
 
   @Post('get_rates')
   @UseGuards(AuthGuard)
-  async getRates(@Body() body: any, @Req() req: any) {
+  async getRates(
+    @Req() req: RequestWithUser,
+    @Body() dto: GetRatesDto,
+  ) {
     try {
-      if (
-        body.index === undefined ||
-        body.count === undefined
-      ) {
-        return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
+      const authUserId = req.user?.userId ?? req.user?.id;
+
+      if (!authUserId) {
+        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
       }
 
-      const userId =
-        body.user_id !== undefined
-          ? Number(body.user_id)
-          : (req.user.userId ?? req.user.id);
+      const targetUserId = dto.user_id ?? authUserId;
 
-      const userExists = await this.ratesService.getUserExists(userId);
+      const userExists = await this.ratesService.getUserExists(targetUserId);
       if (!userExists) {
-        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, null);
+        return buildResponse(APP_RESPONSE.USER_NOT_EXIST, null);
       }
 
       const data = await this.ratesService.getRates(
-        userId,
-        Number(body.index),
-        Number(body.count),
-        body.level !== undefined ? Number(body.level) : undefined,
+        targetUserId,
+        dto.index,
+        dto.count,
+        dto.level,
       );
 
       if (!data || data.length === 0) {
-        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, null);
+        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, []);
       }
 
       return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
       console.error('get_rates error:', error);
-
       return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
 
   @Post('set_rates')
   @UseGuards(AuthGuard)
-  async setRates(@Body() body: any, @Req() req: any) {
+  async setRates(
+    @Req() req: RequestWithUser,
+    @Body() dto: SetRateDto,
+  ) {
     try {
-      if (
-        body.user_id === undefined ||
-        body.level === undefined ||
-        body.content === undefined
-      ) {
-        return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
+      const reviewerId = req.user?.userId ?? req.user?.id;
+
+      if (!reviewerId) {
+        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
       }
 
-      const level = Number(body.level);
-
-      if (![1, 2, 3, 4, 5].includes(level)) {
-        return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
-      }
-
-      const userExists = await this.ratesService.getUserExists(
-        Number(body.user_id),
-      );
-
+      const userExists = await this.ratesService.getUserExists(dto.user_id);
       if (!userExists) {
-        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, null);
+        return buildResponse(APP_RESPONSE.USER_NOT_EXIST, null);
       }
 
       const data = await this.ratesService.setRate(
-        Number(body.user_id),
-        req.user.userId ?? req.user.id,
-        level,
-        body.content,
-        body.product_id !== undefined ? Number(body.product_id) : undefined,
-        body.purchase_id !== undefined ? Number(body.purchase_id) : undefined,
+        dto.user_id,
+        reviewerId,
+        dto.level,
+        dto.content,
+        dto.product_id,
+        dto.purchase_id,
       );
 
       return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
       console.error('set_rates error:', error);
-
       return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
