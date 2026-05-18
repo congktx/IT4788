@@ -509,26 +509,46 @@ export class ProductsService {
     };
   }
 
-  async getCategories() {
-    const data = await this.productRepo
-      .createQueryBuilder('product')
-      .select('DISTINCT product.category_id', 'category_id')
-      .where('product.category_id IS NOT NULL')
-      .orderBy('product.category_id', 'ASC')
-      .getRawMany();
+  async getCategories(parentId?: number) {
+    const qb = this.categoryRepo.createQueryBuilder('category');
 
-    return data;
+    if (parentId !== undefined) {
+      qb.where('category.parent_id = :parentId', { parentId });
+    }
+
+    qb.orderBy('category.sort', 'ASC').addOrderBy('category.id', 'ASC');
+
+    return await qb.getMany();
   }
 
-  async getListBrands() {
-    const data = await this.productRepo
+  async getListBrands(
+    categoryId?: number,
+    index: number = 0,
+    count: number = 10,
+  ) {
+    const qb = this.productRepo
       .createQueryBuilder('product')
-      .select('DISTINCT product.brand_id', 'brand_id')
-      .where('product.brand_id IS NOT NULL')
+      .select('DISTINCT product.brand_id', 'id')
+      .where('product.brand_id IS NOT NULL');
+
+    if (
+      categoryId !== undefined &&
+      categoryId !== null &&
+      categoryId !== 0
+    ) {
+      qb.andWhere('product.category_id = :categoryId', { categoryId });
+    }
+
+    const rows = await qb
       .orderBy('product.brand_id', 'ASC')
+      .offset(index)
+      .limit(count)
       .getRawMany();
 
-    return data;
+    return rows.map((item) => ({
+      id: item.id,
+      brand_name: String(item.id),
+    }));
   }
 
   //getProductById(1, true): co variants, getProductById(1): khong co
@@ -539,14 +559,201 @@ export class ProductsService {
     });
   }
 
-  async getListProducts(index: number, count: number) {
-    const products = await this.productRepo.find({
-      order: { id: 'DESC' },
-      skip: index,
-      take: count,
+  async getListProducts(query: any) {
+    const {
+      category_id,
+      keyword,
+      brand_id,
+      product_size_id,
+      price_min,
+      price_max,
+      condition,
+      order,
+      latitude,
+      longitude,
+      last_id,
+      index = 0,
+      count = 10,
+    } = query;
+
+    const qb = this.productRepo
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.variants', 'variant')
+      .leftJoinAndSelect('product.likes', 'likes')
+      .leftJoinAndSelect('product.comments', 'comments');
+
+    if (category_id !== undefined) {
+      qb.andWhere('product.category_id = :category_id', { category_id });
+    }
+
+    if (keyword !== undefined && keyword !== '') {
+      qb.andWhere(
+        '(product.title LIKE :keyword OR product.description LIKE :keyword)',
+        { keyword: `%${keyword}%` },
+      );
+    }
+
+    if (brand_id !== undefined) {
+      qb.andWhere('product.brand_id = :brand_id', { brand_id });
+    }
+
+    if (product_size_id !== undefined && product_size_id !== 0) {
+      qb.andWhere('variant.id = :product_size_id', { product_size_id });
+    }
+
+    if (price_min !== undefined) {
+      qb.andWhere('product.price >= :price_min', { price_min });
+    }
+
+    if (price_max !== undefined) {
+      qb.andWhere('product.price <= :price_max', { price_max });
+    }
+
+    if (condition !== undefined && condition !== '') {
+      qb.andWhere('product.condition = :condition', { condition });
+    }
+
+    if (last_id !== undefined) {
+      qb.andWhere('product.id < :last_id', { last_id });
+    }
+
+    switch (order) {
+      case 'price_asc':
+        qb.orderBy('product.price', 'ASC');
+        break;
+      case 'price_desc':
+        qb.orderBy('product.price', 'DESC');
+        break;
+      case 'created_desc':
+        qb.orderBy('product.created_at', 'DESC');
+        break;
+      case 'like_desc':
+        qb.loadRelationCountAndMap('product.like_count', 'product.likes');
+        qb.orderBy('product.like_count', 'DESC');
+        break;
+      case 'comment_desc':
+        qb.loadRelationCountAndMap('product.comment_count', 'product.comments');
+        qb.orderBy('product.comment_count', 'DESC');
+        break;
+      case 'discount_percent_desc':
+        qb.addSelect(
+          '(CASE WHEN product.price > 0 AND product.price_discount IS NOT NULL THEN ((product.price - product.price_discount) / product.price) ELSE 0 END)',
+          'discount_percent_value',
+        );
+        qb.orderBy('discount_percent_value', 'DESC');
+        break;
+      case 'discount_value_desc':
+        qb.addSelect(
+          '(CASE WHEN product.price_discount IS NOT NULL THEN (product.price - product.price_discount) ELSE 0 END)',
+          'discount_value',
+        );
+        qb.orderBy('discount_value', 'DESC');
+        break;
+      case 'distance_asc':
+        // Chưa có cột lat/lng của product/shop để tính đúng khoảng cách.
+        // Tạm fallback theo newest.
+        qb.orderBy('product.id', 'DESC');
+        break;
+      default:
+        qb.orderBy('product.id', 'DESC');
+        break;
+    }
+
+    qb.skip(index).take(count);
+
+    const products = await qb.getMany();
+
+    return products.map((p) => {
+      const likeCount = p.likes ? p.likes.length : 0;
+      const commentCount = p.comments ? p.comments.length : 0;
+      const variants = p.variants || [];
+      const isStock = variants.some((v: any) => Number(v.stock) > 0);
+
+      return {
+        id: String(p.id),
+        name: p.title || '',
+        price: p.price ? String(p.price) : '0',
+        price_new:
+          p.price_discount !== undefined && p.price_discount !== null
+            ? String(p.price_discount)
+            : '0',
+        image: p.image_urls && p.image_urls.length > 0 ? p.image_urls[0] : null,
+        video: p.videos && p.videos.length > 0 ? p.videos[0] : null,
+        like: String(likeCount),
+        comment: String(commentCount),
+        is_liked: false,
+        is_stock: isStock,
+        variants: variants.map((v: any) => ({
+          id: String(v.id),
+          size: v.size,
+          color: v.color,
+          stock: String(v.stock ?? 0),
+        })),
+      };
+    });
+  }
+
+  async getProductDetail(productId: number, authUserId?: number) {
+    const product = await this.productRepo.findOne({
+      where: { id: productId },
+      relations: ['seller', 'variants', 'likes', 'comments', 'category'],
     });
 
-    return products;
+    if (!product) {
+      return null;
+    }
+
+    const likeCount = product.likes ? product.likes.length : 0;
+    const commentCount = product.comments ? product.comments.length : 0;
+
+    const isLiked =
+      product.likes?.some((like: any) => like.user_id === authUserId) ?? false;
+
+    const canEdit = product.seller_id === authUserId;
+
+    return {
+      id: String(product.id),
+      name: product.title || '',
+      price: product.price ? String(product.price) : '0',
+      described: product.description || '',
+      created: product.created_at,
+      like: String(likeCount),
+      comment: String(commentCount),
+      is_liked: isLiked,
+      image: product.image_urls || [],
+      video: [],
+      size: (product.variants || []).map((v: any) => ({
+        id: String(v.id),
+        size: v.size,
+        color: v.color,
+        stock: String(v.stock ?? 0),
+      })),
+      brand:
+        product.brand_id !== undefined && product.brand_id !== null
+          ? {
+              id: String(product.brand_id),
+              brand_name: String(product.brand_id),
+            }
+          : null,
+      seller: product.seller
+        ? {
+            id: String(product.seller.id),
+            username: product.seller.username || '',
+            avatar: product.seller.avatar || '',
+            fullname: product.seller.fullname || '',
+          }
+        : null,
+      category: product.category
+        ? {
+            id: String(product.category.id),
+            name: product.category.name,
+            parent_id: product.category.parent_id ?? 0,
+          }
+        : null,
+      can_edit: canEdit,
+      best_offers: [],
+      messages: [],
+    };
   }
 
   async getCommentsProduct(productId: number, index: number, count: number) {
