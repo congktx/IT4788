@@ -235,7 +235,10 @@ export class AuthService {
       return buildResponse(APP_RESPONSE.OK, { otp: otp });
     } catch (error) {
       console.error('createCodeResetPassword error:', error);
-      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, {
+        detail: error.message,
+        stack: error.stack
+      });
     }
   }
 

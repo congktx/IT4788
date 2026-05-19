@@ -16,6 +16,7 @@ describe('Products - Get List Products (e2e)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let accessToken: string;
+  let baseURL: string | any;
 
   // Lưu ID của các sản phẩm đã tạo để kiểm tra
   const createdProductIds: number[] = [];
@@ -38,19 +39,21 @@ describe('Products - Get List Products (e2e)', () => {
 
     dataSource = app.get<DataSource>(DataSource);
 
+    baseURL = process.env.TEST_API_URL || app.getHttpServer();
+
     // Login để lấy token
     const { phone_number, password } = context;
-    let loginRes = await request(app.getHttpServer())
+    let loginRes = await request(baseURL)
       .post('/auth/login')
       .send({ phone_number, password });
 
     // Nếu user không tồn tại, tự động tạo lại
     if (loginRes.body.code === '9995') {
-      await request(app.getHttpServer())
+      await request(baseURL)
         .post('/auth/signup')
         .send({ phone_number, password, uuid: 'auto-recreate-user' });
 
-      loginRes = await request(app.getHttpServer())
+      loginRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number, password });
     }
@@ -100,13 +103,12 @@ describe('Products - Get List Products (e2e)', () => {
 
     // Tạo 3 sản phẩm để test phân trang
     for (let i = 1; i <= 3; i++) {
-      const addRes = await request(app.getHttpServer())
+      const addRes = await request(baseURL)
         .post('/api/add_product')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
-          title: `SP GetList Test ${i}`,
-          price: 100000 * i,
-          price_discount: 90000 * i,
+          title: `MacBook Pro M${i}`,
+          price: 15000000 * i,
           description: `Mô tả sản phẩm test ${i}`,
           category_id: category.id,
           ship_from_id: address.id,
@@ -133,7 +135,7 @@ describe('Products - Get List Products (e2e)', () => {
 
 
   it('TC-01: (Thành công) - Lấy danh sách sản phẩm với index=0, count=10', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: 0, count: 10 });
 
@@ -144,7 +146,7 @@ describe('Products - Get List Products (e2e)', () => {
   });
 
   it('TC-02: (Thành công) - Phân trang: lấy count=1 ở index=0', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: 0, count: 1 });
 
@@ -156,11 +158,11 @@ describe('Products - Get List Products (e2e)', () => {
 
   it('TC-03: (Thành công) - Phân trang: 2 trang dữ liệu không trùng nhau', async () => {
     // Lấy trang 1 và trang 2, đảm bảo không có sản phẩm nào bị lặp
-    const resPage1 = await request(app.getHttpServer())
+    const resPage1 = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: 0, count: 2 });
 
-    const resPage2 = await request(app.getHttpServer())
+    const resPage2 = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: 2, count: 2 });
 
@@ -177,7 +179,7 @@ describe('Products - Get List Products (e2e)', () => {
   });
 
   it('TC-04: (Thành công) - Kiểm tra cấu trúc dữ liệu trả về', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: 0, count: 1 });
 
@@ -193,7 +195,7 @@ describe('Products - Get List Products (e2e)', () => {
   });
 
   it('TC-05: (Thành công) - Sản phẩm trả về theo thứ tự id DESC (mới nhất trước)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: 0, count: 10 });
 
@@ -213,7 +215,7 @@ describe('Products - Get List Products (e2e)', () => {
   // ═══════════════════════════════════════════════
 
   it('TC-06: (Thất bại) - Thiếu cả index và count', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({});
 
@@ -222,7 +224,7 @@ describe('Products - Get List Products (e2e)', () => {
   });
 
   it('TC-07: (Thất bại) - Thiếu index', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ count: 10 });
 
@@ -231,7 +233,7 @@ describe('Products - Get List Products (e2e)', () => {
   });
 
   it('TC-08: (Thất bại) - Thiếu count', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: 0 });
 
@@ -244,7 +246,7 @@ describe('Products - Get List Products (e2e)', () => {
   // ═══════════════════════════════════════════════
 
   it('TC-09: (Thất bại) - index quá lớn, vượt ngoài dữ liệu', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: 999999, count: 10 });
 
@@ -253,7 +255,7 @@ describe('Products - Get List Products (e2e)', () => {
   });
 
   it('TC-10: (Thất bại) - count=0, không lấy sản phẩm nào', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: 0, count: 0 });
 
@@ -268,7 +270,7 @@ describe('Products - Get List Products (e2e)', () => {
 
   it('TC-11: (Thành công) - Gọi API mà không cần đăng nhập (API công khai)', async () => {
     // get_list_products KHÔNG có bảo vệ AuthGuard → ai cũng gọi được
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: 0, count: 5 });
 
@@ -282,7 +284,7 @@ describe('Products - Get List Products (e2e)', () => {
   // ═══════════════════════════════════════════════
 
   it('TC-12: (Thành công) - count lớn hơn tổng số sản phẩm', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: 0, count: 99999 });
 
@@ -295,7 +297,7 @@ describe('Products - Get List Products (e2e)', () => {
   it('TC-13: (Thành công) - index và count là chuỗi số ("0", "5") vẫn hoạt động', async () => {
     // Controller dùng Number() để chuyển đổi kiểu
     // Chuỗi "0" !== undefined nên vẫn qua được bước kiểm tra thiếu tham số
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: '0', count: '5' });
 
@@ -304,7 +306,7 @@ describe('Products - Get List Products (e2e)', () => {
   });
 
   it('TC-14: (Kiểm tra) - index là chuỗi chữ ("abc") → NaN, kết quả phụ thuộc CSDL', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: 'abc', count: 5 });
 
@@ -316,7 +318,7 @@ describe('Products - Get List Products (e2e)', () => {
   });
 
   it('TC-15: (Kiểm tra) - index âm (-1)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: -1, count: 5 });
 
@@ -326,7 +328,7 @@ describe('Products - Get List Products (e2e)', () => {
   });
 
   it('TC-16: (Kiểm tra) - count âm (-5)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: 0, count: -5 });
 
@@ -340,7 +342,7 @@ describe('Products - Get List Products (e2e)', () => {
   // ═══════════════════════════════════════════════
 
   it('TC-17: (Thất bại) - Không gửi body (request rỗng)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products');
 
     // Không gửi body → index và count đều undefined → thiếu tham số → 1002
@@ -349,7 +351,7 @@ describe('Products - Get List Products (e2e)', () => {
   });
 
   it('TC-18: (Thất bại) - index=null, count=null', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_list_products')
       .send({ index: null, count: null });
 

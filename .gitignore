@@ -5,3 +5,6 @@ node_modules
 migrations
 redis-data
 mysql_data
+.claude
+.codegraph
+.github

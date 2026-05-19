@@ -23,6 +23,7 @@ describe('Products - Delete Product (e2e)', () => {
   let productIdA: number;
   let validCategoryId: number;
   let validShipFromId: number;
+  let baseURL: string | any;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -34,36 +35,43 @@ describe('Products - Delete Product (e2e)', () => {
     await app.init();
 
     dataSource = app.get<DataSource>(DataSource);
+    baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // 1. Setup User A (Chủ sản phẩm)
     const contextPath = path.join(__dirname, '..', 'auth', 'test-context.json');
     const context = JSON.parse(fs.readFileSync(contextPath, 'utf-8'));
-    const loginARes = await request(app.getHttpServer())
+    let loginARes = await request(baseURL)
       .post('/auth/login')
       .send({ phone_number: context.phone_number, password: context.password });
+      
+    if (loginARes.body.code === '9995') {
+      await request(baseURL)
+        .post('/auth/signup')
+        .send({ phone_number: context.phone_number, password: context.password, uuid: 'user-a-delete-uuid' });
+      loginARes = await request(baseURL)
+        .post('/auth/login')
+        .send({ phone_number: context.phone_number, password: context.password });
+    }
+    
     tokenUserA = loginARes.body.data.token;
     const userIdA = loginARes.body.data.id;
 
-    // 2. Setup User B (Kẻ đi xóa trộm) - Lấy từ DB để không tạo rác
-    const userRepo = dataSource.getRepository(User);
-    let userB = await userRepo.findOne({ where: { id: Not(userIdA) } });
+    // 2. Setup User B (Kẻ đi xóa trộm) - Sử dụng API để tương thích server remote
+    const phoneB = '0988888889';
+    const passB = '123456';
+    let loginBRes = await request(baseURL)
+      .post('/auth/login')
+      .send({ phone_number: phoneB, password: passB });
 
-    if (!userB) {
-      userB = await userRepo.save({
-        phone_number: '0977777777',
-        password: 'hashedpassword',
-        role: 'soldier',
-        username: 'user_b_delete',
-        uuid: 'user-b-delete-uuid'
-      });
+    if (loginBRes.body.code === '9995') {
+      await request(baseURL)
+        .post('/auth/signup')
+        .send({ phone_number: phoneB, password: passB, uuid: 'user-b-delete-uuid' });
+      loginBRes = await request(baseURL)
+        .post('/auth/login')
+        .send({ phone_number: phoneB, password: passB });
     }
-
-    const jwtService = app.get<JwtService>(JwtService);
-    tokenUserB = await jwtService.signAsync({
-      sub: userB.id,
-      username: userB.username,
-      role: userB.role,
-    });
+    tokenUserB = loginBRes.body.data.token;
 
     // 3. Chuẩn bị Category & Address cho User A
     const categoryRepo = dataSource.getRepository(Category);
@@ -91,14 +99,14 @@ describe('Products - Delete Product (e2e)', () => {
     validShipFromId = address.id;
 
     // 4. Tạo sản phẩm của User A
-    const productRes = await request(app.getHttpServer())
+    const productRes = await request(baseURL)
       .post('/api/add_product')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({
-        title: 'Sản phẩm của User A',
-        price: 1000, price_discount: 900, description: 'Mô tả',
+        title: 'iPhone 13 128GB (Sản phẩm User A)',
+        price: 15000000, description: 'Điện thoại iPhone 13 chính hãng',
         category_id: validCategoryId, ship_from_id: validShipFromId,
-        variants: [{ size: 'M', color: 'Red', stock: 10, weight: 1 }]
+        variants: [{ size: '128GB', color: 'Blue', stock: 10, weight: 0.5 }]
       });
 
     productIdA = productRes.body.data?.id;
@@ -112,7 +120,7 @@ describe('Products - Delete Product (e2e)', () => {
   });
 
   it('TC-01: (Thất bại) - User B cố tình xóa sản phẩm của User A', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .delete(`/api/delete/${productIdA}`)
       .set('Authorization', `Bearer ${tokenUserB}`);
 
@@ -121,7 +129,7 @@ describe('Products - Delete Product (e2e)', () => {
   });
 
   it('TC-02: (Thất bại) - Xóa sản phẩm không tồn tại', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .delete('/api/delete/999999')
       .set('Authorization', `Bearer ${tokenUserA}`);
 
@@ -130,7 +138,7 @@ describe('Products - Delete Product (e2e)', () => {
   });
 
   it('TC-03: (Thất bại) - Không gửi Token', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .delete(`/api/delete/${productIdA}`);
 
     expect(res.body.code).toBe('9998'); // TOKEN_INVALID
@@ -138,7 +146,7 @@ describe('Products - Delete Product (e2e)', () => {
   });
 
   it('TC-04: (Thành công) - User A xóa đúng sản phẩm của mình', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .delete(`/api/delete/${productIdA}`)
       .set('Authorization', `Bearer ${tokenUserA}`);
 
@@ -146,7 +154,7 @@ describe('Products - Delete Product (e2e)', () => {
     expect(res.body.message).toBe('OK.');
 
     // Kiểm tra lại qua API lấy chi tiết sản phẩm
-    const checkRes = await request(app.getHttpServer())
+    const checkRes = await request(baseURL)
       .post('/api/get_products')
       .send({ id: productIdA });
 
@@ -155,20 +163,20 @@ describe('Products - Delete Product (e2e)', () => {
 
   it('TC-05: (Thành công) - User A thêm 1 sản phẩm rồi ngay lập tức xóa đi', async () => {
     // 1. Tạo mới 1 sản phẩm
-    const productRes = await request(app.getHttpServer())
+    const productRes = await request(baseURL)
       .post('/api/add_product')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({
-        title: 'Sản phẩm mới để test xóa',
-        price: 500, price_discount: 400, description: 'Mô tả',
+        title: 'Tai nghe AirPods 3',
+        price: 4500000, description: 'Tai nghe AirPods thế hệ thứ 3',
         category_id: validCategoryId, ship_from_id: validShipFromId,
-        variants: [{ size: 'S', color: 'Blue', stock: 5, weight: 1 }]
+        variants: [{ size: 'Tiêu chuẩn', color: 'Trắng', stock: 5, weight: 0.1 }]
       });
 
     const newProductId = productRes.body.data.id;
 
     // 2. Ngay lập tức xóa
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .delete(`/api/delete/${newProductId}`)
       .set('Authorization', `Bearer ${tokenUserA}`);
 
@@ -178,27 +186,27 @@ describe('Products - Delete Product (e2e)', () => {
 
   it('TC-06: (Thất bại) - User A xóa 1 sản phẩm, rồi lại xóa tiếp sản phẩm đó thêm lần nữa', async () => {
     // 1. Tạo mới 1 sản phẩm
-    const productRes = await request(app.getHttpServer())
+    const productRes = await request(baseURL)
       .post('/api/add_product')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({
-        title: 'Sản phẩm test xóa 2 lần',
-        price: 500, price_discount: 400, description: 'Mô tả',
+        title: 'Củ sạc 20W Apple',
+        price: 550000, description: 'Củ sạc nhanh 20W',
         category_id: validCategoryId, ship_from_id: validShipFromId,
-        variants: [{ size: 'S', color: 'Blue', stock: 5, weight: 1 }]
+        variants: [{ size: 'Tiêu chuẩn', color: 'Trắng', stock: 20, weight: 0.1 }]
       });
 
     const newProductId = productRes.body.data.id;
 
     // 2. Xóa lần 1
-    const res1 = await request(app.getHttpServer())
+    const res1 = await request(baseURL)
       .delete(`/api/delete/${newProductId}`)
       .set('Authorization', `Bearer ${tokenUserA}`);
 
     expect(res1.body.code).toBe('1000');
 
     // 3. Xóa lần 2
-    const res2 = await request(app.getHttpServer())
+    const res2 = await request(baseURL)
       .delete(`/api/delete/${newProductId}`)
       .set('Authorization', `Bearer ${tokenUserA}`);
 

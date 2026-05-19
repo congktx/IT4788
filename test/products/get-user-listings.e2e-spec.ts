@@ -22,6 +22,7 @@ describe('Products - Get User Listings (e2e)', () => {
   let userIdA: number;
   let userIdB: number;
   let categoryId: number;
+  let baseURL: string | any;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -33,30 +34,43 @@ describe('Products - Get User Listings (e2e)', () => {
     await app.init();
 
     dataSource = app.get<DataSource>(DataSource);
+    baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // 1. Setup User A
     const contextPath = path.join(__dirname, '..', 'auth', 'test-context.json');
     const context = JSON.parse(fs.readFileSync(contextPath, 'utf-8'));
-    const loginARes = await request(app.getHttpServer())
+    let loginARes = await request(baseURL)
       .post('/auth/login')
       .send({ phone_number: context.phone_number, password: context.password });
+
+    if (loginARes.body.code === '9995') {
+      await request(baseURL)
+        .post('/auth/signup')
+        .send({ phone_number: context.phone_number, password: context.password, uuid: 'user-a-listing' });
+      loginARes = await request(baseURL)
+        .post('/auth/login')
+        .send({ phone_number: context.phone_number, password: context.password });
+    }
     tokenUserA = loginARes.body.data.token;
     userIdA = Number(loginARes.body.data.id);
 
-    // 2. Setup User B (Sử dụng DB & JwtService để tránh tạo rác)
-    const userRepo = dataSource.getRepository(User);
-    let userB = await userRepo.findOne({ where: { id: Not(userIdA) } });
-    if (!userB) {
-      userB = await userRepo.save({
-        phone_number: '0955555555', password: 'mock', role: 'soldier',
-        username: 'user_listing_b', uuid: 'mock-uuid-listing'
-      });
+    // 2. Setup User B qua API để test Remote
+    const phoneB = '0955555555';
+    const passB = '123456';
+    let loginBRes = await request(baseURL)
+      .post('/auth/login')
+      .send({ phone_number: phoneB, password: passB });
+
+    if (loginBRes.body.code === '9995') {
+      await request(baseURL)
+        .post('/auth/signup')
+        .send({ phone_number: phoneB, password: passB, uuid: 'mock-uuid-listing' });
+      loginBRes = await request(baseURL)
+        .post('/auth/login')
+        .send({ phone_number: phoneB, password: passB });
     }
-    userIdB = userB.id;
-    const jwtService = app.get<JwtService>(JwtService);
-    tokenUserB = await jwtService.signAsync({
-      sub: userB.id, username: userB.username, role: userB.role,
-    });
+    tokenUserB = loginBRes.body.data.token;
+    userIdB = Number(loginBRes.body.data.id);
 
     // 3. Chuẩn bị dữ liệu nền (Category & Address)
     const categoryRepo = dataSource.getRepository(Category);
@@ -82,24 +96,24 @@ describe('Products - Get User Listings (e2e)', () => {
     }
 
     // 4. Tạo sản phẩm cho User A (để test)
-    await request(app.getHttpServer())
+    await request(baseURL)
       .post('/api/add_product')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({
-        title: 'Macbook Pro M3',
-        price: 3000, price_discount: 2900, description: 'Laptop xịn',
+        title: 'MacBook Pro M3 Max',
+        price: 80000000, description: 'Laptop Apple mạnh nhất hiện nay',
         category_id: categoryId, ship_from_id: addressA.id,
-        variants: [{ size: '14 inch', color: 'Silver', stock: 5, weight: 2 }]
+        variants: [{ size: '16 inch', color: 'Space Black', stock: 5, weight: 2.1 }]
       });
 
-    await request(app.getHttpServer())
+    await request(baseURL)
       .post('/api/add_product')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({
-        title: 'Tai nghe AirPods',
-        price: 200, price_discount: 150, description: 'Tai nghe Bluetooth',
+        title: 'Tai nghe AirPods Pro 2',
+        price: 5500000, description: 'Tai nghe chống ồn chủ động',
         category_id: categoryId, ship_from_id: addressA.id,
-        variants: [{ size: 'Standard', color: 'White', stock: 50, weight: 1 }]
+        variants: [{ size: 'Tiêu chuẩn', color: 'Trắng', stock: 50, weight: 0.1 }]
       });
   });
 
@@ -111,7 +125,7 @@ describe('Products - Get User Listings (e2e)', () => {
   });
 
   it('TC-01: (Thành công) - Lấy danh sách sản phẩm của chính mình', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_user_listings')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({ index: 0, count: 10 });
@@ -128,7 +142,7 @@ describe('Products - Get User Listings (e2e)', () => {
   });
 
   it('TC-02: (Thành công) - Lấy danh sách sản phẩm của User A bằng token của User B', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_user_listings')
       .set('Authorization', `Bearer ${tokenUserB}`)
       .send({ index: 0, count: 10, user_id: userIdA });
@@ -140,7 +154,7 @@ describe('Products - Get User Listings (e2e)', () => {
   });
 
   it('TC-03: (Thất bại) - Không gửi token', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_user_listings')
       .send({ index: 0, count: 10 });
 
@@ -149,7 +163,7 @@ describe('Products - Get User Listings (e2e)', () => {
   });
 
   it('TC-04: (Thất bại) - Lấy danh sách của user_id không tồn tại', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_user_listings')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({ index: 0, count: 10, user_id: 999999 });
@@ -160,35 +174,35 @@ describe('Products - Get User Listings (e2e)', () => {
 
   it('TC-05: (Thành công) - Lọc sản phẩm theo keyword (case-insensitive & partial match)', async () => {
     // 1. Tìm bằng từ khóa đầy đủ
-    const res1 = await request(app.getHttpServer())
+    const res1 = await request(baseURL)
       .post('/api/get_user_listings')
       .set('Authorization', `Bearer ${tokenUserA}`)
-      .send({ index: 0, count: 10, keyword: 'Macbook' });
+      .send({ index: 0, count: 10, keyword: 'MacBook' });
 
     expect(String(res1.body.code)).toBe('1000');
     expect(res1.body.message).toBe('OK.');
-    expect(res1.body.data.some((p: any) => p.name.includes('Macbook'))).toBe(true);
+    expect(res1.body.data.some((p: any) => p.name.includes('MacBook'))).toBe(true);
 
 
-    const res2 = await request(app.getHttpServer())
+    const res2 = await request(baseURL)
       .post('/api/get_user_listings')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({ index: 0, count: 10, keyword: 'mac' });
 
     expect(String(res2.body.code)).toBe('1000');
-    expect(res2.body.data.some((p: any) => p.name.includes('Macbook'))).toBe(true);
+    expect(res2.body.data.some((p: any) => p.name.includes('MacBook'))).toBe(true);
     expect(res2.body.data.some((p: any) => p.name.includes('AirPods'))).toBe(false);
   });
 
   it('TC-06: (Thất bại) - Lấy danh sách sản phẩm của người đã block mình', async () => {
     // 1. User B tiến hành block User A
-    await request(app.getHttpServer())
+    await request(baseURL)
       .post('/set_user_block')
       .set('Authorization', `Bearer ${tokenUserB}`)
       .send({ user_id: userIdA, type: 0 });
 
     // 2. User A cố gắng xem sản phẩm của User B
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_user_listings')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({ index: 0, count: 10, user_id: userIdB });
@@ -198,7 +212,7 @@ describe('Products - Get User Listings (e2e)', () => {
     expect(res.body.message).toBe('Not access.');
 
     // 4. Clean up: User B unblock User A để không ảnh hưởng DB
-    await request(app.getHttpServer())
+    await request(baseURL)
       .post('/set_user_block')
       .set('Authorization', `Bearer ${tokenUserB}`)
       .send({ user_id: userIdA, type: 1 });

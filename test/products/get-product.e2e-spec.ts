@@ -19,6 +19,7 @@ describe('Products - Get Product (e2e)', () => {
 
   // ID sản phẩm thật, được tạo trong beforeAll để dùng cho các test case thành công
   let validProductId: number;
+  let baseURL: string | any;
 
   beforeAll(async () => {
     // Đọc thông tin đăng nhập từ file context (đã được tạo bởi test 1-signup)
@@ -38,18 +39,20 @@ describe('Products - Get Product (e2e)', () => {
 
     dataSource = app.get<DataSource>(DataSource);
 
+    baseURL = process.env.TEST_API_URL || app.getHttpServer();
+
     // Đăng nhập để lấy token (cần token để tạo sản phẩm mẫu)
     const { phone_number, password } = context;
-    let loginRes = await request(app.getHttpServer())
+    let loginRes = await request(baseURL)
       .post('/auth/login')
       .send({ phone_number, password });
 
     // Nếu tài khoản chưa tồn tại (do DB bị reset), tự động đăng ký lại
     if (loginRes.body.code === '9995') {
-      await request(app.getHttpServer())
+      await request(baseURL)
         .post('/auth/signup')
         .send({ phone_number, password, uuid: 'auto-recreate-user' });
-      loginRes = await request(app.getHttpServer())
+      loginRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number, password });
     }
@@ -85,17 +88,16 @@ describe('Products - Get Product (e2e)', () => {
     }
 
     // Tạo 1 sản phẩm mẫu để dùng cho các test case "thành công"
-    const addRes = await request(app.getHttpServer())
+    const addRes = await request(baseURL)
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
-        title: 'SP GetProduct Test',
-        price: 150000,
-        price_discount: 120000,
-        description: 'San pham de test get_products',
+        title: 'Apple Watch Ultra',
+        price: 20000000,
+        description: 'Apple Watch Ultra viền Titanium',
         category_id: category.id,
         ship_from_id: address.id,
-        variants: [{ size: 'L', color: 'Red', stock: 5, weight: 1.0 }]
+        variants: [{ size: '49mm', color: 'Titanium', stock: 5, weight: 0.1 }]
       });
 
     if (addRes.body.code === '1000' && addRes.body.data?.id) {
@@ -112,7 +114,7 @@ describe('Products - Get Product (e2e)', () => {
 
   // NHÓM 1: TRƯỜNG HỢP THÀNH CÔNG
   it('TC-01: (Thành công) - Lấy sản phẩm bằng ID hợp lệ', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: validProductId });
 
@@ -123,7 +125,7 @@ describe('Products - Get Product (e2e)', () => {
   });
 
   it('TC-02: (Thành công) - Kiểm tra cấu trúc dữ liệu trả về có đầy đủ các trường', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: validProductId });
 
@@ -140,20 +142,20 @@ describe('Products - Get Product (e2e)', () => {
 
 
   it('TC-03: (Thành công) - Dữ liệu trả về khớp với sản phẩm đã tạo', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: validProductId });
 
     expect(res.body.code).toBe('1000');
-    expect(res.body.data.title).toBe('SP GetProduct Test');
+    expect(res.body.data.title).toBe('Apple Watch Ultra');
     // price lưu dạng decimal trong DB nên có thể trả về dạng string
-    expect(Number(res.body.data.price)).toBe(150000);
+    expect(Number(res.body.data.price)).toBe(20000000);
   });
 
 
   // NHÓM 2: THIẾU THAM SỐ (mã 1002)
   it('TC-04: (Thất bại) - Không gửi trường id trong body', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products')
       .send({});
 
@@ -163,7 +165,7 @@ describe('Products - Get Product (e2e)', () => {
 
 
   it('TC-05: (Thất bại) - Gửi id là chuỗi rỗng ""', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: '' });
 
@@ -172,7 +174,7 @@ describe('Products - Get Product (e2e)', () => {
   });
 
   it('TC-06: (Thất bại) - Gửi id = null', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: null });
 
@@ -182,7 +184,7 @@ describe('Products - Get Product (e2e)', () => {
 
 
   it('TC-07: (Thất bại) - Gửi id = 0 (falsy)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: 0 });
 
@@ -192,7 +194,7 @@ describe('Products - Get Product (e2e)', () => {
 
 
   it('TC-08: (Thất bại) - Không gửi body gì cả', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products');
 
     expect(res.body.code).toBe('1002');
@@ -202,7 +204,7 @@ describe('Products - Get Product (e2e)', () => {
   // NHÓM 3: SẢN PHẨM KHÔNG TỒN TẠI (mã 9992)
 
   it('TC-09: (Thất bại) - ID không tồn tại trong CSDL (id=999999)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: 999999 });
 
@@ -212,7 +214,7 @@ describe('Products - Get Product (e2e)', () => {
 
 
   it('TC-10: (Thất bại) - Gửi id âm (-1)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: -1 });
 
@@ -224,7 +226,7 @@ describe('Products - Get Product (e2e)', () => {
   // NHÓM 4: API CÔNG KHAI (KHÔNG CẦN ĐĂNG NHẬP)
 
   it('TC-11: (Thành công) - Gọi API không cần đăng nhập vẫn lấy được sản phẩm', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: validProductId });
 
@@ -238,7 +240,7 @@ describe('Products - Get Product (e2e)', () => {
   // NHÓM 5: GIÁ TRỊ BIÊN VÀ KIỂU DỮ LIỆU BẤT THƯỜNG
 
   it('TC-12: (Kiểm tra) - Gửi id là chuỗi chữ ("abc"), kết quả phụ thuộc CSDL', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: 'abc' });
 
@@ -249,7 +251,7 @@ describe('Products - Get Product (e2e)', () => {
 
 
   it('TC-13: (Kiểm tra) - Gửi id là chuỗi số, CSDL tự ép kiểu', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: String(validProductId) });
 
@@ -260,7 +262,7 @@ describe('Products - Get Product (e2e)', () => {
 
 
   it('TC-14: (Thất bại) - Gửi id là số thực (1.5)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: 1.5 });
 
@@ -271,7 +273,7 @@ describe('Products - Get Product (e2e)', () => {
 
 
   it('TC-15: (Thành công) - Gửi thêm trường thừa không ảnh hưởng kết quả', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: validProductId, name: 'fake', extra: 123 });
 

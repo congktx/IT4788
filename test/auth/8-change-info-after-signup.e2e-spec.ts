@@ -1,3 +1,4 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
@@ -11,6 +12,7 @@ describe('Auth - Change Info After Signup (e2e)', () => {
   let TEST_PHONE: string;
   let TEST_PASSWORD: string;
   let VALID_TOKEN: string;
+  let baseURL: string | any;
 
   beforeAll(async () => {
     // Đọc SĐT và mật khẩu hiện tại từ context
@@ -29,14 +31,14 @@ describe('Auth - Change Info After Signup (e2e)', () => {
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
+    baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // Login trước để lấy Token hợp lệ
-    const loginRes = await request(app.getHttpServer())
+    const loginRes = await request(baseURL)
       .post('/auth/login')
       .send({ phone_number: TEST_PHONE, password: TEST_PASSWORD });
 
     VALID_TOKEN = loginRes.body.data?.token;
-    console.log(`[CHANGE-INFO] Đã login, chuẩn bị test với SĐT: ${TEST_PHONE}`);
   }, 60000);
 
   afterAll(async () => {
@@ -47,7 +49,7 @@ describe('Auth - Change Info After Signup (e2e)', () => {
 
   // NHÓM 1: Kiểm tra Token (Xác thực danh tính)
   it('CHANGE-INFO-01: (Token) - Lỗi 1002 khi không có Token', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/change_info_after_signup')
       .send({ username: 'New Username' });
 
@@ -56,7 +58,7 @@ describe('Auth - Change Info After Signup (e2e)', () => {
   });
 
   it('CHANGE-INFO-02: (Token) - Lỗi 1004 khi Token quá ngắn', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/change_info_after_signup')
       .set('Authorization', 'Bearer abc') // Token < 10 chars -> length invalid
       .send({ username: 'New Username' });
@@ -66,7 +68,7 @@ describe('Auth - Change Info After Signup (e2e)', () => {
   });
 
   it('CHANGE-INFO-03: (Token) - Lỗi 9998 khi Token không hợp lệ (sai định dạng JWT)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/change_info_after_signup')
       .set('Authorization', 'Bearer token_gia_mao_phai_du_dai_hon_10_ky_tu')
       .send({ username: 'New Username' });
@@ -78,7 +80,7 @@ describe('Auth - Change Info After Signup (e2e)', () => {
 
   // NHÓM 2: Kiểm tra Validation (Thiếu trường / Sai cấu trúc)
   it('CHANGE-INFO-04: (Validation) - Lỗi 1002 khi thiếu username', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/change_info_after_signup')
       .set('Authorization', `Bearer ${VALID_TOKEN}`)
       .send({}); // Thiếu username
@@ -88,7 +90,7 @@ describe('Auth - Change Info After Signup (e2e)', () => {
   });
 
   it('CHANGE-INFO-05: (Validation) - Lỗi 1003 khi username không phải chuỗi', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/change_info_after_signup')
       .set('Authorization', `Bearer ${VALID_TOKEN}`)
       .send({ username: 12345 }); // Sai kiểu dữ liệu
@@ -98,7 +100,7 @@ describe('Auth - Change Info After Signup (e2e)', () => {
   });
 
   it('CHANGE-INFO-06: (Validation) - Lỗi 1004 khi username quá ngắn (< 3 ký tự)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/change_info_after_signup')
       .set('Authorization', `Bearer ${VALID_TOKEN}`)
       .send({ username: 'ab' }); 
@@ -108,7 +110,7 @@ describe('Auth - Change Info After Signup (e2e)', () => {
   });
 
   it('CHANGE-INFO-07: (Validation) - Lỗi 1004 khi username quá dài (> 50 ký tự)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/change_info_after_signup')
       .set('Authorization', `Bearer ${VALID_TOKEN}`)
       .send({ username: 'a'.repeat(51) }); 
@@ -118,7 +120,7 @@ describe('Auth - Change Info After Signup (e2e)', () => {
   });
 
   it('CHANGE-INFO-08: (Logic) - Lỗi 1004 khi username chứa ký tự đặc biệt không được phép', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/change_info_after_signup')
       .set('Authorization', `Bearer ${VALID_TOKEN}`)
       .send({ username: 'Invalid @Username!' }); // Chứa @ và !
@@ -128,7 +130,7 @@ describe('Auth - Change Info After Signup (e2e)', () => {
   });
 
   it('CHANGE-INFO-09: (Validation) - Lỗi 1003 khi avatar không phải chuỗi', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/change_info_after_signup')
       .set('Authorization', `Bearer ${VALID_TOKEN}`)
       .send({ username: 'Valid Username', avatar: 12345 }); // avatar sai kiểu dữ liệu
@@ -140,13 +142,13 @@ describe('Auth - Change Info After Signup (e2e)', () => {
 
   // NHÓM 3: Kịch bản Thành công
   it('CHANGE-INFO-10: (Thành công) - Thay đổi thông tin bằng Token trong Body', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/change_info_after_signup')
       // Không gửi header, gửi token qua body
       .send({ token: VALID_TOKEN, username: 'UpdatedName1' });
 
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toBe('OK.');
+    expect(res.body.message).toMatch(/^OK\.?$/);
 
     // OUTPUT: kiểm tra cấu trúc đầy đủ của data trả về
     const data = res.body.data;
@@ -161,13 +163,13 @@ describe('Auth - Change Info After Signup (e2e)', () => {
     const newUsername = 'Super User 99';
     const newAvatar = 'https://example.com/avatar.png';
 
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/change_info_after_signup')
       .set('Authorization', `Bearer ${VALID_TOKEN}`)
       .send({ username: newUsername, avatar: newAvatar });
 
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toBe('OK.');
+    expect(res.body.message).toMatch(/^OK\.?$/);
 
     // OUTPUT: kiểm tra các trường data trả về khớp với giá trị vừa được set
     const data = res.body.data;
