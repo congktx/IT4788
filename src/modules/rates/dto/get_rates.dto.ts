@@ -10,6 +10,16 @@ export class GetRatesDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsInt()
+  product_id?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  purchase_id?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
   @Min(0)
   @Max(5)
   level?: number;

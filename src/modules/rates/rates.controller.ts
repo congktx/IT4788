@@ -42,6 +42,8 @@ export class RatesController {
         dto.index,
         dto.count,
         dto.level,
+        dto.product_id,
+        dto.purchase_id,
       );
 
       if (!data || data.length === 0) {
