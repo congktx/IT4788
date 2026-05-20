@@ -20,6 +20,9 @@ describe('Products - Get Product (e2e)', () => {
   // ID sản phẩm thật, được tạo trong beforeAll để dùng cho các test case thành công
   let validProductId: number;
   let baseURL: string | any;
+  let userId: number;
+  let tokenUserB: string;
+  let productBId: number;
 
   beforeAll(async () => {
     // Đọc thông tin đăng nhập từ file context (đã được tạo bởi test 1-signup)
@@ -58,7 +61,7 @@ describe('Products - Get Product (e2e)', () => {
     }
 
     accessToken = loginRes.body.data?.token;
-    const userId = Number(loginRes.body.data?.id);
+    userId = Number(loginRes.body.data?.id);
 
     // === CHUẨN BỊ DỮ LIỆU NỀN ===
     const categoryRepo = dataSource.getRepository(Category);
@@ -80,10 +83,10 @@ describe('Products - Get Product (e2e)', () => {
       let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
       if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
       address = await addressRepo.save({
-        user_id: userId, ward_id: ward.id, address_name: 'Home',
-        address_detail: '123 Test', lat: 21.0285, lng: 105.8542,
-        receiver_name: 'Nguoi nhan', phone: phone_number,
-        full_address: '123 Test, Dich Vong Hau, Ha Noi'
+        user_id: userId, ward_id: ward.id, address_name: 'Home Test',
+        address_detail: '123 Test St', lat: 21.0285, lng: 105.8542,
+        receiver_name: 'Test Receiver A', phone: phone_number,
+        full_address: '123 Test St, Dich Vong Hau, Ha Noi'
       });
     }
 
@@ -105,6 +108,35 @@ describe('Products - Get Product (e2e)', () => {
     }
 
     console.log(`[SETUP] Đã tạo sản phẩm mẫu với ID = ${validProductId}`);
+
+    // 2. Setup User B qua API để test Remote
+    const phoneB = '0955555555';
+    const passB = '123456';
+    let loginBRes = await request(baseURL)
+      .post('/auth/login')
+      .send({ phone_number: phoneB, password: passB });
+      
+    if (loginBRes.body.code === '9995') {
+      await request(baseURL)
+        .post('/auth/signup')
+        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test' });
+      loginBRes = await request(baseURL)
+        .post('/auth/login')
+        .send({ phone_number: phoneB, password: passB });
+    }
+    tokenUserB = loginBRes.body.data.token;
+
+    // User B tạo một sản phẩm mẫu
+    const addProductBRes = await request(baseURL)
+      .post('/api/add_product')
+      .set('Authorization', `Bearer ${tokenUserB}`)
+      .send({
+        title: 'MacBook Air M2',
+        price: 25000000, description: 'Sản phẩm của User B',
+        category_id: category.id, ship_from_id: address.id,
+        variants: [{ size: '13 inch', color: 'Midnight', stock: 5, weight: 1.2 }]
+      });
+    productBId = addProductBRes.body?.data?.id || 2;
   }, 60000);
 
   afterAll(async () => {
@@ -130,6 +162,7 @@ describe('Products - Get Product (e2e)', () => {
       .send({ id: validProductId });
 
     expect(res.body.code).toBe('1000');
+    expect(res.body.message).toBe('OK.');
     const product = res.body.data;
     expect(product).toHaveProperty('id');
     expect(product).toHaveProperty('title');
@@ -147,6 +180,7 @@ describe('Products - Get Product (e2e)', () => {
       .send({ id: validProductId });
 
     expect(res.body.code).toBe('1000');
+    expect(res.body.message).toBe('OK.');
     expect(res.body.data.title).toBe('Apple Watch Ultra');
     // price lưu dạng decimal trong DB nên có thể trả về dạng string
     expect(Number(res.body.data.price)).toBe(20000000);
@@ -257,6 +291,7 @@ describe('Products - Get Product (e2e)', () => {
 
     // CSDL tự chuyển chuỗi số thành số → tìm thấy sản phẩm → 1000
     expect(res.body.code).toBe('1000');
+    expect(res.body.message).toBe('OK.');
     expect(res.body.data.id).toBe(validProductId);
   });
 
@@ -278,6 +313,32 @@ describe('Products - Get Product (e2e)', () => {
       .send({ id: validProductId, name: 'fake', extra: 123 });
 
     expect(res.body.code).toBe('1000');
+    expect(res.body.message).toBe('OK.');
     expect(res.body.data.id).toBe(validProductId);
+  });
+
+  // NHÓM 6: KIỂM TRA BLOCK USER
+  it('TC-16: (Thất bại) - Không thể xem sản phẩm của người đã block mình', async () => {
+    // 1. User B block User A
+    await request(baseURL)
+      .post('/set_user_block')
+      .set('Authorization', `Bearer ${tokenUserB}`)
+      .send({ user_id: userId, type: 0 }); // 0 = block
+
+    // 2. User A cố gắng xem sản phẩm của User B
+    const res = await request(baseURL)
+      .post('/api/get_products')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ id: productBId });
+
+    // 3. Phải báo lỗi 1009 (Not Access) do đã bị block
+    expect(String(res.body.code)).toBe('1009');
+    expect(res.body.message).toBe('Not access.');
+
+    // 4. Clean up: User B unblock User A
+    await request(baseURL)
+      .post('/set_user_block')
+      .set('Authorization', `Bearer ${tokenUserB}`)
+      .send({ user_id: userId, type: 1 });
   });
 });

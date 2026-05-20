@@ -184,6 +184,7 @@ describe('Products - Get List Products (e2e)', () => {
       .send({ index: 0, count: 1 });
 
     expect(res.body.code).toBe('1000');
+    expect(res.body.message).toBe('OK.');
     expect(res.body.data.length).toBe(1);
 
     const product = res.body.data[0];
@@ -200,6 +201,7 @@ describe('Products - Get List Products (e2e)', () => {
       .send({ index: 0, count: 10 });
 
     expect(res.body.code).toBe('1000');
+    expect(res.body.message).toBe('OK.');
 
     const data = res.body.data;
     if (data.length >= 2) {

@@ -47,7 +47,7 @@ describe('Products - Get List Saved Search (e2e)', () => {
     tokenUserA = loginARes.body.data.token;
 
     // 2. Setup User B (Tài khoản mới tinh, không có lịch sử)
-    const phoneB = '0988888881';
+    const phoneB = '0955555555';
     const passB = '123456';
     let loginBRes = await request(baseURL)
       .post('/auth/login')
@@ -56,7 +56,7 @@ describe('Products - Get List Saved Search (e2e)', () => {
     if (loginBRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-        .send({ phone_number: phoneB, password: passB, uuid: 'user-empty-search' });
+        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test' });
       loginBRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number: phoneB, password: passB });

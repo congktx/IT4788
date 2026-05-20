@@ -23,7 +23,6 @@ describe('User - Get User Info (e2e)', () => {
   const INVALID_TOKEN = 'this.is.an.invalid.jwt.token';
 
   beforeAll(async () => {
-    // === Bước 1: Đọc dữ liệu từ file context (do 1-signup tạo ra) ===
     const contextPath = path.join(__dirname, 'test-context.json');
     if (!fs.existsSync(contextPath)) {
       throw new Error(
@@ -33,7 +32,6 @@ describe('User - Get User Info (e2e)', () => {
     const context = JSON.parse(fs.readFileSync(contextPath, 'utf-8'));
     MY_PHONE_NUMBER = context.phone_number;
 
-    // === Bước 2: Khởi động ứng dụng ===
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -44,8 +42,6 @@ describe('User - Get User Info (e2e)', () => {
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
     dataSource = app.get<DataSource>(DataSource);
 
-    // === Bước 3: Đăng nhập để lấy token hợp lệ ===
-    // Đã bỏ bước Signup dư thừa ở đây vì 1-signup đã làm điều đó
     const loginRes = await request(baseURL)
       .post('/auth/login')
       .send({
@@ -141,14 +137,14 @@ describe('User - Get User Info (e2e)', () => {
   // NHÓM 3: KIỂM TRA KHI XEM THÔNG TIN NGƯỜI KHÁC (Có truyền user_id)
   it('GET-INFO-04: (Thành công) - Xem thông tin người khác bằng 100% Thuần API', async () => {
     // 1. TẠO HOẶC LẤY TARGET USER BẰNG THUẦN API
-    const targetPhone = '0999888777';
-    const targetPassword = 'Password123!';
+    const targetPhone = '0955555555';
+    const targetPassword = '123456';
     let targetUserId = 0;
     let targetToken = '';
 
     const signupRes = await request(baseURL)
       .post('/auth/signup')
-      .send({ phone_number: targetPhone, password: targetPassword, uuid: 'target_uuid_123' });
+      .send({ phone_number: targetPhone, password: targetPassword, uuid: 'mock-user-test' });
 
     if (signupRes.body.code === '1000') {
       targetUserId = Number(signupRes.body.data.id);

@@ -57,7 +57,7 @@ describe('Products - Delete Product (e2e)', () => {
     const userIdA = loginARes.body.data.id;
 
     // 2. Setup User B (Kẻ đi xóa trộm) - Sử dụng API để tương thích server remote
-    const phoneB = '0988888889';
+    const phoneB = '0955555555';
     const passB = '123456';
     let loginBRes = await request(baseURL)
       .post('/auth/login')
@@ -66,7 +66,7 @@ describe('Products - Delete Product (e2e)', () => {
     if (loginBRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-        .send({ phone_number: phoneB, password: passB, uuid: 'user-b-delete-uuid' });
+        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test' });
       loginBRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number: phoneB, password: passB });
@@ -88,12 +88,11 @@ describe('Products - Delete Product (e2e)', () => {
       let province = await provinceRepo.findOne({ where: {} });
       if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
       let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-      if (!ward) ward = await wardRepo.save({ name: 'Ward Test', provinces_id: province.id });
+      if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
 
       address = await addressRepo.save({
-        user_id: userIdA, ward_id: ward.id, address_name: 'Home',
-        address_detail: '123 St', lat: 0, lng: 0, receiver_name: 'Test',
-        phone: context.phone_number, full_address: 'Full Address'
+        user_id: userIdA, ward_id: ward.id, address_name: 'Home Test',
+        address_detail: '123 Test St', lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver A', phone: context.phone_number, full_address: '123 Test St, Dich Vong Hau, Ha Noi'
       });
     }
     validShipFromId = address.id;
@@ -204,6 +203,7 @@ describe('Products - Delete Product (e2e)', () => {
       .set('Authorization', `Bearer ${tokenUserA}`);
 
     expect(res1.body.code).toBe('1000');
+    expect(res1.body.message).toBe('OK.');
 
     // 3. Xóa lần 2
     const res2 = await request(baseURL)

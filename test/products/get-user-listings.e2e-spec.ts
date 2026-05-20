@@ -64,7 +64,7 @@ describe('Products - Get User Listings (e2e)', () => {
     if (loginBRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-        .send({ phone_number: phoneB, password: passB, uuid: 'mock-uuid-listing' });
+        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test' });
       loginBRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number: phoneB, password: passB });
@@ -87,11 +87,11 @@ describe('Products - Get User Listings (e2e)', () => {
       let province = await provinceRepo.findOne({ where: {} });
       if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
       let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-      if (!ward) ward = await wardRepo.save({ name: 'Ward', provinces_id: province.id });
+      if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
 
       addressA = await addressRepo.save({
-        user_id: userIdA, ward_id: ward.id, address_name: 'Home',
-        address_detail: '123', lat: 0, lng: 0, receiver_name: 'A', phone: '099', full_address: 'FA'
+        user_id: userIdA, ward_id: ward.id, address_name: 'Home Test',
+        address_detail: '123 Test St', lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver A', phone: context.phone_number, full_address: '123 Test St, Dich Vong Hau, Ha Noi'
       });
     }
 
@@ -190,6 +190,7 @@ describe('Products - Get User Listings (e2e)', () => {
       .send({ index: 0, count: 10, keyword: 'mac' });
 
     expect(String(res2.body.code)).toBe('1000');
+    expect(res2.body.message).toBe('OK.');
     expect(res2.body.data.some((p: any) => p.name.includes('MacBook'))).toBe(true);
     expect(res2.body.data.some((p: any) => p.name.includes('AirPods'))).toBe(false);
   });

@@ -57,8 +57,8 @@ describe('Products - Like Product (e2e)', () => {
     tokenUserA = loginARes.body.data.token;
     userIdA = Number(loginARes.body.data.id);
 
-    // 2. Setup User B
-    const phoneB = '0988888882';
+    // 2. Setup User B qua API để test Remote
+    const phoneB = '0955555555';
     const passB = '123456';
     let loginBRes = await request(baseURL)
       .post('/auth/login')
@@ -67,7 +67,7 @@ describe('Products - Like Product (e2e)', () => {
     if (loginBRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-        .send({ phone_number: phoneB, password: passB, uuid: 'user-b-like' });
+        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test' });
       loginBRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number: phoneB, password: passB });
@@ -90,11 +90,11 @@ describe('Products - Like Product (e2e)', () => {
       let province = await provinceRepo.findOne({ where: {} });
       if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
       let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-      if (!ward) ward = await wardRepo.save({ name: 'Ward', provinces_id: province.id });
+      if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
 
       addressA = await addressRepo.save({
-        user_id: userIdA, ward_id: ward.id, address_name: 'Home A',
-        address_detail: '123 A', lat: 0, lng: 0, receiver_name: 'A', phone: '099', full_address: 'FA A'
+        user_id: userIdA, ward_id: ward.id, address_name: 'Home Test',
+        address_detail: '123 Test St', lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver A', phone: context.phone_number, full_address: '123 Test St, Dich Vong Hau, Ha Noi'
       });
     }
 
@@ -103,11 +103,11 @@ describe('Products - Like Product (e2e)', () => {
       let province = await provinceRepo.findOne({ where: {} });
       if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
       let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-      if (!ward) ward = await wardRepo.save({ name: 'Ward', provinces_id: province.id });
+      if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
 
       addressB = await addressRepo.save({
-        user_id: userIdB, ward_id: ward.id, address_name: 'Home B',
-        address_detail: '123 B', lat: 0, lng: 0, receiver_name: 'B', phone: '099', full_address: 'FA B'
+        user_id: userIdB, ward_id: ward.id, address_name: 'Home Test B',
+        address_detail: '123 Test St B', lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver B', phone: '0955555555', full_address: '123 Test St B, Dich Vong Hau, Ha Noi'
       });
     }
 
@@ -225,6 +225,7 @@ describe('Products - Like Product (e2e)', () => {
       .post('/api/like_product')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({ product_id: productBId });
-    expect(String(res.body.code)).not.toBe('1000');
+    expect(String(res.body.code)).toBe('1009');
+    expect(res.body.message).toBe('Not access.');
   });
 });
