@@ -12,6 +12,9 @@ export class Brand {
   @Column({ nullable: true })
   logo_url: string;
 
-  @OneToMany(() => Product, (product) => product.brand_id)
+  @Column({ nullable: true })
+  category_id: number;
+
+  @OneToMany(() => Product, (product) => product.brand)
   products: Product[];
 }
