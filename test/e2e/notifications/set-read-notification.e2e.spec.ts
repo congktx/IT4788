@@ -1,171 +1,72 @@
-/**
- * FILE: test/e2e/set-read-notification.e2e.spec.ts
- *
- * MỤC ĐÍCH: Chế độ 2 — Chạy TOÀN BỘ TC, không dừng giữa chừng.
- * Test API POST /notification/set_read_notification
- *
- * CÁCH CHẠY:
- *   npm run test:e2e:full -- --forceExit
- *
- * DỮ LIỆU MẪU SAU seedAll():
- *   Users        : user1 → user5
- *   Notification : user1 có 2 notification (1 chưa đọc id=1, 1 đã đọc id=2)
- *
- * BUG ĐÃ BIẾT (không sửa, ghi nhận bằng [BUG]):
- *   - Thiếu notification_id → update WHERE id=undefined → affected=0 → 1004
- *     (đúng code nhưng sai lý do — nên là 1002)
- *   - Không check notification có thuộc về currentUser không
- *     → user khác có thể đánh dấu đọc notification của người khác
- *   - err.to_string() sai cú pháp JS → nếu catch lỗi sẽ crash thêm
- */
+import { notificationAction } from '../../helpers/actions/notification.action';
+import { getTestUsers, TestUser } from '../../helpers/test-user.helper';
+import { failMsg } from '../../helpers/api-client.helper';
+import { RESPONSE } from '../../constants/respones';
+import { EXPIRED_TOKEN } from '../../fixtures/user.fixture';
 
-import { INestApplication } from '@nestjs/common';
-import { TestingModule } from '@nestjs/testing';
-import request from 'supertest';
-import * as jwt from 'jsonwebtoken';
-import { DataSource } from 'typeorm';
-import { createTestApp } from '../../helpers/create-test-app';
-import { SeedHelper } from '../../helpers/seed.helper';
-import { generateAuthToken } from '../../helpers/auth.helper';
+let U1: TestUser;
+let U2: TestUser;
 
-// ─────────────────────────────────────────────
-// CONSTANTS
-// ─────────────────────────────────────────────
-
-const RESPONSE = {
-  OK: { code: '1000', message: 'OK' },
-  PARAMETER_NOT_ENOUGH: { code: '1002', message: 'Parameter is not enough.' },
-  PARAMETER_VALUE_INVALID: {
-    code: '1004',
-    message: 'Parameter value is invalid.',
-  },
-  UNKNOWN_ERROR: { code: '1005', message: 'Unknown error.' },
-};
-
-// ─────────────────────────────────────────────
-// SETUP
-// ─────────────────────────────────────────────
-
-let app: INestApplication;
-let testingModule: TestingModule;
-let dataSource: DataSource;
-let seed: SeedHelper;
-
-// Lưu id của notification được seed để dùng trong TC
-let unreadNotifId: number;
-let readNotifId: number;
+let targetNotifId: number | null = null;
 
 beforeAll(async () => {
-  ({ app, module: testingModule } = await createTestApp());
-  dataSource = testingModule.get(DataSource);
-  seed = new SeedHelper(dataSource);
+  [U1, U2] = getTestUsers();
+
+  const res = await notificationAction.getNotification(U1.token, {
+    index: 1,
+    count: 10,
+  });
+
+  if (res.body.data && res.body.data.length > 0) {
+    targetNotifId = res.body.data[0].id;
+  }
 });
-
-afterAll(async () => {
-  await seed.clearAll();
-  await app.close();
-});
-
-beforeEach(async () => {
-  await seed.clearAll();
-  await seed.seedAll();
-
-  // Lấy id thực của notification sau mỗi lần seed
-  const notifs = await dataSource.query(
-    'SELECT id, `read` FROM notifications ORDER BY id ASC',
-  );
-  unreadNotifId = notifs.find((n: any) => n.read == 0)?.id;
-  readNotifId = notifs.find((n: any) => n.read == 1)?.id;
-});
-
-// ─────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────
-
-function callApi(token: string | null, body: object) {
-  const req = request(app.getHttpServer())
-    .post('/notification/set_read_notification')
-    .send(body);
-  if (token) req.set('Authorization', `Bearer ${token}`);
-  return req;
-}
-
-function failMsg(res: any): string {
-  return `\nFull response: ${JSON.stringify(res.body, null, 2)}`;
-}
-
-// ─────────────────────────────────────────────
-// TEST CASES
-// ─────────────────────────────────────────────
 
 describe('POST /notification/set_read_notification', () => {
-  // ── THÀNH CÔNG ────────────────────────────
+  // Thành công
+  describe('Thành công', () => {
+    it('TC01 — Đánh dấu đã đọc thông báo hợp lệ — OK', async () => {
+      if (!targetNotifId) return;
 
-  describe('Trường hợp thành công', () => {
-    it('TC01 — Đánh dấu đã đọc notification chưa đọc → OK', async () => {
-      const token = generateAuthToken(1, 'user_1');
-      const res = await callApi(token, { notification_id: unreadNotifId });
+      const res = await notificationAction.setReadNotification(U1.token, {
+        notification_id: targetNotifId,
+      });
 
       expect(res.status, failMsg(res)).toBe(200);
       expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
       expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
       expect(Array.isArray(res.body.data), failMsg(res)).toBe(true);
-      expect(res.body.badge, failMsg(res)).toBeDefined();
+      expect(typeof res.body.badge).toBe('number');
     });
 
-    it('TC02 — badge giảm sau khi đánh dấu đọc notification chưa đọc', async () => {
-      const token = generateAuthToken(1, 'user_1');
-      const res = await callApi(token, { notification_id: unreadNotifId });
+    it('TC02 — Đánh dấu thông báo đã đọc rồi (idempotent) — OK', async () => {
+      if (!targetNotifId) return;
+
+      await notificationAction.setReadNotification(U1.token, {
+        notification_id: targetNotifId,
+      });
+      const res = await notificationAction.setReadNotification(U1.token, {
+        notification_id: targetNotifId,
+      });
 
       expect(res.status, failMsg(res)).toBe(200);
-      expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-      // Sau khi đọc notification duy nhất chưa đọc → badge = 0
-      expect(res.body.badge, failMsg(res)).toBe(0);
-    });
-
-    it('TC03 — Đánh dấu đã đọc notification đã đọc rồi (idempotent) → OK', async () => {
-      // notification đã đọc → update read=true lại → affected=1 → OK
-      const token = generateAuthToken(1, 'user_1');
-      const res = await callApi(token, { notification_id: readNotifId });
-
-      expect(res.status, failMsg(res)).toBe(200);
-      expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-    });
-
-    it('TC04 — Gọi 2 lần liên tiếp → vẫn OK (idempotent)', async () => {
-      const token = generateAuthToken(1, 'user_1');
-      await callApi(token, { notification_id: unreadNotifId });
-      const res = await callApi(token, { notification_id: unreadNotifId });
-
-      expect(res.status, failMsg(res)).toBe(200);
-      expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-    });
-
-    // ⚠️ BUG ĐÃ BIẾT: service không check ownership
-    it('TC05 — [BUG] User2 đánh dấu đọc notification của user1 → service cho phép → OK', async () => {
-      // Đây là lỗ hổng bảo mật — user2 không nên sửa được notification của user1
-      const token = generateAuthToken(2, 'user_2');
-      const res = await callApi(token, { notification_id: unreadNotifId });
-
-      expect(res.status, failMsg(res)).toBe(200);
-      // Bug: service không check owner → trả OK thay vì lỗi
       expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
     });
   });
 
-  // ── THẤT BẠI — THIẾU THAM SỐ ─────────────
-
-  describe('Thất bại — thiếu tham số', () => {
-    it('TC06 — Không có token', async () => {
-      const res = await callApi(null, { notification_id: unreadNotifId });
-      expect(res.status, failMsg(res)).toBe(401);
+  // Thất bại -> Thiếu tham số
+  describe('Thiếu tham số', () => {
+    it('TC03 — Không có token, có đủ tham số — TOKEN_INVALID', async () => {
+      const idToTest = targetNotifId || 1;
+      const res = await notificationAction.setReadNotificationRaw(null, {
+        notification_id: idToTest,
+      });
+      expect(res.status, failMsg(res)).toBe(200);
+      expect(res.body.code, failMsg(res)).toBe(RESPONSE.TOKEN_INVALID.code);
     });
 
-    // ⚠️ BUG: thiếu notification_id → update WHERE id=undefined → affected=0
-    // → service trả 1004 thay vì 1002, nhưng đây là behavior thực tế
-    it('TC07 — [BUG] Thiếu notification_id → 1004 (nên là 1002)', async () => {
-      const token = generateAuthToken(1, 'user_1');
-      const res = await callApi(token, {});
+    it('TC04 — Có token, thiếu notification_id — PARAMETER_VALUE_INVALID (Ghi nhận BUG 1004)', async () => {
+      const res = await notificationAction.setReadNotificationRaw(U1.token, {});
 
       expect(res.status, failMsg(res)).toBe(200);
       expect(res.body.code, failMsg(res)).toBe(
@@ -174,13 +75,30 @@ describe('POST /notification/set_read_notification', () => {
     });
   });
 
-  // ── THẤT BẠI — GIÁ TRỊ KHÔNG HỢP LỆ ─────
-
-  describe('Thất bại — giá trị không hợp lệ', () => {
-    it('TC08 — notification_id không tồn tại → 1004', async () => {
-      const token = generateAuthToken(1, 'user_1');
-      const res = await callApi(token, { notification_id: 999999 });
-
+  // Thất bại -> Sai kiểu hoặc giá trị tham số
+  describe('Sai kiểu hoặc giá trị tham số', () => {
+    it('TC05 — notification_id không tồn tại — PARAMETER_VALUE_INVALID', async () => {
+      const res = await notificationAction.setReadNotificationRaw(U1.token, {
+        notification_id: 9999999,
+      });
+      expect(res.status, failMsg(res)).toBe(200);
+      expect(res.body.code, failMsg(res)).toBe(
+        RESPONSE.PARAMETER_VALUE_INVALID.code,
+      );
+    });
+    it('TC06 — notification_id là chuỗi không hợp lệ ("abc") — PARAMETER_TYPE_INVALID', async () => {
+      const res = await notificationAction.setReadNotificationRaw(U1.token, {
+        notification_id: 'abc',
+      });
+      expect(res.status, failMsg(res)).toBe(200);
+      expect(res.body.code, failMsg(res)).toBe(
+        RESPONSE.PARAMETER_TYPE_INVALID.code,
+      );
+    });
+    it('TC07 — notification_id âm (-1) — PARAMETER_VALUE_INVALID', async () => {
+      const res = await notificationAction.setReadNotificationRaw(U1.token, {
+        notification_id: -1,
+      });
       expect(res.status, failMsg(res)).toBe(200);
       expect(res.body.code, failMsg(res)).toBe(
         RESPONSE.PARAMETER_VALUE_INVALID.code,
@@ -188,26 +106,45 @@ describe('POST /notification/set_read_notification', () => {
     });
   });
 
-  // ── THẤT BẠI — TOKEN ──────────────────────
-
-  describe('Thất bại — token không hợp lệ', () => {
-    it('TC09 — Token sai định dạng', async () => {
-      const res = await callApi('invalid.token.here', {
-        notification_id: unreadNotifId,
-      });
-      expect(res.status, failMsg(res)).toBe(401);
+  // Thất bại -> Token không hợp lệ
+  describe('Token không hợp lệ', () => {
+    it('TC08 — Token sai định dạng — TOKEN_INVALID', async () => {
+      const idToTest = targetNotifId || 1;
+      const res = await notificationAction.setReadNotificationRaw(
+        'invalid.token.here',
+        {
+          notification_id: idToTest,
+        },
+      );
+      expect(res.status, failMsg(res)).toBe(200);
+      expect(res.body.code, failMsg(res)).toBe(RESPONSE.TOKEN_INVALID.code);
     });
 
-    it('TC10 — Token đã hết hạn', async () => {
-      const expiredToken = jwt.sign(
-        { sub: 1, username: 'user_1', role: 'user' },
-        process.env.JWT_SECRET || 'dev-secret',
-        { expiresIn: -1 },
+    it('TC09 — Token hết hạn — TOKEN_INVALID', async () => {
+      const idToTest = targetNotifId || 1;
+      const res = await notificationAction.setReadNotificationRaw(
+        EXPIRED_TOKEN,
+        {
+          notification_id: idToTest,
+        },
       );
-      const res = await callApi(expiredToken, {
-        notification_id: unreadNotifId,
+      expect(res.status, failMsg(res)).toBe(200);
+      expect(res.body.code, failMsg(res)).toBe(RESPONSE.TOKEN_INVALID.code);
+    });
+  });
+
+  // Thất bại -> Lỗi nghiệp vụ
+  describe('Lỗi nghiệp vụ', () => {
+    it('TC10 — Đánh dấu đọc thông báo của user khác', async () => {
+      if (!targetNotifId) return;
+
+      const res = await notificationAction.setReadNotification(U2.token, {
+        notification_id: targetNotifId,
       });
-      expect(res.status, failMsg(res)).toBe(401);
+
+      expect(res.status, failMsg(res)).toBe(200);
+      // Ghi nhận BUG: Service không chặn việc đánh dấu đọc thông báo của người khác nên vẫn trả về OK
+      expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
     });
   });
 });

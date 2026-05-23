@@ -1,6 +1,6 @@
 export const RESPONSE = {
   // Success
-  OK: { code: '1000', message: 'OK' },
+  OK: { code: '1000', message: 'OK.' },
 
   // System error
   CANNOT_CONNECT_DB: { code: '1001', message: 'Can not connect to DB.' },

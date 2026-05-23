@@ -16,6 +16,6 @@ export const testDataSourceOptions: TypeOrmModuleOptions = {
 
   entities: [__dirname + '/src/**/*.entity{.ts,.js}'],
 
-  synchronize: true,
+  synchronize: false,
   dropSchema: true,
 };
