@@ -525,28 +525,25 @@ export class ProductsService {
     index: number = 0,
     count: number = 10,
   ) {
-    const qb = this.productRepo
-      .createQueryBuilder('product')
-      .select('DISTINCT product.brand_id', 'id')
-      .where('product.brand_id IS NOT NULL');
+    const qb = this.brandRepo
+      .createQueryBuilder('brand')
+      .select(['brand.id', 'brand.name', 'brand.category_id']);
 
     if (
       categoryId !== undefined &&
       categoryId !== null &&
       categoryId !== 0
     ) {
-      qb.andWhere('product.category_id = :categoryId', { categoryId });
+      qb.where('brand.category_id = :categoryId', { categoryId });
     }
 
-    const rows = await qb
-      .orderBy('product.brand_id', 'ASC')
-      .offset(index)
-      .limit(count)
-      .getRawMany();
+    qb.orderBy('brand.id', 'ASC').skip(index).take(count);
+
+    const rows = await qb.getMany();
 
     return rows.map((item) => ({
       id: item.id,
-      brand_name: String(item.id),
+      brand_name: item.name,
     }));
   }
 
