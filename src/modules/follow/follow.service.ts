@@ -109,6 +109,26 @@ export class FollowService {
         );
       }
 
+      const blockedRelation = await this.userBlockRepository.findOne({
+        where: [
+          {
+            blocker_id: currentUserId,
+            blocked_id: followeeId,
+          },
+          {
+            blocker_id: followeeId,
+            blocked_id: currentUserId,
+          },
+        ],
+      });
+
+      if (blockedRelation) {
+        return this.fail(
+          APP_RESPONSE.NOT_ACCESS.code,
+          APP_RESPONSE.NOT_ACCESS.message,
+        );
+      }
+
       const existingFollow = await this.userFollowRepository.findOne({
         where: {
           follower_id: currentUserId,

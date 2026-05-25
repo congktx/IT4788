@@ -8,6 +8,7 @@ import { DataSource } from 'typeorm';
 // import { clearDatabase } from '../utils/db.util'; // Không dùng nữa (Non-destructive testing)
 import bcrypt from 'bcrypt';
 import { User } from '../../src/modules/users/entities/user.entity';
+import { Wallet } from '../../src/modules/wallets/entities/wallet.entity';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -85,9 +86,11 @@ describe('Auth - Signup (e2e)', () => {
     expect(typeof data.id).toBe('string');
     expect(Number(data.id)).toBeGreaterThan(0);
     expect(data.username).toBe(signupData.phone_number);
-    expect(data.avatar).toBeNull();
-    expect(data.active).toBe(-1);
-    expect(data.token).toBeUndefined();
+    expect(typeof data.wallet_id).toBe('string');
+    expect(Number(data.wallet_id)).toBeGreaterThan(0);
+    expect(data.avatar).toBeNull();                    
+    expect(data.active).toBe(-1);                       
+    expect(data.token).toBeUndefined();              
     const userRepository = dataSource.getRepository(User);
 
     // Nếu test trên server từ xa (baseURL là remote URL), đồng bộ thông tin user mới này vào DB local
@@ -112,6 +115,16 @@ describe('Auth - Signup (e2e)', () => {
     expect(dbUser!.phone_number).toBe(signupData.phone_number);
     const isMatched = await bcrypt.compare(signupData.password, dbUser!.password);
     expect(isMatched).toBe(true);
+
+    const walletRepository = dataSource.getRepository(Wallet);
+    const dbWallet = await walletRepository.findOne({
+      where: { user_id: dbUser!.id },
+    });
+
+    expect(dbWallet).toBeDefined();
+    expect(String(dbWallet!.id)).toBe(data.wallet_id);
+    expect(Number(dbWallet!.balance)).toBe(0);
+    expect(Number(dbWallet!.pending_balance)).toBe(0);
   });
 
   it('SIGNUP-02: (Thất bại) - Lỗi 9996 khi SĐT trùng lặp', async () => {
