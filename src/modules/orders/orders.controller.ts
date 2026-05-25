@@ -74,7 +74,7 @@ export class OrdersController {
   @ApiOperation({ summary: 'Thêm địa chỉ người dùng' })
   @Post('order/add_order_address')
   @HttpCode(200)
-  addOrderAddress(@Req() req: RequestWithUser, @Body() dto: any) {
+  addOrderAddress(@Req() req: RequestWithUser, @Body() dto: AddOrderAddress) {
     return this.ordersService.addOrderAddress(this.getUserId(req), dto);
   }
 

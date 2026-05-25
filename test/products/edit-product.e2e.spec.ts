@@ -27,6 +27,7 @@ describe('Products - Edit Product (e2e)', () => {
   let validBrandId: number;
   let myProductId: number;
   let otherProductId: number;
+  let baseURL: string | any;
 
   beforeAll(async () => {
     const contextPath = path.join(__dirname, '..', 'auth', 'test-context.json');
@@ -44,33 +45,39 @@ describe('Products - Edit Product (e2e)', () => {
     await app.init();
 
     dataSource = app.get<DataSource>(DataSource);
+    baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // 1. Login User chính
-    const loginRes = await request(app.getHttpServer())
+    let loginRes = await request(baseURL)
       .post('/auth/login')
       .send({ phone_number: context.phone_number, password: context.password });
+      
+    if (loginRes.body.code === '9995') {
+      await request(baseURL)
+        .post('/auth/signup')
+        .send({ phone_number: context.phone_number, password: context.password, uuid: 'user-a-edit-uuid' });
+      loginRes = await request(baseURL)
+        .post('/auth/login')
+        .send({ phone_number: context.phone_number, password: context.password });
+    }
     accessToken = loginRes.body.data?.token;
 
-    // 2. Lấy User phụ từ DB (để test quyền sở hữu, không tạo rác bằng API)
-    const userRepo = dataSource.getRepository(User);
-    let otherUser = await userRepo.findOne({ where: { id: Not(loginRes.body.data?.id) } });
+    // 2. Setup User phụ (otherUser) bằng API
+    const otherPhone = '0988888899';
+    const otherPass = '123456';
+    let otherLoginRes = await request(baseURL)
+      .post('/auth/login')
+      .send({ phone_number: otherPhone, password: otherPass });
 
-    if (!otherUser) {
-      otherUser = await userRepo.save({
-        phone_number: '0988888888',
-        password: 'hashedpassword',
-        role: 'soldier',
-        username: 'otheruser_edit',
-        uuid: 'otheruser-edit-uuid'
-      });
+    if (otherLoginRes.body.code === '9995') {
+      await request(baseURL)
+        .post('/auth/signup')
+        .send({ phone_number: otherPhone, password: otherPass, uuid: 'otheruser-edit-uuid' });
+      otherLoginRes = await request(baseURL)
+        .post('/auth/login')
+        .send({ phone_number: otherPhone, password: otherPass });
     }
-
-    const jwtService = app.get<JwtService>(JwtService);
-    otherUserToken = await jwtService.signAsync({
-      sub: otherUser.id,
-      username: otherUser.username,
-      role: otherUser.role,
-    });
+    otherUserToken = otherLoginRes.body.data.token;
 
     const categoryRepo = dataSource.getRepository(Category);
     const brandRepo = dataSource.getRepository(Brand);
@@ -101,43 +108,41 @@ describe('Products - Edit Product (e2e)', () => {
     });
     validShipFromId = address.id;
 
-    const otherUserId = otherUser.id;
+    const otherUserId = otherLoginRes.body.data.id;
     const otherAddress = await addressRepo.save({
       user_id: otherUserId,
       ward_id: ward.id,
       address_name: 'Other Home',
       address_detail: '456 Other St',
-      lat: 0, lng: 0, receiver_name: 'Other', phone: otherUser.phone_number, full_address: 'Other Full'
+      lat: 0, lng: 0, receiver_name: 'Other', phone: otherPhone, full_address: 'Other Full'
     });
     const otherShipFromId = otherAddress.id;
 
 
-    const myProdRes = await request(app.getHttpServer())
+    const myProdRes = await request(baseURL)
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
-        title: 'Sản phẩm của tôi',
-        price: 1000,
-        price_discount: 900,
-        description: 'Mô tả gốc',
+        title: 'MacBook Air M1',
+        price: 18000000,
+        description: 'MacBook Air M1 chính hãng VN/A',
         category_id: validCategoryId,
         ship_from_id: validShipFromId,
-        variants: [{ size: 'M', color: 'Red', stock: 10, weight: 1 }]
+        variants: [{ size: '13 inch', color: 'Space Gray', stock: 10, weight: 1.29 }]
       });
     myProductId = myProdRes.body.data?.id;
 
     // 5. Tạo sản phẩm của User phụ
-    const otherProdRes = await request(app.getHttpServer())
+    const otherProdRes = await request(baseURL)
       .post('/api/add_product')
       .set('Authorization', `Bearer ${otherUserToken}`)
       .send({
-        title: 'Sản phẩm người khác',
-        price: 5000,
-        price_discount: 4500,
-        description: 'Đừng sửa của tôi',
+        title: 'MacBook Pro M2 (Người khác)',
+        price: 25000000,
+        description: 'MacBook Pro M2 256GB',
         category_id: validCategoryId,
         ship_from_id: otherShipFromId,
-        variants: [{ size: 'L', color: 'Blue', stock: 5, weight: 2 }]
+        variants: [{ size: '13 inch', color: 'Silver', stock: 5, weight: 1.4 }]
       });
     otherProductId = otherProdRes.body.data?.id;
   }, 60000);
@@ -150,16 +155,15 @@ describe('Products - Edit Product (e2e)', () => {
 
   it('TC-01: (Thành công) - Chỉnh sửa toàn bộ thông tin sản phẩm', async () => {
     const updateData = {
-      title: 'Sản phẩm đã đổi tên',
-      price: 2000,
-      price_discount: 1500,
-      description: 'Mô tả đã được cập nhật',
+      title: 'MacBook Air M1 (Đã qua sử dụng)',
+      price: 15000000,
+      description: 'MacBook Air M1 cũ hình thức 99%',
       category_id: validCategoryId,
       ship_from_id: validShipFromId,
-      variants: [{ size: 'L', color: 'Green', stock: 50, weight: 1.5 }]
+      variants: [{ size: '13 inch', color: 'Silver', stock: 5, weight: 1.29 }]
     };
 
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .patch(`/api/update/${myProductId}`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send(updateData);
@@ -168,48 +172,48 @@ describe('Products - Edit Product (e2e)', () => {
     expect(res.body.message).toBe('OK.');
     expect(res.body.data.title).toBe(updateData.title);
     expect(String(res.body.data.price)).toBe(String(updateData.price));
-    expect(res.body.data.variants).toHaveLength(1);
-    expect(res.body.data.variants[0].size).toBe('L');
+    expect(res.body.data.variants).toHaveLength(2);
+    expect(res.body.data.variants[0].size).toBe('13 inch');
   });
 
   it('TC-02: (Thành công) - Cập nhật một phần (chỉ đổi giá)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .patch(`/api/update/${myProductId}`)
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ price: 9999 });
+      .send({ price: 14500000 });
 
     expect(res.body.code).toBe('1000');
     expect(res.body.message).toBe('OK.');
-    expect(String(res.body.data.price)).toBe('9999');
-    expect(res.body.data.title).toBe('Sản phẩm đã đổi tên');
+    expect(String(res.body.data.price)).toBe('14500000');
+    expect(res.body.data.title).toBe('MacBook Air M1 (Đã qua sử dụng)');
   });
 
   it('TC-03: (Thất bại) - Sửa sản phẩm không tồn tại', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .patch('/api/update/999999')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ title: 'Ghost' });
+      .send({ title: 'Sản phẩm không tồn tại' });
 
     expect(res.body.code).toBe('9992'); // PRODUCT_NOT_EXISTED
     expect(res.body.message).toBe('Product is not existed.');
   });
 
   it('TC-04: (Thất bại) - Sửa sản phẩm của người khác (Check NOT_ACCESS)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .patch(`/api/update/${otherProductId}`)
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ title: 'Tôi đang hack bạn' });
+      .send({ title: 'Cố tình đổi tên sản phẩm của người khác' });
 
     expect(res.body.code).toBe('1009'); // NOT_ACCESS
     expect(res.body.message).toBe('Not access.');
   });
 
   it('TC-05: (Thất bại) - Variants không hợp lệ (stock âm)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .patch(`/api/update/${myProductId}`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
-        variants: [{ size: 'S', color: 'Black', stock: -1, weight: 1 }]
+        variants: [{ size: '13 inch', color: 'Space Gray', stock: -1, weight: 1 }]
       });
 
     expect(res.body.code).toBe('1004'); // PARAMETER_VALUE_INVALID
@@ -217,16 +221,18 @@ describe('Products - Edit Product (e2e)', () => {
   });
 
   it('TC-06: (Thành công) - Thêm và xóa ảnh', async () => {
-    await dataSource.getRepository(Product).update(myProductId, {
-      image_urls: ['img1.jpg', 'img2.jpg']
-    });
+    // Thêm ảnh ban đầu qua API thay vì DB để chạy remote
+    await request(baseURL)
+      .patch(`/api/update/${myProductId}`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ image_urls: ['img1.jpg', 'img2.jpg'] });
 
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .patch(`/api/update/${myProductId}`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
-        image_urls: ['img1.jpg', 'img2.jpg', 'img3.jpg'],
-        image_urls_del: ['img1.jpg']
+        image_urls: ['img3.jpg'], // Upload mới
+        image_urls_del: ['img1.jpg'] // Xóa ảnh cũ
       });
 
     expect(res.body.code).toBe('1000');
@@ -238,27 +244,26 @@ describe('Products - Edit Product (e2e)', () => {
 
   it('TC-07: (Thất bại) - Sửa sản phẩm vừa bị xóa', async () => {
     // 1. Tạo sản phẩm mới
-    const myProdRes = await request(app.getHttpServer())
+    const myProdRes = await request(baseURL)
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
-        title: 'Sản phẩm sắp bị xóa',
-        price: 1000,
-        price_discount: 900,
-        description: 'Mô tả',
+        title: 'AirPods (Sắp bị xóa)',
+        price: 3000000,
+        description: 'Tai nghe sắp bị xóa khỏi hệ thống',
         category_id: validCategoryId,
         ship_from_id: validShipFromId,
-        variants: [{ size: 'M', color: 'Red', stock: 10, weight: 1 }]
+        variants: [{ size: 'Tiêu chuẩn', color: 'Trắng', stock: 5, weight: 0.1 }]
       });
     const tempProductId = myProdRes.body.data?.id;
 
     // 2. Xóa sản phẩm
-    await request(app.getHttpServer())
+    await request(baseURL)
       .delete(`/api/delete/${tempProductId}`)
       .set('Authorization', `Bearer ${accessToken}`);
 
     // 3. Cố gắng update sản phẩm đã xóa
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .patch(`/api/update/${tempProductId}`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ title: 'Cố gắng sửa' });

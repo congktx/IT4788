@@ -89,7 +89,7 @@ export class ProductsService {
           return APP_RESPONSE.PARAMETER_TYPE_INVALID;
         }
         if (dto.image_urls.length > 4) {
-          return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+          return APP_RESPONSE.MAXIMUM_NUMBER_OF_IMAGES;
         }
       }
       const finalImage = [...(dto.image_urls || [])];
@@ -329,7 +329,7 @@ export class ProductsService {
         return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
       if (finalImages.length > 4) {
-        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+        return APP_RESPONSE.MAXIMUM_NUMBER_OF_IMAGES;
       }
 
       const finalVideos =
