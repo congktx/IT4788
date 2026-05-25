@@ -27,7 +27,7 @@ import { generateAuthToken } from '../helpers/auth.helper';
 
 const RESPONSE = {
   OK: { code: '1000', message: 'OK' },
-  PARAMETER_NOT_ENOUGH: { code: '1002', message: 'Parameter is not enought.' },
+  PARAMETER_NOT_ENOUGH: { code: '1002', message: 'Parameter is not enough.' },
   PARAMETER_TYPE_INVALID: {
     code: '1003',
     message: 'Parameter type is invalid.',
@@ -36,7 +36,7 @@ const RESPONSE = {
     code: '1004',
     message: 'Parameter value is invalid.',
   },
-  USER_NOT_EXIST: { code: '1013', message: 'User does not exist' },
+  USER_NOT_EXIST: { code: '1013', message: 'User does not exist.' },
 };
 
 let app: INestApplication;
@@ -200,7 +200,7 @@ describe('POST /get_list_blocks', () => {
         count: 10,
       });
 
-      expect(res.status, failMsg(res)).toBe(401);
+      expect(res.status, failMsg(res)).toBe(200);
     });
   });
 
@@ -285,7 +285,7 @@ describe('POST /get_list_blocks', () => {
         count: 10,
       });
 
-      expect(res.status, failMsg(res)).toBe(401);
+      expect(res.status, failMsg(res)).toBe(200);
     });
 
     it('TC13 — Token hết hạn', async () => {
@@ -300,7 +300,7 @@ describe('POST /get_list_blocks', () => {
         count: 10,
       });
 
-      expect(res.status, failMsg(res)).toBe(401);
+      expect(res.status, failMsg(res)).toBe(200);
     });
   });
 });

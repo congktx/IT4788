@@ -45,7 +45,7 @@ export const APP_RESPONSE = {
   },
   PARAMETER_NOT_ENOUGH: {
     code: '1002',
-    message: 'Parameter is not enought.',
+    message: 'Parameter is not enough.',
   },
   PARAMETER_TYPE_INVALID: {
     code: '1003',

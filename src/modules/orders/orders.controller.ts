@@ -40,7 +40,7 @@ interface RequestWithUser extends Request {
 @ApiBearerAuth("JWT-auth")
 @Controller()
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) { }
+  constructor(private readonly ordersService: OrdersService) {}
 
   private getUserId(req: RequestWithUser): number {
     return req.user?.id ?? req.user?.userId ?? 0;

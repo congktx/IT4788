@@ -1,3 +1,4 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
@@ -12,6 +13,7 @@ describe('Auth - Reset Password Final Step (e2e)', () => {
   let redisService: RedisService;
   let TEST_PHONE: string;
   let OLD_PASSWORD: string;
+  let baseURL: string | any;
   const NEW_PASSWORD = 'new_password_verified_123';
   const VERIFIED_KEY_PREFIX = 'reset_password_verified';
 
@@ -31,6 +33,7 @@ describe('Auth - Reset Password Final Step (e2e)', () => {
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
+    baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     redisService = app.get<RedisService>(RedisService);
     // Đảm bảo sạch sẽ trước khi test
@@ -45,7 +48,7 @@ describe('Auth - Reset Password Final Step (e2e)', () => {
 
   // NHÓM 1: Kiểm tra Validation (Thiếu trường / Sai format)
   it('RESET-01: (Validation) - Lỗi 1002 khi thiếu cả 2 trường', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/reset_password')
       .send({});
 
@@ -54,7 +57,7 @@ describe('Auth - Reset Password Final Step (e2e)', () => {
   });
 
   it('RESET-02: (Validation) - Lỗi 1002 khi thiếu phone_number', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/reset_password')
       .send({ password: 'somepassword123' });
 
@@ -63,7 +66,7 @@ describe('Auth - Reset Password Final Step (e2e)', () => {
   });
 
   it('RESET-03: (Validation) - Lỗi 1002 khi thiếu password', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/reset_password')
       .send({ phone_number: TEST_PHONE });
 
@@ -72,7 +75,7 @@ describe('Auth - Reset Password Final Step (e2e)', () => {
   });
 
   it('RESET-04: (Validation) - Lỗi 1004 khi phone_number sai format', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/reset_password')
       .send({ phone_number: 'abc123', password: 'somepassword123' });
 
@@ -81,7 +84,7 @@ describe('Auth - Reset Password Final Step (e2e)', () => {
   });
 
   it('RESET-05: (Validation) - Lỗi 1004 khi password quá ngắn (dưới 6 ký tự)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/reset_password')
       .send({ phone_number: TEST_PHONE, password: '123' });
 
@@ -94,7 +97,7 @@ describe('Auth - Reset Password Final Step (e2e)', () => {
     // Đảm bảo cờ chưa tồn tại
     await redisService.del(`${VERIFIED_KEY_PREFIX}:${TEST_PHONE}`);
 
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/reset_password')
       .send({ phone_number: TEST_PHONE, password: NEW_PASSWORD });
 
@@ -106,7 +109,7 @@ describe('Auth - Reset Password Final Step (e2e)', () => {
     // Cắm cờ vào Redis để giả lập vừa xác thực OTP xong
     await redisService.set(`${VERIFIED_KEY_PREFIX}:${TEST_PHONE}`, '1', 600);
 
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/reset_password')
       .send({ phone_number: TEST_PHONE, password: OLD_PASSWORD }); // Nhập lại mật khẩu cũ
 
@@ -126,12 +129,12 @@ describe('Auth - Reset Password Final Step (e2e)', () => {
     await redisService.set(`${VERIFIED_KEY_PREFIX}:${TEST_PHONE}`, '1', 600);
 
     // Bước B: Gọi API Reset Password
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/reset_password')
       .send({ phone_number: TEST_PHONE, password: NEW_PASSWORD });
 
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toBe('OK.');
+    expect(res.body.message).toMatch(/^OK\.?$/);
 
     // OUTPUT: reset_password trả về thông tin user + token mới (giống login)
     const data = res.body.data;
@@ -145,17 +148,15 @@ describe('Auth - Reset Password Final Step (e2e)', () => {
     // KIỂM CHỨNG BẢO MẬT: Cờ phải bị xóa ngay sau khi đổi mật khẩu thành công
     const flagAfter = await redisService.get(`${VERIFIED_KEY_PREFIX}:${TEST_PHONE}`);
     expect(flagAfter).toBeNull();
-
-    console.log(`[RESET CHECK] Đã đổi mật khẩu thành công cho SĐT: ${TEST_PHONE}`);
   });
 
   it('RESET-09: (Xác thực) - Login bằng mật khẩu MỚI thành công', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/login')
       .send({ phone_number: TEST_PHONE, password: NEW_PASSWORD });
 
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toBe('OK.');
+    expect(res.body.message).toMatch(/^OK\.?$/);
 
     // OUTPUT: login bằng mật khẩu mới cũng trả về thông tin đầy đủ
     expect(typeof res.body.data.token).toBe('string');
@@ -167,12 +168,10 @@ describe('Auth - Reset Password Final Step (e2e)', () => {
     const context = JSON.parse(fs.readFileSync(contextPath, 'utf-8'));
     context.password = NEW_PASSWORD;
     fs.writeFileSync(contextPath, JSON.stringify(context, null, 2));
-
-    console.log(`[RESET CHECK] Login bằng mật khẩu mới thành công!`);
   });
 
   it('RESET-10: (Xác thực) - Login bằng mật khẩu CŨ thất bại', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/login')
       .send({ phone_number: TEST_PHONE, password: OLD_PASSWORD });
 

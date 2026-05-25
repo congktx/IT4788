@@ -25,7 +25,7 @@ import { generateAuthToken } from '../helpers/auth.helper';
 // Format response chuẩn của dự án
 const RESPONSE = {
   OK: { code: '1000', message: 'OK' },
-  PARAMETER_NOT_ENOUGH: { code: '1002', message: 'Parameter is not enought.' },
+  PARAMETER_NOT_ENOUGH: { code: '1002', message: 'Parameter is not enough.' },
   PARAMETER_TYPE_INVALID: {
     code: '1003',
     message: 'Parameter type is invalid.',
@@ -34,7 +34,7 @@ const RESPONSE = {
     code: '1004',
     message: 'Parameter value is invalid.',
   },
-  USER_NOT_EXIST: { code: '1013', message: 'User does not exist' },
+  USER_NOT_EXIST: { code: '1013', message: 'User does not exist.' },
 };
 
 let app: INestApplication;

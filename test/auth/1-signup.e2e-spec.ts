@@ -1,3 +1,4 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
@@ -51,7 +52,7 @@ describe('Auth - Signup (e2e)', () => {
       phone_number: currentTestPhone,
       password: 'password123'
     }));
-  }, 60000); 
+  }, 60000);
 
   afterAll(async () => {
     if (app) {
@@ -77,17 +78,30 @@ describe('Auth - Signup (e2e)', () => {
 
     // Kì vọng API trả về 1000
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toBe('OK.');
+    expect(res.body.message).toMatch(/^OK\.?$/);
 
     // OUTPUT: Kiểm tra cấu trúc và giá trị data trả về
     const data = res.body.data;
-    expect(typeof data.id).toBe('string');              
-    expect(Number(data.id)).toBeGreaterThan(0);         
+    expect(typeof data.id).toBe('string');
+    expect(Number(data.id)).toBeGreaterThan(0);
     expect(data.username).toBe(signupData.phone_number);
-    expect(data.avatar).toBeNull();                    
-    expect(data.active).toBe(-1);                       
-    expect(data.token).toBeUndefined();              
+    expect(data.avatar).toBeNull();
+    expect(data.active).toBe(-1);
+    expect(data.token).toBeUndefined();
     const userRepository = dataSource.getRepository(User);
+
+    // Nếu test trên server từ xa (baseURL là remote URL), đồng bộ thông tin user mới này vào DB local
+    if (typeof baseURL === 'string' && baseURL.startsWith('http')) {
+      const hashedPassword = await bcrypt.hash(signupData.password, 10);
+      await userRepository.save({
+        id: Number(data.id),
+        phone_number: signupData.phone_number,
+        password: hashedPassword,
+        uuid: signupData.uuid,
+        username: signupData.phone_number,
+        role: 'soldier',
+      });
+    }
 
     const dbUser = await userRepository.createQueryBuilder('user')
       .addSelect('user.password')

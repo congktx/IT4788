@@ -100,8 +100,8 @@ export class UsersService {
     let order_count = await this.ordersRepo.count({
       where: { seller: { id: user_id } }
     });
-    let check_follow = 0;
-    let check_block = 0;
+    let check_follow = 0
+    let check_block = 0
     if (user_id && currentUserId) {
       check_follow = await this.followsRepo.count({
         where: {
@@ -156,9 +156,19 @@ export class UsersService {
         body
       );
 
+    let user = await this.usersRepository.findOne({
+      where: {
+        id: currentUserId
+      }
+    });
+
     return {
       ...APP_RESPONSE.OK,
-      data: null
+      data: {
+        avatar: user?.avatar,
+        cover_image: user?.cover_image,
+        cover_image_web: user?.cover_image_web,
+      }
     }
   }
 }

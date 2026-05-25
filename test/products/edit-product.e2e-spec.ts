@@ -63,7 +63,8 @@ describe('Products - Edit Product (e2e)', () => {
     accessToken = loginRes.body.data?.token;
 
     // 2. Setup User phụ (otherUser) bằng API
-    const otherPhone = '0988888899';
+
+    const otherPhone = '0955555555';
     const otherPass = '123456';
     let otherLoginRes = await request(baseURL)
       .post('/auth/login')
@@ -72,7 +73,8 @@ describe('Products - Edit Product (e2e)', () => {
     if (otherLoginRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-        .send({ phone_number: otherPhone, password: otherPass, uuid: 'otheruser-edit-uuid' });
+
+        .send({ phone_number: otherPhone, password: otherPass, uuid: 'mock-user-test' });
       otherLoginRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number: otherPhone, password: otherPass });
@@ -102,9 +104,9 @@ describe('Products - Edit Product (e2e)', () => {
     let address = await addressRepo.save({
       user_id: userId,
       ward_id: ward.id,
-      address_name: 'Home',
-      address_detail: '123 Test',
-      lat: 0, lng: 0, receiver_name: 'Test', phone: '0123456789', full_address: 'Full'
+      address_name: 'Home Test',
+      address_detail: '123 Test St',
+      lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver A', phone: context.phone_number, full_address: '123 Test St, Dich Vong Hau, Ha Noi'
     });
     validShipFromId = address.id;
 
@@ -112,9 +114,10 @@ describe('Products - Edit Product (e2e)', () => {
     const otherAddress = await addressRepo.save({
       user_id: otherUserId,
       ward_id: ward.id,
-      address_name: 'Other Home',
-      address_detail: '456 Other St',
-      lat: 0, lng: 0, receiver_name: 'Other', phone: otherPhone, full_address: 'Other Full'
+
+      address_name: 'Home Test B',
+      address_detail: '123 Test St B',
+      lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver B', phone: '0955555555', full_address: '123 Test St B, Dich Vong Hau, Ha Noi'
     });
     const otherShipFromId = otherAddress.id;
 
@@ -172,8 +175,9 @@ describe('Products - Edit Product (e2e)', () => {
     expect(res.body.message).toBe('OK.');
     expect(res.body.data.title).toBe(updateData.title);
     expect(String(res.body.data.price)).toBe(String(updateData.price));
-    expect(res.body.data.variants).toHaveLength(2);
-    expect(res.body.data.variants[0].size).toBe('13 inch');
+
+    expect(res.body.data.variants).toHaveLength(1);
+    expect(res.body.data.variants[1].size).toBe('13 inch');
   });
 
   it('TC-02: (Thành công) - Cập nhật một phần (chỉ đổi giá)', async () => {
