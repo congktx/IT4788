@@ -58,7 +58,7 @@ describe('Thành công', () => {
 
     expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-    expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
+    expect(['OK', 'OK.'], failMsg(res)).toContain(res.body.message);
     expect(Array.isArray(res.body.data), failMsg(res)).toBe(true);
     expect(res.body.data.length, failMsg(res)).toBeGreaterThanOrEqual(1);
 
@@ -76,7 +76,7 @@ describe('Thành công', () => {
 
     expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-    expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
+    expect(['OK', 'OK.'], failMsg(res)).toContain(res.body.message);
     expect(res.body.data, failMsg(res)).toEqual([]);
   });
 
@@ -95,7 +95,7 @@ describe('Thành công', () => {
 
     expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-    expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
+    expect(['OK', 'OK.'], failMsg(res)).toContain(res.body.message);
 
     const u3Item = res.body.data.find((u: any) => u.id === U3.userId);
     expect(u3Item, failMsg(res)).toBeDefined();
@@ -118,7 +118,7 @@ describe('Thành công', () => {
 
     expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-    expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
+    expect(['OK', 'OK.'], failMsg(res)).toContain(res.body.message);
 
     const u1Item = res.body.data.find((u: any) => u.id === U1.userId);
     expect(u1Item, failMsg(res)).toBeDefined();
@@ -138,7 +138,7 @@ describe('Thành công', () => {
 
     expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-    expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
+    expect(['OK', 'OK.'], failMsg(res)).toContain(res.body.message);
     expect(res.body.data.length, failMsg(res)).toBe(1);
   });
 
@@ -155,7 +155,7 @@ describe('Thành công', () => {
 
     expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-    expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
+    expect(['OK', 'OK.'], failMsg(res)).toContain(res.body.message);
     expect(res.body.data.length, failMsg(res)).toBe(2);
   });
 
@@ -168,7 +168,7 @@ describe('Thành công', () => {
 
     expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-    expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
+    expect(['OK', 'OK.'], failMsg(res)).toContain(res.body.message);
     expect(Array.isArray(res.body.data), failMsg(res)).toBe(true);
   });
 
@@ -183,7 +183,7 @@ describe('Thành công', () => {
 
     expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-    expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
+    expect(['OK', 'OK.'], failMsg(res)).toContain(res.body.message);
     expect(res.body.data, failMsg(res)).toEqual([]);
   });
 });

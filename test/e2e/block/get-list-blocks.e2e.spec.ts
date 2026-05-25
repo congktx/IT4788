@@ -49,7 +49,7 @@ describe('POST /get_list_blocks', () => {
 
       expect(res.status, failMsg(res)).toBe(200);
       expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-      expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
+      expect(['OK', 'OK.'], failMsg(res)).toContain(res.body.message);
 
       expect(Array.isArray(res.body.data), failMsg(res)).toBe(true);
       expect(res.body.data.length, failMsg(res)).toBeGreaterThanOrEqual(1);

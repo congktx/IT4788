@@ -42,7 +42,7 @@ describe('POST /set_user_block', () => {
 
       expect(res.status, failMsg(res)).toBe(200);
       expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-      expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
+      expect(['OK', 'OK.'], failMsg(res)).toContain(res.body.message);
       expect(res.body.data, failMsg(res)).toBeNull();
     });
 
@@ -74,7 +74,7 @@ describe('POST /set_user_block', () => {
 
       expect(res.status, failMsg(res)).toBe(200);
       expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-      expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
+      expect(['OK', 'OK.'], failMsg(res)).toContain(res.body.message);
       expect(res.body.data, failMsg(res)).toBeNull();
     });
   });

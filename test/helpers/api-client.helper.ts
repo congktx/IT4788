@@ -2,7 +2,7 @@ import request from 'supertest';
 
 const BASE_URL =
   process.env.BASE_URL ||
-  'https://adware-merely-andrews-home.trycloudflare.com';
+  'http://localhost:8000';
 
 export const api = {
   get: (path: string, token?: string | null) => {

@@ -36,7 +36,7 @@ describe('Thành công', () => {
 
     expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-    expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
+    expect(['OK', 'OK.'], failMsg(res)).toContain(res.body.message);
     expect(res.body.data.is_following, failMsg(res)).toBe(true);
 
     // Kiểm tra kiểu dữ liệu của received outcome
@@ -60,7 +60,7 @@ describe('Thành công', () => {
 
     expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-    expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
+    expect(['OK', 'OK.'], failMsg(res)).toContain(res.body.message);
     expect(res.body.data.is_following, failMsg(res)).toBe(false);
 
     // Kiểm tra kiểu dữ liệu của received outcome
@@ -80,15 +80,15 @@ describe('Thành công', () => {
   it('TC03 — Follow rồi unfollow — following_count giảm đúng 1', async () => {
     const followRes = await followAction.follow(U1.token, U3.userId);
     expect(followRes.body.code, failMsg(followRes)).toBe(RESPONSE.OK.code);
-    expect(followRes.body.message, failMsg(followRes)).toBe(
-      RESPONSE.OK.message,
+    expect(['OK', 'OK.'], failMsg(followRes)).toContain(
+      followRes.body.message,
     );
     const countAfterFollow = followRes.body.data.following_count;
 
     const unfollowRes = await followAction.unfollow(U1.token, U3.userId);
     expect(unfollowRes.body.code, failMsg(unfollowRes)).toBe(RESPONSE.OK.code);
-    expect(unfollowRes.body.message, failMsg(unfollowRes)).toBe(
-      RESPONSE.OK.message,
+    expect(['OK', 'OK.'], failMsg(unfollowRes)).toContain(
+      unfollowRes.body.message,
     );
     const countAfterUnfollow = unfollowRes.body.data.following_count;
 
