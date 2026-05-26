@@ -113,6 +113,7 @@ export class OrdersController {
 
   @UseGuards(AuthGuard)
   @Post('order/get_list_purchases')
+  @HttpCode(200)
   getListPurchases(
     @Body() body: GetListPurchasesDto,
     @Req() req: RequestWithUser,
@@ -134,12 +135,14 @@ export class OrdersController {
 
   @UseGuards(AuthGuard)
   @Post('order/cancel_order')
+  @HttpCode(200)
   cancelOrder(@Body() body: CancelOrderDto, @Req() req: RequestWithUser) {
     return this.ordersService.cancelOrder(body, this.getUserId(req));
   }
 
   @UseGuards(AuthGuard)
   @Post('order/set_accept_buyer')
+  @HttpCode(200)
   setAcceptBuyer(@Body() body: SetAcceptBuyerDto, @Req() req: RequestWithUser) {
     return this.ordersService.setAcceptBuyer(body, this.getUserId(req));
   }

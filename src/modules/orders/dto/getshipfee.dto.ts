@@ -1,17 +1,14 @@
-import { IsNotEmpty, IsNumber } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsDefined, IsNumber, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class GetShipFeeDto {
-  @ApiProperty({
-    description: 'mã sản phẩm',
-  })
-  @IsNumber()
-  @IsNotEmpty()
+  @ApiProperty({ description: 'Mã sản phẩm' })
+  @IsDefined({ message: '1002' })
+  @IsNumber({}, { message: '1003' })
   product_id: number;
 
-  @ApiProperty({
-    description: 'Mã địa chỉ người dùng',
-  })
-  @IsNumber()
-  address_id: number;
+  @ApiPropertyOptional({ description: 'Mã địa chỉ người dùng' })
+  @IsOptional()
+  @IsNumber({}, { message: '1003' })
+  address_id?: number;
 }
