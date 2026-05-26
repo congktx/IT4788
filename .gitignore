@@ -3,3 +3,5 @@ node_modules
 .env
 .env.test
 migrations
+mysql_data/
+redis_data/

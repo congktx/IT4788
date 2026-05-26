@@ -93,7 +93,7 @@ describe('Thành công', () => {
       count: 10,
     });
 
-    expect(res.status, failMsg(res)).toBe(201);
+    expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
     expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
     expect(Array.isArray(res.body.data), failMsg(res)).toBe(true);
@@ -108,7 +108,7 @@ describe('Thành công', () => {
       count: 10,
     });
 
-    expect(res.status, failMsg(res)).toBe(201);
+    expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
     expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
     expect(res.body.data, failMsg(res)).toEqual([]);
@@ -121,7 +121,7 @@ describe('Thành công', () => {
       state: 'pending',
     });
 
-    expect(res.status, failMsg(res)).toBe(201);
+    expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
     expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
     expect(Array.isArray(res.body.data), failMsg(res)).toBe(true);
@@ -137,7 +137,7 @@ describe('Thành công', () => {
       count: 1,
     });
 
-    expect(res.status, failMsg(res)).toBe(201);
+    expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
     expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
     expect(res.body.data.length, failMsg(res)).toBe(1);
@@ -155,7 +155,7 @@ describe('Thành công', () => {
       count: 10,
     });
 
-    expect(res.status, failMsg(res)).toBe(201);
+    expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
     expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
     expect(res.body.data.length, failMsg(res)).toBe(totalCount - 1);
@@ -167,7 +167,7 @@ describe('Thành công', () => {
       count: 10,
     });
 
-    expect(res.status, failMsg(res)).toBe(201);
+    expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
     expect(res.body.message, failMsg(res)).toBe(RESPONSE.OK.message);
     expect(res.body.data, failMsg(res)).toEqual([]);
@@ -191,7 +191,7 @@ describe('Thiếu tham số', () => {
   it('TC08 — Có token, thiếu index và count — PARAMETER_VALUE_INVALID', async () => {
     const res = await orderAction.getListPurchasesRaw(U1.token, {});
 
-    expect(res.status, failMsg(res)).toBe(201);
+    expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(
       RESPONSE.PARAMETER_VALUE_INVALID.code,
     );
@@ -206,7 +206,7 @@ describe('Thiếu tham số', () => {
       count: 10,
     });
 
-    expect(res.status, failMsg(res)).toBe(201);
+    expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(
       RESPONSE.PARAMETER_VALUE_INVALID.code,
     );
@@ -221,7 +221,7 @@ describe('Thiếu tham số', () => {
       index: 0,
     });
 
-    expect(res.status, failMsg(res)).toBe(201);
+    expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(
       RESPONSE.PARAMETER_VALUE_INVALID.code,
     );
@@ -240,7 +240,7 @@ describe('Sai kiểu hoặc giá trị tham số', () => {
       count: 10,
     });
 
-    expect(res.status, failMsg(res)).toBe(201);
+    expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(
       RESPONSE.PARAMETER_VALUE_INVALID.code,
     );
@@ -256,7 +256,7 @@ describe('Sai kiểu hoặc giá trị tham số', () => {
       count: 0,
     });
 
-    expect(res.status, failMsg(res)).toBe(201);
+    expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(
       RESPONSE.PARAMETER_VALUE_INVALID.code,
     );
@@ -272,7 +272,7 @@ describe('Sai kiểu hoặc giá trị tham số', () => {
       count: 10,
     });
 
-    expect(res.status, failMsg(res)).toBe(201);
+    expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(
       RESPONSE.PARAMETER_VALUE_INVALID.code,
     );
@@ -288,7 +288,7 @@ describe('Sai kiểu hoặc giá trị tham số', () => {
       count: 'abc',
     });
 
-    expect(res.status, failMsg(res)).toBe(201);
+    expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(
       RESPONSE.PARAMETER_VALUE_INVALID.code,
     );

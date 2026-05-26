@@ -83,22 +83,7 @@ beforeAll(async () => {
   });
   orderIdProcessed = orderRes3.body.data.order_id || orderRes3.body.data.id;
 
-  // Gọi API getListPurchases để lấy buyer_id thực tế từ DB của U1
-  const listPurchasesRes = await orderAction.getListPurchases(U1.token, {
-    index: 0,
-    count: 1,
-  });
-
-  buyerIdStr = listPurchasesRes.body.data?.[0]?.buyer?.id
-    ? String(listPurchasesRes.body.data[0].buyer.id)
-    : '1';
-
-  // CHÈN ĐOẠN NÀY VÀO CUỐI beforeAll ĐỂ CHECK BUG:
-  console.log('=== THÔNG TIN ĐƠN HÀNG THỰC TẾ ===');
-  const checkOrder = await orderAction.getPurchase(U1.token, {
-    id: String(orderId1),
-  });
-  console.log(JSON.stringify(checkOrder.body, null, 2));
+  buyerIdStr = String(U1.userId);
 
   await orderAction.setAcceptBuyer(U2.token, {
     purchase_id: String(orderIdProcessed),

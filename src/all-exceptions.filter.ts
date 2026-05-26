@@ -16,6 +16,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       return response.status(HttpStatus.OK).json(exceptionResponse);
     }
 
+    console.error('=== UNHANDLED EXCEPTION ===', exception);
+
     // Nếu là lỗi hệ thống (500 Internal Server Error, crash code...)
     return response.status(HttpStatus.OK).json({
       ...APP_RESPONSE.EXCEPTION_ERROR,

@@ -67,7 +67,7 @@ beforeAll(async () => {
   });
   orderShippingId = orderRes1.body.data.order_id || orderRes1.body.data.id;
 
-  let buyerIdStr = orderRes1.body.data.buyer_id || '21';
+  const buyerIdStr = String(U1.userId);
 
   await orderAction.setAcceptBuyer(U2.token, {
     purchase_id: String(orderShippingId),

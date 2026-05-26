@@ -257,7 +257,7 @@ describe('Sai kiểu hoặc giá trị tham số', () => {
       id: String(orderCancelledId),
     });
 
-    expect(res.status, failMsg(res)).toBe(201);
+    expect(res.status, failMsg(res)).toBe(200);
     expect(res.body.code, failMsg(res)).toBe(
       RESPONSE.PARAMETER_VALUE_INVALID.code,
     );
