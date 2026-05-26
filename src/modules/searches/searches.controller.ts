@@ -10,6 +10,7 @@ import {
 import { SaveSearchDto } from './dto/save_search.dto';
 import { GetListSavedSearchDto } from './dto/get_list_saved_search.dto';
 import { SearchDto } from './dto/search.dto';
+import { DelSavedSearchDto } from './dto/del_saved_search.dto';
 
 interface RequestWithUser extends Request {
   user: {
@@ -109,6 +110,43 @@ export class SearchesController {
       return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {
       console.error('search error:', error);
+      return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
+    }
+  }
+
+  @Post('del_saved_search')
+  @UseGuards(AuthGuard)
+  async delSavedSearch(
+    @Req() req: RequestWithUser,
+    @Body() dto: DelSavedSearchDto,
+  ) {
+    try {
+      const userId = req.user?.userId ?? req.user?.id;
+
+      if (!userId) {
+        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
+      }
+
+      if (
+        (dto.search_id === undefined || dto.search_id === null) &&
+        (dto.keyword === undefined || dto.keyword === '')
+      ) {
+        return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
+      }
+
+      const deleted = await this.searchesService.delSavedSearch(
+        userId,
+        dto.search_id,
+        dto.keyword,
+      );
+
+      if (!deleted) {
+        return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, null);
+      }
+
+      return buildResponse(APP_RESPONSE.OK, null);
+    } catch (error) {
+      console.error('del_saved_search error:', error);
       return buildResponse(APP_RESPONSE.EXCEPTION_ERROR, null);
     }
   }
