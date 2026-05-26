@@ -61,7 +61,7 @@ describe('POST /order/get_ship_fee', () => {
   });
 
   describe('Thất bại — Sai kiểu dữ liệu / Thiếu', () => {
-    it('TC07 — Thieu tham so bat buoc product_id', async () => {
+    it('TC04 — Thieu tham so bat buoc product_id', async () => {
       const res = await orderAction.getShipFeeRaw(U1.token, {
         address_id: addrU1Id,
       });
@@ -69,7 +69,7 @@ describe('POST /order/get_ship_fee', () => {
       expect(res.body.code).toBe(RESPONSE.PARAMETER_NOT_ENOUGH.code);
     });
 
-    it('TC08 — Truyen chu cho tham so product_id', async () => {
+    it('TC05 — Truyen chu cho tham so product_id', async () => {
       const res = await orderAction.getShipFeeRaw(U1.token, {
         product_id: 'chu_ne',
         address_id: addrU1Id,
@@ -80,7 +80,7 @@ describe('POST /order/get_ship_fee', () => {
   });
 
   describe('Thất bại — Token không hợp lệ', () => {
-    it('TC10 — Khong truyen Token tren Header', async () => {
+    it('TC6 — Khong truyen Token tren Header', async () => {
       const res = await orderAction.getShipFeeRaw(null, { product_id: 1 });
       expect(res.status).toBe(200);
       expect(res.body.code).toBe(RESPONSE.TOKEN_INVALID.code);

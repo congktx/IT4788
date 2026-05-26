@@ -1,5 +1,11 @@
 import request from 'supertest';
 
+export interface UploadFileFixture {
+  buffer: Buffer;
+  filename: string;
+  mimetype: string;
+}
+
 const BASE_URL =
   process.env.BASE_URL ||
   'https://adware-merely-andrews-home.trycloudflare.com';
@@ -23,6 +29,26 @@ export const api = {
   delete: (path: string, token?: string | null) => {
     const req = request(BASE_URL).delete(path);
     if (token) req.set('Authorization', `Bearer ${token}`);
+    return req;
+  },
+  upload: (
+    url: string,
+    file: UploadFileFixture | null,
+    token?: string | null,
+    fieldName = 'file',
+  ) => {
+    const req = request(BASE_URL).post(url);
+
+    if (token) {
+      req.set('Authorization', `Bearer ${token}`);
+    }
+
+    if (file) {
+      req.attach(fieldName, file.buffer, {
+        filename: file.filename,
+        contentType: file.mimetype,
+      });
+    }
     return req;
   },
 };

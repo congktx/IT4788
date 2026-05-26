@@ -11,7 +11,7 @@
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/../src/$1"
   },
-  "silent": false,
+  "silent": true,
 
   "globalSetup": "<rootDir>/setup/global-setup.ts"
 }

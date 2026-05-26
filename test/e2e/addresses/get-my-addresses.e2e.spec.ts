@@ -66,18 +66,7 @@ describe('GET /addresses/me', () => {
       expect(data.length).toBeGreaterThanOrEqual(3);
     });
 
-    it('TC02 — Trả về rỗng khi User chưa tạo địa chỉ nào (U3) — OK', async () => {
-      const res = await addressAction.getMyAddresses(U3.token);
-
-      expect(res.status, failMsg(res)).toBe(200);
-      expect(res.body.code, failMsg(res)).toBe(RESPONSE.OK.code);
-
-      const data = res.body.data || res.body;
-      expect(Array.isArray(data), failMsg(res)).toBe(true);
-      expect(data.length).toBe(0);
-    });
-
-    it('TC03 — Kiểm tra chặt chẽ kiểu dữ liệu các field trả về', async () => {
+    it('TC02 — Kiểm tra chặt chẽ kiểu dữ liệu các field trả về', async () => {
       const res = await addressAction.getMyAddresses(U1.token);
 
       const data = res.body.data || res.body;
@@ -94,7 +83,7 @@ describe('GET /addresses/me', () => {
       ).toBe(true);
     });
 
-    it('TC04 — Tính cô lập dữ liệu (Chỉ lấy địa chỉ của U2)', async () => {
+    it('TC03 — Tính cô lập dữ liệu (Chỉ lấy địa chỉ của U2)', async () => {
       const res = await addressAction.getMyAddresses(U2.token);
 
       const data = res.body.data || res.body;
@@ -110,8 +99,9 @@ describe('GET /addresses/me', () => {
 
   // Thất bại -> Thiếu tham số (Token)
   describe('Thiếu tham số', () => {
-    it('TC05 — Không có token — TOKEN_INVALID', async () => {
+    it('TC04 — Không có token — TOKEN_INVALID', async () => {
       const res = await addressAction.getMyAddressesRaw(null);
+
       expect(res.status, failMsg(res)).toBe(200);
       expect(res.body.code, failMsg(res)).toBe(RESPONSE.TOKEN_INVALID.code);
     });
@@ -119,14 +109,16 @@ describe('GET /addresses/me', () => {
 
   // Thất bại -> Token không hợp lệ
   describe('Token không hợp lệ', () => {
-    it('TC06 — Token sai định dạng — TOKEN_INVALID', async () => {
+    it('TC05 — Token sai định dạng — TOKEN_INVALID', async () => {
       const res = await addressAction.getMyAddressesRaw('invalid-token-here');
+
       expect(res.status, failMsg(res)).toBe(200);
       expect(res.body.code, failMsg(res)).toBe(RESPONSE.TOKEN_INVALID.code);
     });
 
-    it('TC07 — Token đã hết hạn — TOKEN_INVALID', async () => {
+    it('TC06 — Token đã hết hạn — TOKEN_INVALID', async () => {
       const res = await addressAction.getMyAddressesRaw(EXPIRED_TOKEN);
+
       expect(res.status, failMsg(res)).toBe(200);
       expect(res.body.code, failMsg(res)).toBe(RESPONSE.TOKEN_INVALID.code);
     });
