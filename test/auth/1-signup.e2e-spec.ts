@@ -4,16 +4,11 @@ import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
-// import { clearDatabase } from '../utils/db.util'; // Không dùng nữa (Non-destructive testing)
-import bcrypt from 'bcrypt';
-import { User } from '../../src/modules/users/entities/user.entity';
 import * as fs from 'fs';
 import * as path from 'path';
 
 describe('Auth - Signup (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let currentTestPhone: string;
   let baseURL: string | any;
 
@@ -26,27 +21,14 @@ describe('Auth - Signup (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dataSource = app.get<DataSource>(DataSource);
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
-    // Sinh SĐT hợp lệ và đảm bảo chưa tồn tại trong DB (retry nếu trùng)
+    // Sinh SĐT ngẫu nhiên dựa trên timestamp
     const validPrefixes = ['3', '5', '7', '8', '9'];
-    const userRepository = dataSource.getRepository(User);
+    const prefix = validPrefixes[Math.floor(Math.random() * validPrefixes.length)];
+    const suffix = Date.now().toString().slice(-8);
+    currentTestPhone = '0' + prefix + suffix;
 
-    do {
-      const prefix = validPrefixes[Math.floor(Math.random() * validPrefixes.length)];
-      const suffix = Math.floor(10000000 + Math.random() * 90000000).toString(); // 8 chữ số
-      currentTestPhone = '0' + prefix + suffix;
-
-      const existed = await userRepository.findOne({
-        where: { phone_number: currentTestPhone },
-      });
-
-      if (!existed) break; // Số chưa tồn tại → dùng luôn
-      console.warn(`[SIGNUP] SĐT ${currentTestPhone} đã tồn tại trong DB, thử lại...`);
-    } while (true);
-
-    // Ghi SĐT + password ra file để các test suite khác (login, ...) có thể đọc lại
     const contextPath = path.join(__dirname, 'test-context.json');
     fs.writeFileSync(contextPath, JSON.stringify({
       phone_number: currentTestPhone,
@@ -57,9 +39,6 @@ describe('Auth - Signup (e2e)', () => {
   afterAll(async () => {
     if (app) {
       await app.close();
-    }
-    if (dataSource && dataSource.isInitialized) {
-      await dataSource.destroy();
     }
   }, 60000);
 
@@ -78,7 +57,7 @@ describe('Auth - Signup (e2e)', () => {
 
     // Kì vọng API trả về 1000
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toMatch(/^OK\.?$/);
+    expect(res.body.message).toMatch('OK.');
 
     // OUTPUT: Kiểm tra cấu trúc và giá trị data trả về
     const data = res.body.data;
@@ -88,30 +67,16 @@ describe('Auth - Signup (e2e)', () => {
     expect(data.avatar).toBeNull();
     expect(data.active).toBe(-1);
     expect(data.token).toBeUndefined();
-    const userRepository = dataSource.getRepository(User);
-
-    // Nếu test trên server từ xa (baseURL là remote URL), đồng bộ thông tin user mới này vào DB local
-    if (typeof baseURL === 'string' && baseURL.startsWith('http')) {
-      const hashedPassword = await bcrypt.hash(signupData.password, 10);
-      await userRepository.save({
-        id: Number(data.id),
+    const loginRes = await request(baseURL)
+      .post('/auth/login')
+      .send({
         phone_number: signupData.phone_number,
-        password: hashedPassword,
-        uuid: signupData.uuid,
-        username: signupData.phone_number,
-        role: 'soldier',
+        password: signupData.password
       });
-    }
 
-    const dbUser = await userRepository.createQueryBuilder('user')
-      .addSelect('user.password')
-      .where('user.phone_number = :phone', { phone: signupData.phone_number })
-      .getOne();
-
-    expect(dbUser).toBeDefined();
-    expect(dbUser!.phone_number).toBe(signupData.phone_number);
-    const isMatched = await bcrypt.compare(signupData.password, dbUser!.password);
-    expect(isMatched).toBe(true);
+    expect(loginRes.body.code).toBe('1000');
+    expect(loginRes.body.data.token).toBeDefined();
+    expect(loginRes.body.data.id).toBe(data.id);
   });
 
   it('SIGNUP-02: (Thất bại) - Lỗi 9996 khi SĐT trùng lặp', async () => {
@@ -121,18 +86,13 @@ describe('Auth - Signup (e2e)', () => {
       uuid: 'device-id-123'
     };
 
-    // DB đang chứa sẵn user từ test SIGNUP-01, không cần đẩy tay nữa
+
     const res = await request(baseURL)
       .post('/auth/signup')
       .send(signupData);
 
-    // Kì vọng API chặn lại (9996 User Existed)
     expect(res.body.code).toBe('9996');
     expect(res.body.message).toBe('User existed.');
-
-    const userRepository = dataSource.getRepository(User);
-    const count = await userRepository.count({ where: { phone_number: currentTestPhone } });
-    expect(count).toBe(1);
   });
 
   it('SIGNUP-03: (Thất bại) - Lỗi 1002 khi thiếu điện thoại hoặc mật khẩu', async () => {
@@ -167,7 +127,6 @@ describe('Auth - Signup (e2e)', () => {
   });
 
   it('SIGNUP-04: (Thất bại) - Lỗi 1003 khi sai kiểu dữ liệu', async () => {
-    // Truyền phone_number là kiểu Number thay vì String
     const res1 = await request(baseURL)
       .post('/auth/signup')
       .send({
@@ -178,7 +137,6 @@ describe('Auth - Signup (e2e)', () => {
     expect(res1.body.code).toBe('1003');
     expect(res1.body.message).toBe('Parameter type is invalid.');
 
-    // Truyền password sai kiểu dữ liệu (Number)
     const res2 = await request(baseURL)
       .post('/auth/signup')
       .send({

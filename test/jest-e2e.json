@@ -17,5 +17,6 @@
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/../src/$1"
   },
-  "silent": true
+  "silent": true,
+  "testSequencer": "<rootDir>/test-sequencer.js"
 }

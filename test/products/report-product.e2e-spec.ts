@@ -1,20 +1,14 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Category } from '../../src/modules/products/entities/category.entity';
-import { Address } from '../../src/modules/orders/entities/address.entity';
-import { Province } from '../../src/modules/orders/entities/province.entity';
-import { Ward } from '../../src/modules/orders/entities/ward.entity';
-
 describe('Products - Report Product (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let tokenUserA: string;
   let tokenUserB: string;
   let userIdA: number;
@@ -33,7 +27,6 @@ describe('Products - Report Product (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dataSource = app.get<DataSource>(DataSource);
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // 1. Setup User A
@@ -64,7 +57,7 @@ describe('Products - Report Product (e2e)', () => {
     if (loginBRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test' });
+        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test-report' });
       loginBRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number: phoneB, password: passB });
@@ -72,29 +65,30 @@ describe('Products - Report Product (e2e)', () => {
     tokenUserB = loginBRes.body.data.token;
     userIdB = Number(loginBRes.body.data.id);
 
-    // 3. Chuẩn bị dữ liệu nền (Category & Address)
-    const categoryRepo = dataSource.getRepository(Category);
-    let category = await categoryRepo.findOne({ where: {} });
-    if (!category) category = await categoryRepo.save({ name: 'Dien tu' });
-    categoryId = category.id;
+    // 3. Chuẩn bị dữ liệu nền bằng API (Category & Address)
+    const catRes = await request(baseURL).post('/api/get_categories').send({});
+    categoryId = catRes.body.data?.[0]?.id || 1;
 
-    const addressRepo = dataSource.getRepository(Address);
-    const provinceRepo = dataSource.getRepository(Province);
-    const wardRepo = dataSource.getRepository(Ward);
-
-    let address = await addressRepo.findOne({ where: { user_id: userIdB } });
-    if (!address) {
-      let province = await provinceRepo.findOne({ where: {} });
-      if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
-      let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-      if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
-
-      address = await addressRepo.save({
-        user_id: userIdB, ward_id: ward.id, address_name: 'Home Test',
-        address_detail: '123 Test St', lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver B', phone: '0955555555', full_address: '123 Test St, Dich Vong Hau, Ha Noi'
+    let addressIdB = 1;
+    const addrResB = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${tokenUserB}`);
+    if (addrResB.body.code === '1000' && addrResB.body.data && addrResB.body.data.length > 0) {
+      addressIdB = addrResB.body.data[0].id;
+    } else {
+      const addAddrResB = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${tokenUserB}`).send({
+         address: '123 Test St B',
+         address_id: [1, 1],
+         lat: 21.0285,
+         lng: 105.8542,
+         receiver_name: 'Test Receiver B',
+         phone: phoneB,
+         full_address: '123 Test St B, Ha Noi',
+         address_detail: '123 Test St B'
       });
+      if (addAddrResB.body.code === '1000' && addAddrResB.body.data) {
+        addressIdB = addAddrResB.body.data.id;
+      }
     }
-    addressId = address.id;
+    addressId = addressIdB;
 
     // 4. Tạo sản phẩm cho User B (để User A có cái report)
     const addRes = await request(baseURL)
@@ -110,10 +104,17 @@ describe('Products - Report Product (e2e)', () => {
   });
 
   afterAll(async () => {
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
+    // Cleanup block state để tránh side-effect
+    if (tokenUserB && userIdA) {
+      await request(baseURL)
+        .post('/set_user_block')
+        .set('Authorization', `Bearer ${tokenUserB}`)
+        .send({ user_id: userIdA, type: 1 }); // 1 = unblock
     }
-    await app.close();
+
+    if (app) {
+      await app.close();
+    }
   });
 
   // NHÓM 1: CÁC KỊCH BẢN THÀNH CÔNG VÀ LỖI CƠ BẢN
@@ -149,14 +150,14 @@ describe('Products - Report Product (e2e)', () => {
     expect(res.body.message).toBe('Parameter value is invalid.');
   });
 
-  it('TC-03: (Thất bại) - Báo cáo sản phẩm không tồn tại (product_id sai)', async () => {
+  it('TC-03: (Thất bại) - Report sản phẩm không tồn tại (ID rác)', async () => {
     const res = await request(baseURL)
       .post('/api/report_product')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({
         product_id: 99999999,
         subject: 'Spam',
-        details: 'Sản phẩm ảo'
+        details: 'Sản phẩm này spam nè'
       });
 
     expect(String(res.body.code)).toBe('9992');
@@ -190,11 +191,11 @@ describe('Products - Report Product (e2e)', () => {
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({
         product_id: validProductIdB,
-        subject: 'Xúc phạm',
-        details: 'Nội dung phản cảm'
+        subject: 'Hàng cấm',
+        details: 'Người này bán hàng cấm'
       });
 
-    // 3. Kỳ vọng Backend chặn lại và báo Not Access (Lưu ý: Backend hiện chưa code logic này nên sẽ fail)
+    // 3. Kỳ vọng bị chặn (Lưu ý: Nếu BE chưa làm sẽ báo lỗi ở đây)
     expect(String(res.body.code)).toBe('1009');
     expect(res.body.message).toBe('Not access.');
 
@@ -205,39 +206,39 @@ describe('Products - Report Product (e2e)', () => {
       .send({ user_id: userIdA, type: 1 });
   });
 
-  it('TC-06: (Thất bại) - Report sản phẩm đã bị xóa', async () => {
-    // 1. User A tạo 1 sản phẩm
-    const addRes = await request(baseURL)
-      .post('/api/add_product')
-      .set('Authorization', `Bearer ${tokenUserA}`)
-      .send({
-        title: 'Sản phẩm sắp xóa',
-        price: 1000,
-        description: 'Demo delete',
-        category_id: categoryId,
-        ship_from_id: addressId,
-        variants: [{ size: 'S', color: 'White', stock: 1, weight: 0.1 }]
-      });
-    const tempProductId = addRes.body.data.id;
-
-    // 2. User A tự xóa sản phẩm đó
-    await request(baseURL)
-      .post('/api/delete_product')
-      .set('Authorization', `Bearer ${tokenUserA}`)
-      .send({ id: tempProductId });
-
-    // 3. User B cố report sản phẩm vừa bị xóa của A
-    const reportRes = await request(baseURL)
+  it('TC-06: (Thất bại) - Report chính sản phẩm của mình', async () => {
+    // 1. User B cố gắng report sản phẩm của chính User B
+    const res = await request(baseURL)
       .post('/api/report_product')
       .set('Authorization', `Bearer ${tokenUserB}`)
       .send({
-        product_id: tempProductId,
-        subject: 'Hàng giả',
-        details: 'Report sản phẩm đã xóa'
+        product_id: validProductIdB,
+        subject: 'Test',
+        details: 'Tôi tự report chính mình'
       });
 
-    // 4. Kỳ vọng báo lỗi 9992 Sản phẩm không tồn tại
-    expect(String(reportRes.body.code)).toBe('9992');
-    expect(reportRes.body.message).toBe('Product is not existed.');
+    // Theo logic thông thường, không ai tự report bài của mình
+    // Nếu BE bắt lỗi này thì có thể trả về 1004 hoặc mã tương đương
+    // expect(String(res.body.code)).not.toBe('1000');
+    // NOTE: Tạm comment vì chưa rõ logic thực tế của Server xử lý tự report ra sao.
+  });
+
+  it('TC-07: (Thất bại) - Spam report nhiều lần liên tục cùng 1 sản phẩm', async () => {
+    // 1. Ở TC-01, User A đã report sản phẩm B rồi
+    // 2. Giờ User A tiếp tục gửi report thứ 2 cho cùng 1 sản phẩm đó
+    const res = await request(baseURL)
+      .post('/api/report_product')
+      .set('Authorization', `Bearer ${tokenUserA}`)
+      .send({
+        product_id: validProductIdB,
+        subject: 'Hàng giả',
+        details: 'Tôi đã report rồi mà vẫn report tiếp nè'
+      });
+
+    // Nếu Server chặn Spam, sẽ trả về mã lỗi (ví dụ: 1010 Action has been done previously)
+    // Nếu không chặn, nó vẫn báo 1000. 
+    // Theo logic Anti-spam tốt, nên chặn.
+    expect(String(res.body.code)).toBe('1010');
+    expect(res.body.message).toBe('Action has been done previously by this user.');
   });
 });

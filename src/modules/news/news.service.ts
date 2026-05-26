@@ -20,7 +20,7 @@ export class newsService {
     }
     return {
       code: '1000',
-      message: 'OK',
+      message: 'OK.',
       data: news,
     };
   }
@@ -30,7 +30,7 @@ export class newsService {
       const list_news = await this.newsRepo.find();
       return {
         code: '1000',
-        message: 'OK',
+        message: 'OK.',
         data: list_news,
       };
     }
@@ -46,7 +46,7 @@ export class newsService {
     });
     return {
       code: '1000',
-      message: 'OK',
+      message: 'OK.',
       data: {
         list_news: news,
         total: total,

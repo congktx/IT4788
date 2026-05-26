@@ -1,25 +1,14 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Category } from '../../src/modules/products/entities/category.entity';
-import { Address } from '../../src/modules/orders/entities/address.entity';
-import { Brand } from '../../src/modules/products/entities/brand.entity';
-import { Province } from '../../src/modules/orders/entities/province.entity';
-import { Ward } from '../../src/modules/orders/entities/ward.entity';
-import { Product } from '../../src/modules/products/entities/product.entity';
-import { User } from '../../src/modules/users/entities/user.entity';
-import { Not } from 'typeorm';
-import { JwtService } from '@nestjs/jwt';
-
 describe('Products - Edit Product (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let accessToken: string;
   let otherUserToken: string;
   let validCategoryId: number;
@@ -44,7 +33,6 @@ describe('Products - Edit Product (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dataSource = app.get<DataSource>(DataSource);
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // 1. Login User chính
@@ -72,53 +60,72 @@ describe('Products - Edit Product (e2e)', () => {
     if (otherLoginRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-        .send({ phone_number: otherPhone, password: otherPass, uuid: 'mock-user-test' });
+        .send({ phone_number: otherPhone, password: otherPass, uuid: 'mock-user-test-edit' });
       otherLoginRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number: otherPhone, password: otherPass });
     }
     otherUserToken = otherLoginRes.body.data.token;
 
-    const categoryRepo = dataSource.getRepository(Category);
-    const brandRepo = dataSource.getRepository(Brand);
-    const provinceRepo = dataSource.getRepository(Province);
-    const wardRepo = dataSource.getRepository(Ward);
-    const addressRepo = dataSource.getRepository(Address);
+    // 3. Chuẩn bị Category & Brand bằng API
+    const catRes = await request(baseURL).post('/api/get_categories').send({});
+    if (catRes.body.code === '1000' && catRes.body.data && catRes.body.data.length > 0) {
+      validCategoryId = catRes.body.data[0].id;
+    } else {
+      validCategoryId = 1;
+    }
 
-    let category = await categoryRepo.findOne({ where: {} });
-    if (!category) category = await categoryRepo.save({ name: 'Dien tu', description: 'Test' });
-    validCategoryId = category.id;
+    const brandRes = await request(baseURL).post('/api/get_list_brands').send({ category_id: validCategoryId });
+    if (brandRes.body.code === '1000' && brandRes.body.data && brandRes.body.data.length > 0) {
+      validBrandId = brandRes.body.data[0].id;
+    } else {
+      validBrandId = 1;
+    }
 
-    let brand = await brandRepo.findOne({ where: {} });
-    if (!brand) brand = await brandRepo.save({ name: 'Apple' });
-    validBrandId = brand.id;
+    // 4. Chuẩn bị Address cho User chính
+    const addrResA = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${accessToken}`);
+    if (addrResA.body.code === '1000' && addrResA.body.data && addrResA.body.data.length > 0) {
+      validShipFromId = addrResA.body.data[0].id;
+    } else {
+      const addAddrA = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${accessToken}`).send({
+         address: '123 Test St A',
+         address_id: [1, 1],
+         lat: 21.0285,
+         lng: 105.8542,
+         receiver_name: 'Test Receiver A',
+         phone: context.phone_number,
+         full_address: '123 Test St A, Ha Noi',
+         address_detail: '123 Test St A'
+      });
+      if (addAddrA.body.code === '1000' && addAddrA.body.data) {
+        validShipFromId = addAddrA.body.data.id;
+      } else {
+        validShipFromId = 1;
+      }
+    }
 
-    let province = await provinceRepo.findOne({ where: {} });
-    if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
-    let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-    if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
+    // 5. Chuẩn bị Address cho User phụ
+    let otherShipFromId = 1;
+    const addrResB = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${otherUserToken}`);
+    if (addrResB.body.code === '1000' && addrResB.body.data && addrResB.body.data.length > 0) {
+      otherShipFromId = addrResB.body.data[0].id;
+    } else {
+      const addAddrB = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${otherUserToken}`).send({
+         address: '123 Test St B',
+         address_id: [1, 1],
+         lat: 21.0285,
+         lng: 105.8542,
+         receiver_name: 'Test Receiver B',
+         phone: otherPhone,
+         full_address: '123 Test St B, Ha Noi',
+         address_detail: '123 Test St B'
+      });
+      if (addAddrB.body.code === '1000' && addAddrB.body.data) {
+        otherShipFromId = addAddrB.body.data.id;
+      }
+    }
 
-    const userId = loginRes.body.data?.id;
-    let address = await addressRepo.save({
-      user_id: userId,
-      ward_id: ward.id,
-      address_name: 'Home Test',
-      address_detail: '123 Test St',
-      lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver A', phone: context.phone_number, full_address: '123 Test St, Dich Vong Hau, Ha Noi'
-    });
-    validShipFromId = address.id;
-
-    const otherUserId = otherLoginRes.body.data.id;
-    const otherAddress = await addressRepo.save({
-      user_id: otherUserId,
-      ward_id: ward.id,
-      address_name: 'Home Test B',
-      address_detail: '123 Test St B',
-      lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver B', phone: '0955555555', full_address: '123 Test St B, Dich Vong Hau, Ha Noi'
-    });
-    const otherShipFromId = otherAddress.id;
-
-
+    // 6. Tạo sản phẩm của User chính
     const myProdRes = await request(baseURL)
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -132,7 +139,7 @@ describe('Products - Edit Product (e2e)', () => {
       });
     myProductId = myProdRes.body.data?.id;
 
-    // 5. Tạo sản phẩm của User phụ
+    // 7. Tạo sản phẩm của User phụ
     const otherProdRes = await request(baseURL)
       .post('/api/add_product')
       .set('Authorization', `Bearer ${otherUserToken}`)
@@ -148,7 +155,9 @@ describe('Products - Edit Product (e2e)', () => {
   }, 60000);
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   //TEST CASES 

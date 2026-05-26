@@ -38,7 +38,7 @@ describe('Auth - Logout (e2e)', () => {
   }, 20000);
 
   it('LOGOUT-01: (Thành công) - Đăng xuất thành công với Token hợp lệ', async () => {
-    // Bước A: Login để lấy token thật
+    //Login để lấy token thật
     const loginRes = await request(baseURL)
       .post('/auth/login')
       .send({
@@ -48,10 +48,9 @@ describe('Auth - Logout (e2e)', () => {
 
     const token = loginRes.body.data.token;
 
-    // Bước B: Dùng Token đó để gọi API Logout
     const res = await request(baseURL)
       .post('/auth/logout')
-      .set('Authorization', `Bearer ${token}`) // Gửi qua Header
+      .set('Authorization', `Bearer ${token}`)
       .send();
 
     // ASSERTIONS
@@ -59,19 +58,18 @@ describe('Auth - Logout (e2e)', () => {
       console.log(`\n[LOGOUT CHECK] Successfully logged out user: ${TEST_PHONE}`);
     }
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toMatch(/^OK\.?$/);
-    // OUTPUT: logout trả về data = null (không có thông tin thêm)
+    expect(res.body.message).toMatch('OK.');
     expect(res.body.data).toBeNull();
   });
 
-  it('LOGOUT-02: (Thất bại) - Lỗi 1004 khi Token không đúng định dạng hoặc quá ngắn', async () => {
+  it('LOGOUT-02: (Thất bại) - Lỗi 9998 khi Token không đúng định dạng hoặc quá ngắn', async () => {
     const res = await request(baseURL)
       .post('/auth/logout')
-      .set('Authorization', 'Bearer 123') // Token quá ngắn (< 10 ký tự như code quy định)
+      .set('Authorization', 'Bearer 123') // Token quá ngắn
       .send();
 
-    expect(res.body.code).toBe('1004'); // Parameter value is invalid
-    expect(res.body.message).toBe('Parameter value is invalid.');
+    expect(res.body.code).toBe('9998');
+    expect(res.body.message).toBe('Token is invalid.');
   });
 
   it('LOGOUT-03: (Thất bại) - Lỗi 9998 khi Token sai (Verify thất bại)', async () => {
@@ -80,16 +78,16 @@ describe('Auth - Logout (e2e)', () => {
       .set('Authorization', 'Bearer abcdefghij.klmnopqrst.uvwxyz') // Token dài nhưng sai cấu trúc JWT
       .send();
 
-    expect(res.body.code).toBe('9998'); // Token invalid (9998)
+    expect(res.body.code).toBe('9998');
     expect(res.body.message).toBe('Token is invalid.');
   });
 
-  it('LOGOUT-04: (Thất bại) - Lỗi 1004 khi hoàn toàn thiếu Token', async () => {
+  it('LOGOUT-04: (Thất bại) - Lỗi 9998 khi hoàn toàn thiếu Token', async () => {
     const res = await request(baseURL)
       .post('/auth/logout')
-      .send({}); // Không Header, Không Body token
+      .send({});
 
-    expect(res.body.code).toBe('1004'); // Parameter value is invalid
-    expect(res.body.message).toBe('Parameter value is invalid.');
+    expect(res.body.code).toBe('9998');
+    expect(res.body.message).toBe('Token is invalid.');
   });
 });

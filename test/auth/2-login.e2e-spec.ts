@@ -4,15 +4,11 @@ import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
-import bcrypt from 'bcrypt';
-import { User } from '../../src/modules/users/entities/user.entity';
 import * as fs from 'fs';
 import * as path from 'path';
 
 describe('Auth - Login (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let baseURL: string | any;
 
   // Dữ liệu được đọc từ file test-context.json (do 1-signup ghi ra sau khi random)
@@ -20,7 +16,6 @@ describe('Auth - Login (e2e)', () => {
   let PLAIN_PASSWORD: string;
 
   beforeAll(async () => {
-    // Đọc SĐT + password mà file 1-signup đã random và ghi ra
     const contextPath = path.join(__dirname, 'test-context.json');
     if (!fs.existsSync(contextPath)) {
       throw new Error(
@@ -39,21 +34,15 @@ describe('Auth - Login (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dataSource = app.get<DataSource>(DataSource);
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
   }, 60000);
 
   afterAll(async () => {
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
-    }
     await app.close();
   }, 20000);
 
 
   it('LOGIN-01: (Thành công) - Mật khẩu đúng, sinh ra JWT Token', async () => {
-    // Dữ liệu đã được 1-signup random và lưu vào Database thật + ghi ra test-context.json
-
     const res = await request(baseURL)
       .post('/auth/login')
       .send({
@@ -63,10 +52,9 @@ describe('Auth - Login (e2e)', () => {
 
     // ASSERTIONS
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toMatch(/^OK\.?$/);
+    expect(res.body.message).toMatch("OK.");
     expect(res.body.data).toBeDefined();
 
-    // OUTPUT: Kiểm tra cấu trúc và giá trị data trả về
     const data = res.body.data;
     expect(typeof data.id).toBe('string');
     expect(Number(data.id)).toBeGreaterThan(0);

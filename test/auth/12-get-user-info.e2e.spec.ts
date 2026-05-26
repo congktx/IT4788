@@ -4,13 +4,11 @@ import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 
 describe('User - Get User Info (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let baseURL: string | any;
 
   // Token hợp lệ và ID của user đang đăng nhập
@@ -40,7 +38,6 @@ describe('User - Get User Info (e2e)', () => {
     await app.init();
 
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
-    dataSource = app.get<DataSource>(DataSource);
 
     const loginRes = await request(baseURL)
       .post('/auth/login')
@@ -54,10 +51,9 @@ describe('User - Get User Info (e2e)', () => {
   }, 60000);
 
   afterAll(async () => {
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
+    if (app) {
+      await app.close();
     }
-    await app.close();
   }, 20000);
 
 

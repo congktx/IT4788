@@ -1,20 +1,14 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Category } from '../../src/modules/products/entities/category.entity';
-import { Address } from '../../src/modules/orders/entities/address.entity';
-import { Province } from '../../src/modules/orders/entities/province.entity';
-import { Ward } from '../../src/modules/orders/entities/ward.entity';
-
 describe('Rates - Set Rate (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let tokenUserA: string;
   let tokenUserB: string;
   let userIdA: number;
@@ -33,11 +27,13 @@ describe('Rates - Set Rate (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dataSource = app.get<DataSource>(DataSource);
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // 1. Setup User A từ test-context.json
     const contextPath = path.join(__dirname, '..', 'auth', 'test-context.json');
+    if (!fs.existsSync(contextPath)) {
+      throw new Error('File test-context.json không tồn tại! Hãy chạy 1-signup trước.');
+    }
     const context = JSON.parse(fs.readFileSync(contextPath, 'utf-8'));
     let loginARes = await request(baseURL)
       .post('/auth/login')
@@ -54,7 +50,7 @@ describe('Rates - Set Rate (e2e)', () => {
     tokenUserA = loginARes.body.data.token;
     userIdA = Number(loginARes.body.data.id);
 
-    // 2. Setup User B (Đồng bộ thông tin mock-user-test)
+    // 2. Setup User B qua API để test Remote
     const phoneB = '0955555555';
     const passB = '123456';
     let loginBRes = await request(baseURL)
@@ -64,7 +60,7 @@ describe('Rates - Set Rate (e2e)', () => {
     if (loginBRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test' });
+        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test-rate' });
       loginBRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number: phoneB, password: passB });
@@ -72,29 +68,30 @@ describe('Rates - Set Rate (e2e)', () => {
     tokenUserB = loginBRes.body.data.token;
     userIdB = Number(loginBRes.body.data.id);
 
-    // 3. Chuẩn bị danh mục và địa chỉ giao hàng để tạo sản phẩm
-    const categoryRepo = dataSource.getRepository(Category);
-    let category = await categoryRepo.findOne({ where: {} });
-    if (!category) category = await categoryRepo.save({ name: 'Dien tu' });
-    categoryId = category.id;
+    // 3. Chuẩn bị danh mục và địa chỉ giao hàng bằng API
+    const catRes = await request(baseURL).post('/api/get_categories').send({});
+    categoryId = catRes.body.data?.[0]?.id || 1;
 
-    const addressRepo = dataSource.getRepository(Address);
-    const provinceRepo = dataSource.getRepository(Province);
-    const wardRepo = dataSource.getRepository(Ward);
-
-    let address = await addressRepo.findOne({ where: { user_id: userIdB } });
-    if (!address) {
-      let province = await provinceRepo.findOne({ where: {} });
-      if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
-      let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-      if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
-
-      address = await addressRepo.save({
-        user_id: userIdB, ward_id: ward.id, address_name: 'Home Test B',
-        address_detail: '123 Test St B', lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver B', phone: '0955555555', full_address: '123 Test St B, Dich Vong Hau, Ha Noi'
+    let addressIdB = 1;
+    const addrResB = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${tokenUserB}`);
+    if (addrResB.body.code === '1000' && addrResB.body.data && addrResB.body.data.length > 0) {
+      addressIdB = addrResB.body.data[0].id;
+    } else {
+      const addAddrResB = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${tokenUserB}`).send({
+         address: '123 Test St B',
+         address_id: [1, 1],
+         lat: 21.0285,
+         lng: 105.8542,
+         receiver_name: 'Test Receiver B',
+         phone: phoneB,
+         full_address: '123 Test St B, Ha Noi',
+         address_detail: '123 Test St B'
       });
+      if (addAddrResB.body.code === '1000' && addAddrResB.body.data) {
+        addressIdB = addAddrResB.body.data.id;
+      }
     }
-    addressId = address.id;
+    addressId = addressIdB;
 
     // 4. Tạo 1 sản phẩm của User B để dùng cho việc đánh giá sản phẩm
     const addRes = await request(baseURL)
@@ -110,10 +107,17 @@ describe('Rates - Set Rate (e2e)', () => {
   });
 
   afterAll(async () => {
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
+    // Cleanup state để không ảnh hưởng
+    if (tokenUserB && userIdA) {
+      await request(baseURL)
+        .post('/set_user_block')
+        .set('Authorization', `Bearer ${tokenUserB}`)
+        .send({ user_id: userIdA, type: 1 }); // 1 = unblock
     }
-    await app.close();
+
+    if (app) {
+      await app.close();
+    }
   });
 
   // TC-01: (Thành công) - Thực hiện đánh giá hợp lệ
@@ -212,7 +216,7 @@ describe('Rates - Set Rate (e2e)', () => {
         content: 'Cố ý đánh giá mặc dù bị block',
       });
 
-    // 3. Kỳ vọng Backend chặn và báo Not Access (Lưu ý: Backend hiện chưa code logic này nên sẽ fail)
+    // 3. Kỳ vọng Backend chặn và báo Not Access
     expect(String(res.body.code)).toBe('1009');
     expect(res.body.message).toBe('Not access.');
 
@@ -320,7 +324,7 @@ describe('Rates - Set Rate (e2e)', () => {
         purchase_id: 999999, // ID không tồn tại
       });
 
-    expect(String(res.body.code)).toBe('1004');
+    expect(String(res.body.code)).toBe('1004'); // Parameter value is invalid
     expect(res.body.message).toBe('Parameter value is invalid.');
   });
 });

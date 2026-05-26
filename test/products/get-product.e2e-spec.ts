@@ -1,20 +1,14 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Category } from '../../src/modules/products/entities/category.entity';
-import { Address } from '../../src/modules/orders/entities/address.entity';
-import { Province } from '../../src/modules/orders/entities/province.entity';
-import { Ward } from '../../src/modules/orders/entities/ward.entity';
-
 describe('Products - Get Product (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let accessToken: string;
 
   // ID sản phẩm thật, được tạo trong beforeAll để dùng cho các test case thành công
@@ -40,8 +34,6 @@ describe('Products - Get Product (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dataSource = app.get<DataSource>(DataSource);
-
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // Đăng nhập để lấy token (cần token để tạo sản phẩm mẫu)
@@ -54,7 +46,7 @@ describe('Products - Get Product (e2e)', () => {
     if (loginRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-        .send({ phone_number, password, uuid: 'auto-recreate-user' });
+        .send({ phone_number, password, uuid: 'auto-recreate-user-get-prod' });
       loginRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number, password });
@@ -63,34 +55,36 @@ describe('Products - Get Product (e2e)', () => {
     accessToken = loginRes.body.data?.token;
     userId = Number(loginRes.body.data?.id);
 
-    // === CHUẨN BỊ DỮ LIỆU NỀN ===
-    const categoryRepo = dataSource.getRepository(Category);
-    const addressRepo = dataSource.getRepository(Address);
-    const provinceRepo = dataSource.getRepository(Province);
-    const wardRepo = dataSource.getRepository(Ward);
-
-    // Tạo danh mục nếu chưa có
-    let category = await categoryRepo.findOne({ where: {} });
-    if (!category) {
-      category = await categoryRepo.save({ name: 'Dien tu', description: 'Danh muc test' });
+    // === CHUẨN BỊ DỮ LIỆU NỀN BẰNG API ===
+    // 1. Lấy danh mục
+    let categoryId = 1;
+    const catRes = await request(baseURL).post('/api/get_categories').send({});
+    if (catRes.body.code === '1000' && catRes.body.data && catRes.body.data.length > 0) {
+      categoryId = catRes.body.data[0].id;
     }
 
-    // Tạo địa chỉ giao hàng nếu chưa có
-    let address = await addressRepo.findOne({ where: { user_id: userId } });
-    if (!address) {
-      let province = await provinceRepo.findOne({ where: {} });
-      if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
-      let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-      if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
-      address = await addressRepo.save({
-        user_id: userId, ward_id: ward.id, address_name: 'Home Test',
-        address_detail: '123 Test St', lat: 21.0285, lng: 105.8542,
-        receiver_name: 'Test Receiver A', phone: phone_number,
-        full_address: '123 Test St, Dich Vong Hau, Ha Noi'
+    // 2. Lấy hoặc tạo địa chỉ giao hàng cho User A
+    let addressId = 1;
+    const addrRes = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${accessToken}`);
+    if (addrRes.body.code === '1000' && addrRes.body.data && addrRes.body.data.length > 0) {
+      addressId = addrRes.body.data[0].id;
+    } else {
+      const addAddrRes = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${accessToken}`).send({
+         address: '123 Test St A',
+         address_id: [1, 1],
+         lat: 21.0285,
+         lng: 105.8542,
+         receiver_name: 'Test Receiver A',
+         phone: phone_number,
+         full_address: '123 Test St A, Ha Noi',
+         address_detail: '123 Test St A'
       });
+      if (addAddrRes.body.code === '1000' && addAddrRes.body.data) {
+        addressId = addAddrRes.body.data.id;
+      }
     }
 
-    // Tạo 1 sản phẩm mẫu để dùng cho các test case "thành công"
+    // 3. Tạo 1 sản phẩm mẫu để dùng cho các test case "thành công"
     const addRes = await request(baseURL)
       .post('/api/add_product')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -98,8 +92,8 @@ describe('Products - Get Product (e2e)', () => {
         title: 'Apple Watch Ultra',
         price: 20000000,
         description: 'Apple Watch Ultra viền Titanium',
-        category_id: category.id,
-        ship_from_id: address.id,
+        category_id: categoryId,
+        ship_from_id: addressId,
         variants: [{ size: '49mm', color: 'Titanium', stock: 5, weight: 0.1 }]
       });
 
@@ -109,7 +103,7 @@ describe('Products - Get Product (e2e)', () => {
 
     console.log(`[SETUP] Đã tạo sản phẩm mẫu với ID = ${validProductId}`);
 
-    // 2. Setup User B qua API để test Remote
+    // 4. Setup User B qua API để test Remote
     const phoneB = '0955555555';
     const passB = '123456';
     let loginBRes = await request(baseURL)
@@ -119,29 +113,51 @@ describe('Products - Get Product (e2e)', () => {
     if (loginBRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test' });
+        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test-get-product' });
       loginBRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number: phoneB, password: passB });
     }
     tokenUserB = loginBRes.body.data.token;
 
-    // User B tạo một sản phẩm mẫu
+    // 5. Lấy hoặc tạo địa chỉ giao hàng cho User B
+    let addressIdB = 1;
+    const addrResB = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${tokenUserB}`);
+    if (addrResB.body.code === '1000' && addrResB.body.data && addrResB.body.data.length > 0) {
+      addressIdB = addrResB.body.data[0].id;
+    } else {
+      const addAddrResB = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${tokenUserB}`).send({
+         address: '123 Test St B',
+         address_id: [1, 1],
+         lat: 21.0285,
+         lng: 105.8542,
+         receiver_name: 'Test Receiver B',
+         phone: phoneB,
+         full_address: '123 Test St B, Ha Noi',
+         address_detail: '123 Test St B'
+      });
+      if (addAddrResB.body.code === '1000' && addAddrResB.body.data) {
+        addressIdB = addAddrResB.body.data.id;
+      }
+    }
+
+    // 6. User B tạo một sản phẩm mẫu
     const addProductBRes = await request(baseURL)
       .post('/api/add_product')
       .set('Authorization', `Bearer ${tokenUserB}`)
       .send({
         title: 'MacBook Air M2',
         price: 25000000, description: 'Sản phẩm của User B',
-        category_id: category.id, ship_from_id: address.id,
+        category_id: categoryId, ship_from_id: addressIdB,
         variants: [{ size: '13 inch', color: 'Midnight', stock: 5, weight: 1.2 }]
       });
     productBId = addProductBRes.body?.data?.id || 2;
   }, 60000);
 
   afterAll(async () => {
-    if (dataSource?.isInitialized) await dataSource.destroy();
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   // NHÓM 1: TRƯỜNG HỢP THÀNH CÔNG

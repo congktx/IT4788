@@ -116,7 +116,7 @@ describe('Auth - Change Password (e2e)', () => {
       .set('Authorization', `Bearer ${VALID_TOKEN}`)
       .send({ password: TEST_PASSWORD, new_password: TEST_PASSWORD }); // Giống nhau
 
-    expect(res.body.code).toBe('1004'); // PARAMETER_VALUE_INVALID
+    expect(res.body.code).toBe('1004');
     expect(res.body.message).toBe('Parameter value is invalid.');
   });
 
@@ -128,8 +128,7 @@ describe('Auth - Change Password (e2e)', () => {
       .send({ password: TEST_PASSWORD, new_password: NEW_PASSWORD });
 
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toMatch(/^OK\.?$/);
-    // OUTPUT: change_password chỉ xác nhận đổi mật khẩu thành công, không trả thêm dữ liệu
+    expect(res.body.message).toMatch('OK.');
     expect(res.body.data).toBe('OK');
   });
 
@@ -139,14 +138,13 @@ describe('Auth - Change Password (e2e)', () => {
       .send({ phone_number: TEST_PHONE, password: NEW_PASSWORD });
 
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toMatch(/^OK\.?$/);
+    expect(res.body.message).toMatch('OK.');
 
     // OUTPUT: login với mật khẩu mới phải trả về token JWT hợp lệ
     expect(typeof res.body.data.token).toBe('string');
     expect(res.body.data.token).toMatch(/^eyJ/);
     expect(res.body.data.username).toBeDefined();
 
-    // Cập nhật mật khẩu mới vào context file để các test sau biết
     const contextPath = path.join(__dirname, 'test-context.json');
     const context = JSON.parse(fs.readFileSync(contextPath, 'utf-8'));
     context.password = NEW_PASSWORD;
