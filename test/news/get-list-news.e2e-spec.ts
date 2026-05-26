@@ -38,7 +38,8 @@ describe('News - Get List News (e2e)', () => {
     console.dir(res.body, { depth: null, colors: true });
     console.log('==================================================\n');
 
-    expect(res.body.code).toBeDefined();
+    expect(res.body.code).toBe('1000');
+    expect(res.body.message).toBe('OK.');
   });
 
   it('TC-02: (Thành công) - Phân trang đúng (index = 1, count = 10)', async () => {
@@ -57,6 +58,7 @@ describe('News - Get List News (e2e)', () => {
       .send({ index: 0, count: 2 });
 
     expect(res.body.code).toBe('1000');
+    expect(res.body.message).toBe('OK.');
     expect(Array.isArray(res.body.data.list_news)).toBe(true);
     expect(res.body.data.list_news.length).toBeLessThanOrEqual(2);
   });
@@ -79,12 +81,18 @@ describe('News - Get List News (e2e)', () => {
     expect(res.body.message).toBe('Parameter value is invalid.');
   });
 
-  it('TC-06: (Thất bại) - Thiếu index hoặc count (Request rỗng)', async () => {
+  it('TC-06: (Thành công) - Thiếu index hoặc count (Request rỗng), trả về toàn bộ danh sách', async () => {
     const res = await request(baseURL)
       .post('/News/list_news')
       .send({});
 
-    expect(res.body.code).toBe('1002'); 
-    expect(res.body.message).toBe('Parameter is not enough.');
+    console.log('\n=== [IN RA TERMINAL] KẾT QUẢ API GET LIST NEWS (Không truyền tham số) ===');
+    console.dir(res.body, { depth: null, colors: true });
+    console.log('========================================================================\n');
+
+    expect(res.body.code).toBe('1000'); 
+    expect(res.body.message).toBe('OK.');
+    expect(res.body.data).toBeDefined();
+    expect(res.body.data.list_news).toBeInstanceOf(Array);
   });
 });
