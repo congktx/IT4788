@@ -446,7 +446,6 @@ export class OrdersService {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
-    console.log(query);
     if (!query) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
     const {
       address,
