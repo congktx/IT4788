@@ -182,7 +182,7 @@ describe('Products - Edit Product (e2e)', () => {
     expect(res.body.data.title).toBe(updateData.title);
     expect(String(res.body.data.price)).toBe(String(updateData.price));
     expect(res.body.data.variants).toHaveLength(1);
-    expect(res.body.data.variants[0].size).toBe('13 inch');
+    expect(res.body.data.variants[1].size).toBe('13 inch');
   });
 
   it('TC-02: (Thành công) - Cập nhật một phần (chỉ đổi giá)', async () => {

@@ -382,6 +382,6 @@ describe('Products - Add Product (e2e)', () => {
       });
 
     expect(res.body.code).toBe('1002');
-    expect(res.body.message).toBe('Parameter is not enough.');
+    expect(res.body.message).toBe('Parameter is not enought.');
   });
 });

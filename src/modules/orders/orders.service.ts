@@ -31,10 +31,10 @@ import { SellerMarkAsShippedDto } from './dto/seller-mark-as-shipped.dto';
 import { GetOrderTimelineDto } from './dto/get-order-timeline.dto';
 import { GetShipFromQueryDto } from './dto/ship_from.dto';
 import { GetShipFeeDto } from './dto/getshipfee.dto';
-import { AddOrderAddress } from './dto/add_order_address.dto';
 import { UpdateOrderAddressDto } from './dto/update_order_address.dto';
 import { GetOrderStatusDto } from './dto/get_order_status.dto';
 import { APP_RESPONSE, buildResponse } from '../constants/response.constants';
+import { AddOrderAddressDto } from './dto/add_order_address.dto';
 
 const errorResponse = (response: { code: string; message: string }) =>
   buildResponse(response, null);
@@ -442,10 +442,11 @@ export class OrdersService {
     return buildResponse(APP_RESPONSE.OK, address_list);
   }
 
-  async addOrderAddress(user_id: number, query: AddOrderAddress) {
+  async addOrderAddress(user_id: number, query: AddOrderAddressDto) {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
+    console.log(query);
     if (!query) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
     const {
       address,
@@ -458,6 +459,7 @@ export class OrdersService {
       full_address,
       address_detail,
     } = query;
+    
     if (is_default) {
       await this.orderAddressRepository.update(
         { user_id, is_default: true },
