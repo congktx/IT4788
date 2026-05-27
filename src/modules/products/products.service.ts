@@ -58,30 +58,6 @@ export class ProductsService {
       });
 
       if (!user) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
-      if (
-        dto.title === undefined ||
-        dto.price === undefined ||
-        dto.category_id === undefined ||
-        dto.variants === undefined ||
-        dto.ship_from_id === undefined
-      ) {
-        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
-      }
-
-      if (
-        typeof dto.title !== 'string' ||
-        typeof dto.price !== 'number' ||
-        typeof dto.category_id !== 'number' ||
-        typeof dto.ship_from_id !== 'number' ||
-        (typeof dto.brand_id !== 'number' && dto.brand_id !== undefined) ||
-        !Array.isArray(dto.variants)
-      ) {
-        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
-      }
-
-      if (dto.image_urls !== undefined && dto.videos !== undefined) {
-        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
-      }
 
       if (dto.image_urls !== undefined) {
         if (!Array.isArray(dto.image_urls)) {

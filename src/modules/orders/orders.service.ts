@@ -31,10 +31,10 @@ import { SellerMarkAsShippedDto } from './dto/seller-mark-as-shipped.dto';
 import { GetOrderTimelineDto } from './dto/get-order-timeline.dto';
 import { GetShipFromQueryDto } from './dto/ship_from.dto';
 import { GetShipFeeDto } from './dto/getshipfee.dto';
-import { AddOrderAddress } from './dto/add_order_address.dto';
 import { UpdateOrderAddressDto } from './dto/update_order_address.dto';
 import { GetOrderStatusDto } from './dto/get_order_status.dto';
 import { APP_RESPONSE, buildResponse } from '../constants/response.constants';
+import { AddOrderAddressDto } from './dto/add_order_address.dto';
 
 const errorResponse = (response: { code: string; message: string }) =>
   buildResponse(response, null);
@@ -378,8 +378,20 @@ export class OrdersService {
       where: { id: product_id },
       relations: ['ship_from'],
     });
+    let addressIdNum: number | null = null;
 
-    if (!product || !product.ship_from) {
+    if (address_id !== undefined) {
+      addressIdNum = Number(address_id);
+
+      if (isNaN(addressIdNum)) {
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+      }
+
+      if (addressIdNum <= 0) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+    }
+    if (!product || !product?.ship_from) {
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
 
@@ -460,7 +472,7 @@ export class OrdersService {
     return buildResponse(APP_RESPONSE.OK, address_list);
   }
 
-  async addOrderAddress(user_id: number, query: AddOrderAddress) {
+  async addOrderAddress(user_id: number, query: AddOrderAddressDto) {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
@@ -482,49 +494,11 @@ export class OrdersService {
         { is_default: false },
       );
     }
-    if (
-      address === undefined ||
-      lat === undefined ||
-      lng === undefined ||
-      receiver_name === undefined ||
-      phone === undefined ||
-      full_address === undefined ||
-      address_detail === undefined
-    ) {
-      return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
-    }
 
-    if (
-      typeof address !== 'string' ||
-      typeof receiver_name !== 'string' ||
-      typeof phone !== 'string' ||
-      typeof full_address !== 'string'
-    ) {
-      return APP_RESPONSE.PARAMETER_TYPE_INVALID;
-    }
-
+    const [ward_id, province_id] = address_id;
+    if (!ward_id || !province_id) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
     if (typeof lat !== 'number' || typeof lng !== 'number') {
       return APP_RESPONSE.PARAMETER_TYPE_INVALID;
-    }
-
-    let ward_id = 1;
-
-    if (address_id !== undefined) {
-      if (!Array.isArray(address_id)) {
-        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
-      }
-
-      if (address_id.length < 2) {
-        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
-      }
-
-      const [wardId, provinceId] = address_id;
-
-      if (typeof wardId !== 'number' || typeof provinceId !== 'number') {
-        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
-      }
-
-      ward_id = wardId;
     }
 
     const new_address = this.orderAddressRepository.create({

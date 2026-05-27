@@ -9,7 +9,7 @@ import {
   IsString,
 } from 'class-validator';
 
-export class AddOrderAddress {
+export class AddOrderAddressDto {
   @ApiProperty({ description: 'địa chỉ chi tiết' })
   @IsDefined({ message: '1002' })
   @IsString({ message: '1003' })
