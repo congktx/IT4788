@@ -21,6 +21,22 @@ services:
       - ./redis-data:/data
     restart: always
 
+  mysql-test:
+    image: mysql:8.0
+    container_name: it4788_mysql_test
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: it4788_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: always
+    networks:
+      - proxy-net
+
   group2-api:
     # image: ghcr.io/congktx/it4788:latest
     build: .

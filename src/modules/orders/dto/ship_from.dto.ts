@@ -1,45 +1,45 @@
 import {
+  IsDefined,
   IsOptional,
-  IsString,
-  IsNotEmpty,
   IsNumber,
+  IsString,
   Min,
 } from 'class-validator';
 import * as classTransformer from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
 
 const Type = (classTransformer as any).Type;
-import { ApiProperty } from '@nestjs/swagger';
 
 export class GetShipFromQueryDto {
   @ApiProperty({
-    description: 'level mã địa chỉ ',
+    description: 'level mã địa chỉ',
     required: false,
     default: 0,
   })
   @IsOptional()
   @Type(() => Number)
-  @IsNumber()
+  @IsNumber({}, { message: '1003' })
   level: number = 0;
 
   @ApiProperty({ example: 0 })
-  @IsNotEmpty()
+  @IsDefined({ message: '1002' })
   @Type(() => Number)
-  @IsNumber()
-  @Min(0)
+  @IsNumber({}, { message: '1003' })
+  @Min(0, { message: '1004' })
   index: number;
 
   @ApiProperty({ example: 10 })
-  @IsNotEmpty()
+  @IsDefined({ message: '1002' })
   @Type(() => Number)
-  @IsNumber()
-  @Min(1)
+  @IsNumber({}, { message: '1003' })
+  @Min(1, { message: '1004' })
   count: number;
 
   @ApiProperty({
     description: 'mã tỉnh hoặc mã phường',
     example: '1',
   })
-  @IsNotEmpty()
-  @IsString()
+  @IsDefined({ message: '1002' })
+  @IsString({ message: '1003' })
   parent_id: string;
 }
