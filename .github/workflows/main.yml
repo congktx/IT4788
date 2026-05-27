@@ -76,4 +76,4 @@ jobs:
         script: |
           cd /home/deploy/group2
           docker compose pull
-          docker compose -f docker-compose.ci.yml --env_file .env.prod up -d
+          docker compose -f docker-compose.ci.yml --env-file .env.prod up -d
