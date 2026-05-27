@@ -395,16 +395,6 @@ export class OrdersService {
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
 
-    let addressIdNum: number | null = null;
-
-    if (address_id !== undefined && address_id !== null) {
-      if (typeof address_id !== 'number' || Number.isNaN(address_id)) {
-        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
-      }
-
-      addressIdNum = address_id;
-    }
-
     let buyerAddress: OrderAddress | null = null;
 
     if (addressIdNum !== null) {
@@ -460,7 +450,6 @@ export class OrdersService {
       leatime,
     });
   }
-
   async getListOrderAddress(user_id: number) {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
