@@ -45,9 +45,13 @@ export class WalletsService {
       wallet = await this.walletRepository.save(wallet);
     }
 
+    const balance = Number(wallet.balance || 0);
+    const pendingBalance = Number(wallet.pending_balance || 0);
+
     return buildResponse(APP_RESPONSE.OK, {
-      available_balance: Number(wallet.balance || 0),
-      pending_balance: Number(wallet.pending_balance || 0),
+      balance,
+      available_balance: balance,
+      pending_balance: pendingBalance,
     });
   }
 

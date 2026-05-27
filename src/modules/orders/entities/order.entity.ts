@@ -55,10 +55,10 @@ export class Order {
   @Column({ type: 'text', nullable: true })
   note: string | null;
 
-  @Column({ type: 'int', nullable: true })
-  cancel_reason: number | null;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  cancel_reason: string | null;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   refund_reason: string | null;
 
   @CreateDateColumn()
