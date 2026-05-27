@@ -38,8 +38,8 @@ services:
       - proxy-net
 
   group2-api:
-    # image: ghcr.io/congktx/it4788:latest
-    build: .
+    image: ghcr.io/congktx/it4788:latest
+    # build: .
     container_name: it4788_app
     ports:
       - "${PORT}:${PORT}"
