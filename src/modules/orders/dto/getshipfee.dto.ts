@@ -5,14 +5,14 @@ export class GetShipFeeDto {
   @ApiProperty({
     description: 'mã sản phẩm',
   })
-  @IsNumber()
-  @IsNotEmpty()
+  @IsNumber({}, { message: '1003' })
+  @IsNotEmpty({ message: '1002' })
   product_id: number;
 
   @ApiProperty({
     description: 'Mã địa chỉ người dùng',
   })
-  @IsNumber()
+  @IsNumber({}, { message: '1003' })
   @IsOptional()
   address_id: number;
 }
