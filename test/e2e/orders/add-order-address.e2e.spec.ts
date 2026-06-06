@@ -1,6 +1,6 @@
 import { orderAction } from '../../helpers/actions/order.action';
 import { getTestUsers, TestUser } from '../../helpers/test-user.helper';
-import { failMsg, api } from '../../helpers/api-client.helper';
+import { failMsg } from '../../helpers/api-client.helper';
 import { RESPONSE } from '../../constants/respones';
 import { EXPIRED_TOKEN } from '../../fixtures/user.fixture';
 
