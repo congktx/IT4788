@@ -216,7 +216,7 @@ export class ConversationsService {
     for (let i = 0; i < conversations.length; i++)
       listLastMessageId.push(conversations[i]['last_messasge_id']);
     let listLastMessage: any[] = [];
-    if (!listLastMessageId || listLastMessageId.length === 0) {
+    if (listLastMessageId && listLastMessageId.length > 0) {
       const orderedIdsString = listLastMessageId
         .map(id => (typeof id === 'string' ? `'${id}'` : id))
         .join(',');
