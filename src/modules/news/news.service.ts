@@ -11,6 +11,7 @@ export class newsService {
     private newsRepo: Repository<News>,
   ) {}
   async getNews(id: number) {
+    if (isNaN(Number(id))) return APP_RESPONSE.PARAMETER_TYPE_INVALID;
     const news = await this.newsRepo.findOne({
       where: { id: Number(id) },
     });
@@ -19,28 +20,35 @@ export class newsService {
     }
     return {
       code: '1000',
-      message: 'OK',
+      message: 'OK.',
       data: news,
     };
   }
   async getListNews(query: GetListNewsDto) {
     const { index, count } = query;
-    if (index === null || count === null) {
+    if (index === undefined && count === undefined) {
       const list_news = await this.newsRepo.find();
       return {
         code: '1000',
-        message: 'OK',
+        message: 'OK.',
         data: list_news,
       };
     }
+    if (index === undefined || count === undefined)
+      return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+    if (isNaN(Number(index)) || isNaN(Number(count))) {
+      return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+    }
+    if (Number(index) < 0 || Number(count) < 0)
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     const [news, total] = await this.newsRepo.findAndCount({
-      skip: Number(index),
+      skip: Number(index) * Number(count),
       take: Number(count),
       order: { id: 'DESC' },
     });
     return {
       code: '1000',
-      message: 'OK',
+      message: 'OK.',
       data: {
         list_news: news,
         total: total,

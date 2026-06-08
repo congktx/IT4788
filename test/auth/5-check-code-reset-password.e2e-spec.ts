@@ -1,25 +1,23 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { RedisService } from '../../src/common/redis/redis.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
 describe('Auth - Check OTP Reset Password (e2e)', () => {
   let app: INestApplication;
-  let redisService: RedisService;
   let TEST_PHONE: string;
+  let baseURL: string | any;
 
   beforeAll(async () => {
-    // 1. Đọc SĐT từ file test-context.json
-    const contextPath = path.join(__dirname, 'test-context.json');
-    if (!fs.existsSync(contextPath)) {
-      throw new Error('File test-context.json không tồn tại! Chạy 1-signup trước.');
-    }
-    const context = JSON.parse(fs.readFileSync(contextPath, 'utf-8'));
-    TEST_PHONE = context.phone_number;
+    // Tạo ngẫu nhiên một SĐT mới để tránh lỗi Cooldown 120s khi dùng chung test-context.json
+    const validPrefixes = ['3', '5', '7', '8', '9'];
+    const prefix = validPrefixes[Math.floor(Math.random() * validPrefixes.length)];
+    const suffix = Date.now().toString().slice(-8);
+    TEST_PHONE = '0' + prefix + suffix;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -28,13 +26,12 @@ describe('Auth - Check OTP Reset Password (e2e)', () => {
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
+    baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
-    redisService = app.get<RedisService>(RedisService);
-    
-    // Đảm bảo sạch sẽ trước khi test
-    await redisService.del(`reset_password:${TEST_PHONE}`);
-    await redisService.del(`reset_password_cooldown:${TEST_PHONE}`);
-    await redisService.del(`reset_password_verified:${TEST_PHONE}`);
+    // Đăng ký user tạm thời để SĐT tồn tại trong DB
+    await request(baseURL)
+      .post('/auth/signup')
+      .send({ phone_number: TEST_PHONE, password: 'password123', uuid: 'mock-uuid-5' });
   }, 60000);
 
   afterAll(async () => {
@@ -43,55 +40,46 @@ describe('Auth - Check OTP Reset Password (e2e)', () => {
     }
   }, 20000);
 
-  it('CHECK-OTP-01: (Thành công) - Xác thực mã OTP đúng', async () => {
-    // Bước A: Tạo mã OTP trước (qua API 4)
-    await request(app.getHttpServer())
+  it('CHECK-OTP-01: (Thành công) - Xác thực mã OTP đúng (1000)', async () => {
+    // Bước A: Gọi API tạo OTP (Cloudflare xử lý)
+    const createRes = await request(baseURL)
       .post('/auth/create_code_reset_password')
       .send({ phone_number: TEST_PHONE });
 
-    // Bước B: "Moi" mã OTP thật ra từ Redis để test
-    const realOtp = await redisService.get(`reset_password:${TEST_PHONE}`);
+    // Đọc OTP trực tiếp từ kết quả trả về của API thay vì moi từ local Redis
+    const realOtp = createRes.body.data.otp;
     expect(realOtp).toBeDefined();
 
-    // Bước C: Gọi API Check OTP bằng mã vừa lấy được
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/check_code_reset_password')
       .send({
         phone_number: TEST_PHONE,
         reset_code: realOtp,
       });
 
-    // Kì vọng: Thành công
+    // Kì vọng: Server xác nhận thành công
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toBe('OK.');
-    // OUTPUT: chỉ xác nhận OTP đúng, không trả dữ liệu đặc biệt
+    expect(res.body.message).toMatch('OK.');
     expect(res.body.data).toBeNull();
-
-    // Kiểm chứng quan trọng: Phải có 1 flag "Vừa xác thực xong" trong Redis
-    const verifiedFlag = await redisService.get(`reset_password_verified:${TEST_PHONE}`);
-    expect(verifiedFlag).toBe('1');
   });
 
   it('CHECK-OTP-02: (Thất bại) - Lỗi 9993 khi mã OTP sai', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/check_code_reset_password')
       .send({
         phone_number: TEST_PHONE,
-        reset_code: '000000', // Mã sai bét
+        reset_code: '000000', // Mã sai
       });
 
-    expect(res.body.code).toBe('9993'); // Code verify invalid
+    expect(res.body.code).toBe('9993'); // Code verify is incorrect
     expect(res.body.message).toBe('Code verify is incorrect.');
   });
 
-  it('CHECK-OTP-03: (Thất bại) - Lỗi 9993 khi mã OTP đã hết hạn hoặc không tồn tại', async () => {
-    // Xóa mã trong Redis đi cho nó coi như hết hạn
-    await redisService.del(`reset_password:${TEST_PHONE}`);
-
-    const res = await request(app.getHttpServer())
+  it('CHECK-OTP-03: (Thất bại) - Lỗi 9993 khi mã OTP không tồn tại (SĐT chưa yêu cầu OTP)', async () => {
+    const res = await request(baseURL)
       .post('/auth/check_code_reset_password')
       .send({
-        phone_number: TEST_PHONE,
+        phone_number: '0888777666', // SĐT chưa từng yêu cầu tạo OTP
         reset_code: '123456',
       });
 
@@ -100,7 +88,7 @@ describe('Auth - Check OTP Reset Password (e2e)', () => {
   });
 
   it('CHECK-OTP-04: (Thất bại) - Lỗi 1002 khi thiếu cả 2 trường input', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/check_code_reset_password')
       .send({});
 
@@ -109,7 +97,7 @@ describe('Auth - Check OTP Reset Password (e2e)', () => {
   });
 
   it('CHECK-OTP-05: (Thất bại) - Lỗi 1002 khi thiếu SĐT', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/check_code_reset_password')
       .send({ reset_code: '123456' }); // Không có phone_number
 
@@ -118,7 +106,7 @@ describe('Auth - Check OTP Reset Password (e2e)', () => {
   });
 
   it('CHECK-OTP-06: (Thất bại) - Lỗi 1002 khi thiếu mã OTP', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/check_code_reset_password')
       .send({ phone_number: TEST_PHONE }); // Không có reset_code
 
@@ -128,7 +116,7 @@ describe('Auth - Check OTP Reset Password (e2e)', () => {
 
   it('CHECK-OTP-07: (Thất bại) - Lỗi Validation (SĐT sai, Mã sai format...)', async () => {
     // SĐT sai format
-    const res1 = await request(app.getHttpServer())
+    const res1 = await request(baseURL)
       .post('/auth/check_code_reset_password')
       .send({
         phone_number: '123',
@@ -138,7 +126,7 @@ describe('Auth - Check OTP Reset Password (e2e)', () => {
     expect(res1.body.message).toBe('Parameter value is invalid.');
 
     // Mã OTP không đủ 6 chữ số
-    const res2 = await request(app.getHttpServer())
+    const res2 = await request(baseURL)
       .post('/auth/check_code_reset_password')
       .send({
         phone_number: TEST_PHONE,

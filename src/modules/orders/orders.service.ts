@@ -31,10 +31,10 @@ import { SellerMarkAsShippedDto } from './dto/seller-mark-as-shipped.dto';
 import { GetOrderTimelineDto } from './dto/get-order-timeline.dto';
 import { GetShipFromQueryDto } from './dto/ship_from.dto';
 import { GetShipFeeDto } from './dto/getshipfee.dto';
-import { AddOrderAddress } from './dto/add_order_address.dto';
 import { UpdateOrderAddressDto } from './dto/update_order_address.dto';
 import { GetOrderStatusDto } from './dto/get_order_status.dto';
 import { APP_RESPONSE, buildResponse } from '../constants/response.constants';
+import { AddOrderAddressDto } from './dto/add_order_address.dto';
 
 const errorResponse = (response: { code: string; message: string }) =>
   buildResponse(response, null);
@@ -292,8 +292,30 @@ export class OrdersService {
 
   async getShipFrom(query: GetShipFromQueryDto) {
     const { level, index, count, parent_id } = query;
+    const leveldefault = level ?? 2;
+    if (index === undefined || count === undefined || parent_id === undefined) {
+      return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+    }
+
+    const levelNum = Number(leveldefault);
+    const indexNum = Number(index);
+    const countNum = Number(count);
     const parentIdNum = Number(parent_id);
-    if (level == 1) {
+
+    if (
+      isNaN(indexNum) ||
+      isNaN(countNum) ||
+      isNaN(parentIdNum) ||
+      isNaN(levelNum)
+    ) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+
+    if (indexNum < 0 || countNum <= 0) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+    if (!parentIdNum) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    if (leveldefault == 1) {
       const province = await this.provinceRepository.findOne({
         where: { id: Number(parent_id) },
       });
@@ -308,9 +330,12 @@ export class OrdersService {
         return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
     }
+    if (index < 0) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
     const queryBuilder =
       this.warehouseRepository.createQueryBuilder('warehouse');
-    if (level == 1) {
+    if (leveldefault == 1) {
       queryBuilder
         .innerJoin('warehouse.ward', 'ward')
         .where('ward.provinces_id = :provinceId', { provinceId: parentIdNum });
@@ -319,8 +344,10 @@ export class OrdersService {
         wardId: parentIdNum,
       });
     }
+
+    const offset = indexNum * countNum;
     const [warehouses] = await queryBuilder
-      .skip(index)
+      .skip(offset)
       .take(count)
       .getManyAndCount();
     const list_address = warehouses.map((wh) => ({
@@ -329,37 +356,65 @@ export class OrdersService {
       pick_support: wh.pick_support ? '1' : '0',
       message_pick_support: wh.pick_support ? '1-Có' : '0-Không',
     }));
-    return buildResponse(APP_RESPONSE.OK, { list_address });
+    return buildResponse(APP_RESPONSE.OK, list_address);
   }
 
   async getShipFee(user_id: number, query: GetShipFeeDto) {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
+
     const { product_id, address_id } = query;
 
+    if (product_id === undefined || product_id === null) {
+      return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+    }
+
+    if (typeof product_id !== 'number' || Number.isNaN(product_id)) {
+      return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+    }
+
     const product = await this.productRepository.findOne({
-      where: { id: Number(product_id) },
+      where: { id: product_id },
       relations: ['ship_from'],
     });
-    if (!product || !product.ship_from) {
+    let addressIdNum: number | null = null;
+
+    if (address_id !== undefined) {
+      addressIdNum = Number(address_id);
+
+      if (isNaN(addressIdNum)) {
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+      }
+
+      if (addressIdNum <= 0) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+    }
+    if (!product || !product?.ship_from) {
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
 
-    const sellerLat = Number(product.ship_from.lat);
-    const sellerLng = Number(product.ship_from.lng);
-
     let buyerAddress: OrderAddress | null = null;
-    if (address_id) {
+
+    if (addressIdNum !== null) {
       buyerAddress = await this.orderAddressRepository.findOne({
-        where: { id: Number(address_id), user_id },
+        where: { id: addressIdNum, user_id },
       });
     } else {
       buyerAddress = await this.orderAddressRepository.findOne({
         where: { user_id, is_default: true },
       });
     }
+
     if (!buyerAddress) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+
+    const sellerLat = Number(product.ship_from.lat);
+    const sellerLng = Number(product.ship_from.lng);
+
+    if (!sellerLat || !sellerLng) {
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
 
@@ -372,8 +427,10 @@ export class OrdersService {
       buyerLat,
       buyerLng,
     );
+
     let shipfee = 0;
     let leatime = 0;
+
     if (distance < 15) {
       shipfee = 20000;
       leatime = 24;
@@ -393,7 +450,6 @@ export class OrdersService {
       leatime,
     });
   }
-
   async getListOrderAddress(user_id: number) {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
@@ -405,10 +461,11 @@ export class OrdersService {
     return buildResponse(APP_RESPONSE.OK, address_list);
   }
 
-  async addOrderAddress(user_id: number, query: AddOrderAddress) {
+  async addOrderAddress(user_id: number, query: AddOrderAddressDto) {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
+    if (!query) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
     const {
       address,
       is_default,
@@ -426,16 +483,23 @@ export class OrdersService {
         { is_default: false },
       );
     }
+
+    const [ward_id, province_id] = address_id;
+    if (!ward_id || !province_id) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
+      return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+    }
+
     const new_address = this.orderAddressRepository.create({
       user_id,
       address_name: address,
       is_default,
-      ward_id: address_id[0],
-      lat,
-      lng,
+      ward_id: ward_id,
+      lat: Number(lat),
+      lng: Number(lng),
       address_detail,
       receiver_name,
-      phone,
+      phone: phone,
       full_address,
     });
     await this.orderAddressRepository.save(new_address);
@@ -448,6 +512,7 @@ export class OrdersService {
     id: number,
     query: UpdateOrderAddressDto,
   ) {
+    if (isNaN(Number(id))) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     const {
       address: address_name,
       is_default,
@@ -462,27 +527,47 @@ export class OrdersService {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
+    const address = query.address;
 
+    if (address_id !== undefined) {
+      if (!Array.isArray(address_id) || address_id.length < 1) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+      const [ward_id, province_id] = address_id;
+      if (!ward_id && !province_id) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+    }
+    if (
+      (typeof lat !== 'number' && lat !== undefined) ||
+      (typeof lng !== 'number' && lng !== undefined) ||
+      (typeof receiver_name === 'number' && receiver_name !== undefined) ||
+      (Array.isArray(phone) && phone !== undefined) ||
+      (typeof full_address === 'number' && full_address !== undefined) ||
+      (Array.isArray(address_detail) && address_detail !== undefined) ||
+      (typeof is_default === 'string' && is_default !== undefined)
+    )
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    if (typeof address === 'number' && address !== undefined)
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     const addressUpdate = await this.orderAddressRepository.findOne({
       where: { id: Number(id), user_id },
     });
     if (!addressUpdate) {
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
-    if (address_id && address_id.length > 0) {
+    if (address_id !== undefined && address_id.length > 0) {
       const newWardId = Number(address_id[0]);
 
-      if (
-        addressUpdate.ward_id === newWardId &&
-        addressUpdate.address_name === address_name
-      ) {
-        return APP_RESPONSE.ACTION_DONE_PREVIOUSLY;
-      }
       const ward = await this.wardRepository.findOne({
         where: { id: Number(address_id[0]) },
       });
       if (!ward) {
         return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+      if (
+        addressUpdate.ward_id === newWardId &&
+        addressUpdate.address_name === address_name
+      ) {
+        return APP_RESPONSE.ACTION_DONE_PREVIOUSLY;
       }
     }
 
@@ -510,6 +595,7 @@ export class OrdersService {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
+    if (isNaN(Number(id))) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     const address = await this.orderAddressRepository.findOne({
       where: { id: Number(id), user_id: Number(user_id) },
     });
@@ -1009,17 +1095,53 @@ export class OrdersService {
       );
     }
 
-    order.status = OrderStatus.REFUNDED;
-    order.refund_reason = body.reason ?? null;
+    return this.dataSource.transaction(async (manager) => {
+      order.status = OrderStatus.REFUNDED;
+      order.refund_reason = body.reason ?? null;
 
-    await this.orderRepository.save(order);
-    await this.addTimeline(
-      order.id,
-      OrderStatus.REFUNDED,
-      body.reason ?? 'Refund requested',
-    );
+      await manager.save(Order, order);
 
-    return APP_RESPONSE.OK;
+      let wallet = await manager.findOne(Wallet, {
+        where: { user_id: buyer.id },
+      });
+
+      if (!wallet) {
+        wallet = manager.create(Wallet, {
+          user_id: buyer.id,
+          balance: 0,
+          pending_balance: 0,
+        });
+
+        wallet = await manager.save(Wallet, wallet);
+      }
+
+      const refundedCoins =
+        Number(order.total_price || 0) + Number(order.shipping_fee || 0);
+
+      wallet.balance = Number(wallet.balance || 0) + refundedCoins;
+
+      await manager.save(Wallet, wallet);
+
+      const transaction = manager.create(Transaction, {
+        wallet_id: wallet.id,
+        type: 'income',
+        amount: refundedCoins,
+        status: 'success',
+        description: `Refund for order #${order.id}`,
+      });
+
+      await manager.save(Transaction, transaction);
+
+      const timeline = manager.create(OrderTimeline, {
+        order_id: order.id,
+        status: OrderStatus.REFUNDED,
+        note: body.reason ?? 'Refund requested',
+      });
+
+      await manager.save(OrderTimeline, timeline);
+
+      return APP_RESPONSE.OK;
+    });
   }
 
   async sellerMarkAsShipped(body: SellerMarkAsShippedDto, userId: number) {

@@ -1,4 +1,9 @@
-import { IsString, IsBoolean, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsBoolean,
+  IsOptional,
+  IsNumber,
+} from 'class-validator';
 
 export class CreateAddressDto {
   @IsString()
@@ -10,7 +15,23 @@ export class CreateAddressDto {
   @IsString()
   full_address: string;
 
-  @IsOptional()
   @IsBoolean()
-  is_default?: boolean;
+  is_default: boolean;
+
+  @IsNumber()
+  ward_id: number;
+
+  @IsNumber()
+  lat: number;
+
+  @IsNumber()
+  lng: number;
+
+  @IsOptional()
+  @IsString()
+  address_name?: string;
+
+  @IsOptional()
+  @IsString()
+  address_detail?: string;
 }

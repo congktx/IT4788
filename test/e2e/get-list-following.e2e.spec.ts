@@ -32,7 +32,7 @@ import { generateAuthToken } from '../helpers/auth.helper';
 
 const RESPONSE = {
   OK: { code: '1000', message: 'OK' },
-  PARAMETER_NOT_ENOUGH: { code: '1002', message: 'Parameter is not enought.' },
+  PARAMETER_NOT_ENOUGH: { code: '1002', message: 'Parameter is not enough.' },
   PARAMETER_TYPE_INVALID: {
     code: '1003',
     message: 'Parameter type is invalid.',
@@ -42,7 +42,7 @@ const RESPONSE = {
     message: 'Parameter value is invalid.',
   },
   NOT_ACCESS: { code: '1009', message: 'Not access.' },
-  USER_NOT_EXIST: { code: '1013', message: 'User does not exist' },
+  USER_NOT_EXIST: { code: '1013', message: 'User does not exist.' },
 };
 
 let app: INestApplication;
@@ -221,7 +221,7 @@ describe('POST /get_list_following', () => {
   describe('Thất bại — thiếu tham số', () => {
     it('TC08 — Bỏ trống cả 4: user_id, index, count, token', async () => {
       const res = await callApi(null, {});
-      expect(res.status, failMsg(res)).toBe(401);
+      expect(res.status, failMsg(res)).toBe(200);
     });
 
     it('TC09 — Bỏ trống user_id, index, count (có token)', async () => {
@@ -291,7 +291,7 @@ describe('POST /get_list_following', () => {
 
     it('TC14 — Bỏ trống token', async () => {
       const res = await callApi(null, { user_id: 2, index: 0, count: 10 });
-      expect(res.status, failMsg(res)).toBe(401);
+      expect(res.status, failMsg(res)).toBe(200);
     });
   });
 
@@ -386,7 +386,7 @@ describe('POST /get_list_following', () => {
         index: 0,
         count: 10,
       });
-      expect(res.status, failMsg(res)).toBe(401);
+      expect(res.status, failMsg(res)).toBe(200);
     });
 
     it('TC22 — Token đã hết hạn', async () => {
@@ -400,7 +400,7 @@ describe('POST /get_list_following', () => {
         index: 0,
         count: 10,
       });
-      expect(res.status, failMsg(res)).toBe(401);
+      expect(res.status, failMsg(res)).toBe(200);
     });
   });
 

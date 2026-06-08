@@ -10,21 +10,25 @@ services:
       MYSQL_USER: "${DB_USERNAME}"
       MYSQL_PASSWORD: "${DB_PASSWORD}"
     ports:
-      - "${DB_PORT}:3306"
+      - "127.0.0.1:${DB_PORT}:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - ./mysql_data:/var/lib/mysql
     restart: always
 
   redis:
     image: redis:latest
     ports:
-      - "${REDIS_PORT}:6379"
+      - "127.0.0.1:${REDIS_PORT}:6379"
+    volumes:
+      - ./redis-data:/data
+    restart: always
 
   app:
     build: .
     container_name: it4788_app
     ports:
       - "${PORT}:${PORT}"
+    env_file: .env
     volumes:
       - .:/app
       - /app/node_modules
@@ -33,6 +37,3 @@ services:
       - mysql
       - redis
     restart: always
-
-volumes:
-  mysql_data:

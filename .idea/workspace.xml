@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="13da8cc0-818a-4b7e-8edb-d1dab3fbcec3" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env.example" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.env.test.example" beforeDir="false" afterPath="$PROJECT_DIR$/.env.test.example" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/common/auth/auth.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/src/common/auth/auth.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/auth/1-signup.e2e-spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/auth/1-signup.e2e-spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/auth/10-get-push-settings.e2e-spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/auth/10-get-push-settings.e2e-spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/auth/11-set-push-settings.e2e-spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/auth/11-set-push-settings.e2e-spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/auth/3-logout.e2e-spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/auth/3-logout.e2e-spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/auth/4-create-code-reset-password.e2e-spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/auth/4-create-code-reset-password.e2e-spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/auth/5-check-code-reset-password.e2e-spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/auth/5-check-code-reset-password.e2e-spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/auth/6-reset-password.e2e-spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/auth/6-reset-password.e2e-spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/auth/7-change-password.e2e-spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/auth/7-change-password.e2e-spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/auth/8-change-info-after-signup.e2e-spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/auth/8-change-info-after-signup.e2e-spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/auth/9-set-devtoken.e2e-spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/auth/9-set-devtoken.e2e-spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/products/get-comment-product.e2e-spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/products/get-comment-product.e2e-spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/products/get-list-products.e2e-spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/products/get-list-products.e2e-spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/products/set-comment-product.e2e-spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/test/products/set-comment-product.e2e-spec.ts" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 0
+}]]></component>
+  <component name="ProjectId" id="3E7K2IzsO3GQbbu2R7BcI2edrxZ" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "main",
+    "nodejs_package_manager_path": "npm",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-fbdcb00ec9e3-intellij.indexing.shared.core-IU-251.23774.435" />
+        <option value="bundled-js-predefined-d6986cc7102b-f27c65a3e318-JavaScript-IU-251.23774.435" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="13da8cc0-818a-4b7e-8edb-d1dab3fbcec3" name="Changes" comment="" />
+      <created>1779523960231</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1779523960231</updated>
+      <workItem from="1779523963703" duration="5000" />
+    </task>
+    <servers />
+  </component>
+</project>

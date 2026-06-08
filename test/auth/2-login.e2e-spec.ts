@@ -1,24 +1,21 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
-import bcrypt from 'bcrypt';
-import { User } from '../../src/modules/users/entities/user.entity';
 import * as fs from 'fs';
 import * as path from 'path';
 
 describe('Auth - Login (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
+  let baseURL: string | any;
 
   // Dữ liệu được đọc từ file test-context.json (do 1-signup ghi ra sau khi random)
   let TEST_PHONE: string;
   let PLAIN_PASSWORD: string;
 
   beforeAll(async () => {
-    // Đọc SĐT + password mà file 1-signup đã random và ghi ra
     const contextPath = path.join(__dirname, 'test-context.json');
     if (!fs.existsSync(contextPath)) {
       throw new Error(
@@ -37,21 +34,16 @@ describe('Auth - Login (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dataSource = app.get<DataSource>(DataSource);
+    baseURL = process.env.TEST_API_URL || app.getHttpServer();
   }, 60000);
 
   afterAll(async () => {
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
-    }
     await app.close();
   }, 20000);
 
 
   it('LOGIN-01: (Thành công) - Mật khẩu đúng, sinh ra JWT Token', async () => {
-    // Dữ liệu đã được 1-signup random và lưu vào Database thật + ghi ra test-context.json
-
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/login')
       .send({
         phone_number: TEST_PHONE,
@@ -60,22 +52,21 @@ describe('Auth - Login (e2e)', () => {
 
     // ASSERTIONS
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toBe('OK.');
+    expect(res.body.message).toMatch("OK.");
     expect(res.body.data).toBeDefined();
 
-    // OUTPUT: Kiểm tra cấu trúc và giá trị data trả về
     const data = res.body.data;
-    expect(typeof data.id).toBe('string');           
-    expect(Number(data.id)).toBeGreaterThan(0);      
-    expect(data.username).toBe(TEST_PHONE);        
-    expect(typeof data.token).toBe('string');       
-    expect(data.token).toMatch(/^eyJ/);             
-    expect('active' in data).toBe(true);             
-    expect(typeof data.active).toBe('number');       
+    expect(typeof data.id).toBe('string');
+    expect(Number(data.id)).toBeGreaterThan(0);
+    expect(data.username).toBe(TEST_PHONE);
+    expect(typeof data.token).toBe('string');
+    expect(data.token).toMatch(/^eyJ/);
+    expect('active' in data).toBe(true);
+    expect(typeof data.active).toBe('number');
   });
 
   it('LOGIN-02: (Thất bại) - Sai mật khẩu (9995)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/login')
       .send({
         phone_number: TEST_PHONE,
@@ -87,7 +78,7 @@ describe('Auth - Login (e2e)', () => {
   });
 
   it('LOGIN-03: (Thất bại) - User không tồn tại (9995)', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/login')
       .send({
         phone_number: '0999999999',
@@ -100,7 +91,7 @@ describe('Auth - Login (e2e)', () => {
 
   it('LOGIN-04: (Thất bại) - Lỗi 1002 khi thiếu điện thoại hoặc mật khẩu', async () => {
     // Thiếu phone_number
-    const res1 = await request(app.getHttpServer())
+    const res1 = await request(baseURL)
       .post('/auth/login')
       .send({
         password: 'password123'
@@ -109,7 +100,7 @@ describe('Auth - Login (e2e)', () => {
     expect(res1.body.message).toBe('Parameter is not enough.');
 
     // Thiếu password
-    const res2 = await request(app.getHttpServer())
+    const res2 = await request(baseURL)
       .post('/auth/login')
       .send({
         phone_number: TEST_PHONE
@@ -118,7 +109,7 @@ describe('Auth - Login (e2e)', () => {
     expect(res2.body.message).toBe('Parameter is not enough.');
 
     // Thiếu cả 2 trường
-    const res3 = await request(app.getHttpServer())
+    const res3 = await request(baseURL)
       .post('/auth/login')
       .send({});
     expect(res3.body.code).toBe('1002');
@@ -127,7 +118,7 @@ describe('Auth - Login (e2e)', () => {
 
   it('LOGIN-05: (Thất bại) - Lỗi 1003 khi sai kiểu dữ liệu', async () => {
     // phone_number sai kiểu
-    const res1 = await request(app.getHttpServer())
+    const res1 = await request(baseURL)
       .post('/auth/login')
       .send({
         phone_number: 987654321,
@@ -137,7 +128,7 @@ describe('Auth - Login (e2e)', () => {
     expect(res1.body.message).toBe('Parameter type is invalid.');
 
     // password sai kiểu
-    const res2 = await request(app.getHttpServer())
+    const res2 = await request(baseURL)
       .post('/auth/login')
       .send({
         phone_number: TEST_PHONE,
@@ -147,7 +138,7 @@ describe('Auth - Login (e2e)', () => {
     expect(res2.body.message).toBe('Parameter type is invalid.');
 
     // Cả 2 trường sai kiểu
-    const res3 = await request(app.getHttpServer())
+    const res3 = await request(baseURL)
       .post('/auth/login')
       .send({
         phone_number: 987654321,

@@ -42,7 +42,7 @@ export class Product {
   @Column('decimal', { nullable: true })
   price: number;
 
-  @Column('decimal')
+  @Column('decimal', { nullable: true })
   price_discount: number;
 
   @Column({ type: 'json', nullable: true })

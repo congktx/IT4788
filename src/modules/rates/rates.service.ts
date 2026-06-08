@@ -24,7 +24,14 @@ export class RatesService {
     return user;
   }
 
-  async getRates(userId: number, index: number, count: number, level?: number) {
+  async getRates(
+    userId: number,
+    index: number,
+    count: number,
+    level?: number,
+    productId?: number,
+    purchaseId?: number,
+  ) {
     const qb = this.rateRepository
       .createQueryBuilder('rate')
       .leftJoin(User, 'reviewer', 'reviewer.id = rate.reviewer_id')
@@ -34,12 +41,22 @@ export class RatesService {
         'reviewer.avatar AS avatar',
         'rate.content AS content',
         'rate.level AS level',
+        'rate.product_id AS product_id',
+        'rate.purchase_id AS purchase_id',
         'rate.created_at AS created',
       ])
       .where('rate.user_id = :userId', { userId });
 
     if (level !== undefined && level !== 0) {
       qb.andWhere('rate.level = :level', { level });
+    }
+
+    if (productId !== undefined) {
+      qb.andWhere('rate.product_id = :productId', { productId });
+    }
+
+    if (purchaseId !== undefined) {
+      qb.andWhere('rate.purchase_id = :purchaseId', { purchaseId });
     }
 
     const data = await qb

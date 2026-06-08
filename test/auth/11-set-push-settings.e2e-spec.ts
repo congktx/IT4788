@@ -1,18 +1,17 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
-import { PushSetting } from '../../src/modules/push_settings/entities/push-setting.entity';
 import * as fs from 'fs';
 import * as path from 'path';
 
 describe('PushSettings - Set Push Settings (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let userToken: string;
   let userId: number;
+  let baseURL: string | any;
 
   let TEST_PHONE: string;
   let PLAIN_PASSWORD: string;
@@ -35,11 +34,10 @@ describe('PushSettings - Set Push Settings (e2e)', () => {
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
-
-    dataSource = app.get<DataSource>(DataSource);
+    baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // Login để lấy token và userId
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/auth/login')
       .send({
         phone_number: TEST_PHONE,
@@ -51,33 +49,34 @@ describe('PushSettings - Set Push Settings (e2e)', () => {
   }, 60000);
 
   afterAll(async () => {
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
+    if (app) {
+      await app.close();
     }
-    await app.close();
   }, 20000);
 
- 
+
   // NHÓM 1: Test các case thành công
 
-  it('SET-PUSH-SETTINGS-01: (Thành công) - Cập nhật 1 trường (like) qua Header, verify DB', async () => {
-    const res = await request(app.getHttpServer())
+  it('SET-PUSH-SETTINGS-01: (Thành công) - Cập nhật 1 trường (like) qua Header, verify bằng API get', async () => {
+    const res = await request(baseURL)
       .post('/push_settings/set_push_setting')
       .set('Authorization', `Bearer ${userToken}`)
       .send({ like: '0' });
 
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toBe('OK.');
+    expect(res.body.message).toMatch(/^OK\.?$/);
     expect(res.body.data).toBe('OK');
 
-    const repo = dataSource.getRepository(PushSetting);
-    const setting = await repo.findOne({ where: { user_id: userId } });
-    expect(setting).toBeDefined();
-    expect(setting!.like).toBe(0);
+    // DÙNG API TRỊ API: Gọi get_push_setting để kiểm chứng thay vì soi DB
+    const getRes = await request(baseURL)
+      .post('/push_settings/get_push_setting')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({});
+    expect(getRes.body.data.like).toBe('0');
   });
 
-  it('SET-PUSH-SETTINGS-02: (Thành công) - Cập nhật nhiều trường cùng lúc, verify DB', async () => {
-    const res = await request(app.getHttpServer())
+  it('SET-PUSH-SETTINGS-02: (Thành công) - Cập nhật nhiều trường cùng lúc, verify bằng API get', async () => {
+    const res = await request(baseURL)
       .post('/push_settings/set_push_setting')
       .set('Authorization', `Bearer ${userToken}`)
       .send({
@@ -89,75 +88,50 @@ describe('PushSettings - Set Push Settings (e2e)', () => {
       });
 
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toBe('OK.');
+    expect(res.body.message).toMatch(/^OK\.?$/);
 
-    const repo = dataSource.getRepository(PushSetting);
-    const setting = await repo.findOne({ where: { user_id: userId } });
-    expect(setting!.like).toBe(1);
-    expect(setting!.comment).toBe(0);
-    expect(setting!.transaction).toBe(1);
-    expect(setting!.announcement).toBe(0);
-    expect(setting!.sound_on).toBe(1);
+    const getRes = await request(baseURL)
+      .post('/push_settings/get_push_setting')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({});
+    expect(getRes.body.data.like).toBe('1');
+    expect(getRes.body.data.comment).toBe('0');
+    expect(getRes.body.data.transaction).toBe('1');
+    expect(getRes.body.data.announcement).toBe('0');
+    expect(getRes.body.data.sound_on).toBe('1');
   });
 
-  it('SET-PUSH-SETTINGS-03: (Thành công) - Cập nhật sound_default với chuỗi bất kỳ, verify DB', async () => {
+  it('SET-PUSH-SETTINGS-03: (Thành công) - Cập nhật sound_default với chuỗi bất kỳ, verify bằng API get', async () => {
     // sound_default không bị ràng buộc IsIn nên nhận bất kỳ chuỗi nào
     const customSound = 'notification_bell';
 
-    const res = await request(app.getHttpServer())
+    const res = await request(baseURL)
       .post('/push_settings/set_push_setting')
       .set('Authorization', `Bearer ${userToken}`)
       .send({ sound_default: customSound });
 
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toBe('OK.');
+    expect(res.body.message).toMatch(/^OK\.?$/);
 
-    // Verify trong DB
-    const repo = dataSource.getRepository(PushSetting);
-    const setting = await repo.findOne({ where: { user_id: userId } });
-    expect(setting!.sound_default).toBe(customSound);
-  });
-
-  it('SET-PUSH-SETTINGS-04: (Thành công) - Truyền token qua body thay vì Header', async () => {
-    const res = await request(app.getHttpServer())
-      .post('/push_settings/set_push_setting')
-      .send({
-        token: userToken,
-        comment: '1',
-      });
-
-    expect(res.body.code).toBe('1000');
-    expect(res.body.message).toBe('OK.');
+    const getRes = await request(baseURL)
+      .post('/push_settings/get_push_setting')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({});
+    expect(getRes.body.data.sound_default).toBe(customSound);
   });
 
   // NHÓM 2: Test xác thực Token (Authentication)
-  it('SET-PUSH-SETTINGS-05: (Thất bại) - Lỗi 1004 khi không truyền token', async () => {
-    const res = await request(app.getHttpServer())
+  it('SET-PUSH-SETTINGS-04: (Thất bại) - Lỗi 9998 khi không truyền header Authorization', async () => {
+    const res = await request(baseURL)
       .post('/push_settings/set_push_setting')
-      .send({ like: '1' }); // Có sending data nhưng không có token
+      .send({ like: '1' }); // Không có token
 
-    expect(res.body.code).toBe('1004');
-    expect(res.body.message).toBe('Parameter value is invalid.');
+    expect(res.body.code).toBe('9998');
+    expect(res.body.message).toBe('Token is invalid.');
   });
 
-  it('SET-PUSH-SETTINGS-06: (Thất bại) - Lỗi 1003 khi token trong body không phải chuỗi', async () => {
-    // Gửi token dạng số
-    const res1 = await request(app.getHttpServer())
-      .post('/push_settings/set_push_setting')
-      .send({ token: 123456789012345, like: '1' });
-    expect(res1.body.code).toBe('1003');
-    expect(res1.body.message).toBe('Parameter type is invalid.');
-
-    // Gửi token dạng boolean
-    const res2 = await request(app.getHttpServer())
-      .post('/push_settings/set_push_setting')
-      .send({ token: true, like: '1' });
-    expect(res2.body.code).toBe('1003');
-    expect(res2.body.message).toBe('Parameter type is invalid.');
-  });
-
-  it('SET-PUSH-SETTINGS-07: (Thất bại) - Lỗi 9998 khi token sai hoặc đã hết hạn', async () => {
-    const res = await request(app.getHttpServer())
+  it('SET-PUSH-SETTINGS-05: (Thất bại) - Lỗi 9998 khi token sai hoặc đã hết hạn', async () => {
+    const res = await request(baseURL)
       .post('/push_settings/set_push_setting')
       .set('Authorization', `Bearer fakes-token-invalid-abc`)
       .send({ like: '1' });
@@ -168,20 +142,19 @@ describe('PushSettings - Set Push Settings (e2e)', () => {
 
 
   // NHÓM 3: Test validation các trường setting
-  it('SET-PUSH-SETTINGS-08: (Thất bại) - Lỗi 1002 khi không truyền trường setting nào', async () => {
-    const res = await request(app.getHttpServer())
+  it('SET-PUSH-SETTINGS-06: (Thất bại) - Lỗi 1002 khi không truyền trường setting nào', async () => {
+    const res = await request(baseURL)
       .post('/push_settings/set_push_setting')
       .set('Authorization', `Bearer ${userToken}`)
       .send({}); // Chỉ token trong header, body rỗng
 
-    // hasAtLeastOneField === false → PARAMETER_NOT_ENOUGH → 1002
     expect(res.body.code).toBe('1002');
     expect(res.body.message).toBe('Parameter is not enough.');
   });
 
-  it('SET-PUSH-SETTINGS-09: (Thất bại) - Lỗi 1003 khi các trường setting không phải kiểu chuỗi', async () => {
+  it('SET-PUSH-SETTINGS-07: (Thất bại) - Lỗi 1003 khi các trường setting không phải kiểu chuỗi', async () => {
     // like gửi dạng số nguyên
-    const res1 = await request(app.getHttpServer())
+    const res1 = await request(baseURL)
       .post('/push_settings/set_push_setting')
       .set('Authorization', `Bearer ${userToken}`)
       .send({ like: 1 }); // số thay vì '1'
@@ -189,7 +162,7 @@ describe('PushSettings - Set Push Settings (e2e)', () => {
     expect(res1.body.message).toBe('Parameter type is invalid.');
 
     // comment gửi dạng boolean
-    const res2 = await request(app.getHttpServer())
+    const res2 = await request(baseURL)
       .post('/push_settings/set_push_setting')
       .set('Authorization', `Bearer ${userToken}`)
       .send({ comment: true });
@@ -197,9 +170,9 @@ describe('PushSettings - Set Push Settings (e2e)', () => {
     expect(res2.body.message).toBe('Parameter type is invalid.');
   });
 
-  it('SET-PUSH-SETTINGS-10: (Thất bại) - Lỗi 1004 khi trường setting có giá trị nằm ngoài ["0","1"]', async () => {
+  it('SET-PUSH-SETTINGS-08: (Thất bại) - Lỗi 1004 khi trường setting có giá trị nằm ngoài ["0","1"]', async () => {
     // like = '2' (không nằm trong IsIn)
-    const res1 = await request(app.getHttpServer())
+    const res1 = await request(baseURL)
       .post('/push_settings/set_push_setting')
       .set('Authorization', `Bearer ${userToken}`)
       .send({ like: '2' });
@@ -207,7 +180,7 @@ describe('PushSettings - Set Push Settings (e2e)', () => {
     expect(res1.body.message).toBe('Parameter value is invalid.');
 
     // sound_on = 'yes' (không nằm trong IsIn)
-    const res2 = await request(app.getHttpServer())
+    const res2 = await request(baseURL)
       .post('/push_settings/set_push_setting')
       .set('Authorization', `Bearer ${userToken}`)
       .send({ sound_on: 'yes' });

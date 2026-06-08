@@ -8,7 +8,7 @@ export class SearchesService {
   constructor(
     @InjectRepository(SavedSearch)
     private readonly savedSearchRepository: Repository<SavedSearch>,
-  ) { }
+  ) {}
 
   async saveSearch(userId: number, keyword: string) {
     const saved = this.savedSearchRepository.create({
@@ -26,5 +26,30 @@ export class SearchesService {
       skip: index,
       take: count,
     });
+  }
+
+  async delSavedSearch(userId: number, searchId?: number, keyword?: string) {
+    if (searchId === 0) {
+      await this.savedSearchRepository.delete({ user_id: userId });
+      return true;
+    }
+
+    if (searchId !== undefined) {
+      const result = await this.savedSearchRepository.delete({
+        id: searchId,
+        user_id: userId,
+      });
+      return (result.affected ?? 0) > 0;
+    }
+
+    if (keyword !== undefined && keyword !== '') {
+      const result = await this.savedSearchRepository.delete({
+        user_id: userId,
+        keyword,
+      });
+      return (result.affected ?? 0) > 0;
+    }
+
+    return false;
   }
 }

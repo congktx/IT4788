@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -15,7 +16,7 @@ import { AuthGuard } from '../../common/auth/guards/auth.guard';
 import { OrdersService } from './orders.service';
 import { GetShipFromQueryDto } from './dto/ship_from.dto';
 import { GetShipFeeDto } from './dto/getshipfee.dto';
-import { AddOrderAddress } from './dto/add_order_address.dto';
+import { AddOrderAddressDto } from './dto/add_order_address.dto';
 import { UpdateOrderAddressDto } from './dto/update_order_address.dto';
 import { GetOrderStatusDto } from './dto/get_order_status.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -36,10 +37,10 @@ interface RequestWithUser extends Request {
   };
 }
 
-@ApiBearerAuth("JWT-auth")
+@ApiBearerAuth('JWT-auth')
 @Controller()
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) { }
+  constructor(private readonly ordersService: OrdersService) {}
 
   private getUserId(req: RequestWithUser): number {
     return req.user?.id ?? req.user?.userId ?? 0;
@@ -57,6 +58,7 @@ export class OrdersController {
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Phí ship' })
   @Post('order/get_ship_fee')
+  @HttpCode(200)
   getShipFee(@Body() query: GetShipFeeDto, @Req() req: RequestWithUser) {
     return this.ordersService.getShipFee(this.getUserId(req), query);
   }
@@ -71,7 +73,11 @@ export class OrdersController {
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Thêm địa chỉ người dùng' })
   @Post('order/add_order_address')
-  addOrderAddress(@Req() req: RequestWithUser, @Body() dto: AddOrderAddress) {
+  @HttpCode(200)
+  addOrderAddress(
+    @Req() req: RequestWithUser,
+    @Body() dto: AddOrderAddressDto,
+  ) {
     return this.ordersService.addOrderAddress(this.getUserId(req), dto);
   }
 
@@ -110,6 +116,7 @@ export class OrdersController {
 
   @UseGuards(AuthGuard)
   @Post('order/get_list_purchases')
+  @HttpCode(200)
   getListPurchases(
     @Body() body: GetListPurchasesDto,
     @Req() req: RequestWithUser,
@@ -131,12 +138,14 @@ export class OrdersController {
 
   @UseGuards(AuthGuard)
   @Post('order/cancel_order')
+  @HttpCode(200)
   cancelOrder(@Body() body: CancelOrderDto, @Req() req: RequestWithUser) {
     return this.ordersService.cancelOrder(body, this.getUserId(req));
   }
 
   @UseGuards(AuthGuard)
   @Post('order/set_accept_buyer')
+  @HttpCode(200)
   setAcceptBuyer(@Body() body: SetAcceptBuyerDto, @Req() req: RequestWithUser) {
     return this.ordersService.setAcceptBuyer(body, this.getUserId(req));
   }

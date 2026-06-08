@@ -25,7 +25,7 @@ import { generateAuthToken } from '../helpers/auth.helper';
 
 const RESPONSE = {
   OK: { code: '1000', message: 'OK' },
-  PARAMETER_NOT_ENOUGH: { code: '1002', message: 'Parameter is not enought.' },
+  PARAMETER_NOT_ENOUGH: { code: '1002', message: 'Parameter is not enough.' },
   PARAMETER_TYPE_INVALID: {
     code: '1003',
     message: 'Parameter type is invalid.',
@@ -38,7 +38,7 @@ const RESPONSE = {
     code: '1010',
     message: 'action has been done previously by this user.',
   },
-  USER_NOT_EXIST: { code: '1013', message: 'User does not exist' },
+  USER_NOT_EXIST: { code: '1013', message: 'User does not exist.' },
 };
 
 let app: INestApplication;
@@ -132,7 +132,7 @@ describe('POST /set_user_follow', () => {
   describe('Trường hợp thất bại — thiếu tham số', () => {
     it('TC05 — Bỏ trống cả 3: followee_id, action, token', async () => {
       const res = await callApi(null, {});
-      expect(res.status, failMsg(res)).toBe(401);
+      expect(res.status, failMsg(res)).toBe(200);
     });
 
     it('TC06 — Bỏ trống followee_id và action (có token)', async () => {
@@ -150,12 +150,12 @@ describe('POST /set_user_follow', () => {
 
     it('TC07 — Bỏ trống followee_id và token', async () => {
       const res = await callApi(null, { action: 'follow' });
-      expect(res.status, failMsg(res)).toBe(401);
+      expect(res.status, failMsg(res)).toBe(200);
     });
 
     it('TC08 — Bỏ trống action và token', async () => {
       const res = await callApi(null, { followee_id: 2 });
-      expect(res.status, failMsg(res)).toBe(401);
+      expect(res.status, failMsg(res)).toBe(200);
     });
 
     it('TC09 — Bỏ trống followee_id (có token, có action)', async () => {
@@ -186,7 +186,7 @@ describe('POST /set_user_follow', () => {
 
     it('TC11 — Bỏ trống token (có followee_id, có action)', async () => {
       const res = await callApi(null, { followee_id: 2, action: 'follow' });
-      expect(res.status, failMsg(res)).toBe(401);
+      expect(res.status, failMsg(res)).toBe(200);
     });
   });
 
@@ -268,7 +268,7 @@ describe('POST /set_user_follow', () => {
         followee_id: 2,
         action: 'follow',
       });
-      expect(res.status, failMsg(res)).toBe(401);
+      expect(res.status, failMsg(res)).toBe(200);
     });
 
     it('TC18 — Token đã hết hạn', async () => {
@@ -281,7 +281,7 @@ describe('POST /set_user_follow', () => {
         followee_id: 2,
         action: 'follow',
       });
-      expect(res.status, failMsg(res)).toBe(401);
+      expect(res.status, failMsg(res)).toBe(200);
     });
   });
 

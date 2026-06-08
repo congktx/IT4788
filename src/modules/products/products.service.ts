@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
 import { ProductVariant } from './entities/product_variant.entity';
 import { CreateProductDto } from './dto/create_product.dto';
-import { CreateProductVariantDto } from './dto/create_productVariants.dto';
 import { Comment } from './entities/comment.entity';
 import { User } from '../users/entities/user.entity';
 import { Like } from './entities/like.entity';
@@ -12,6 +11,9 @@ import { Report } from './entities/report.entity';
 import { APP_RESPONSE } from '../constants/response.constants';
 import { UpdateProductDto } from './dto/update_product.dto';
 import { GetUserListingsDto } from './dto/get_user_listing.dto';
+import { Brand } from './entities/brand.entity';
+import { Category } from './entities/category.entity';
+import { Address } from '../orders/entities/address.entity';
 
 @Injectable()
 export class ProductsService {
@@ -28,6 +30,15 @@ export class ProductsService {
     @InjectRepository(Like)
     private readonly likeRepo: Repository<Like>,
 
+    @InjectRepository(Address)
+    private readonly addressRepo: Repository<Address>,
+
+    @InjectRepository(Brand)
+    private readonly brandRepo: Repository<Brand>,
+
+    @InjectRepository(Category)
+    private readonly categoryRepo: Repository<Category>,
+
     @InjectRepository(Report)
     private readonly reportRepo: Repository<Report>,
 
@@ -37,49 +48,109 @@ export class ProductsService {
 
   async createProduct(dto: CreateProductDto, user_id: number) {
     try {
-      const variants = dto.variants;
-      const isInvalidVariant = variants.some(
-        (v) => typeof v.stock !== 'number',
-      );
       if (!user_id) {
         return APP_RESPONSE.TOKEN_INVALID;
       }
-      if (
-        !dto.title ||
-        !dto.price ||
-        !dto.category_id ||
-        !dto.variants ||
-        !dto.ship_from_id
-      ) {
-        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+
+      const user = await this.userRepo.findOne({
+        where: { id: Number(user_id) },
+        select: { role: true },
+      });
+
+      if (!user) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+
+      if (dto.image_urls !== undefined) {
+        if (!Array.isArray(dto.image_urls)) {
+          return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+        }
+        if (dto.image_urls.length > 4) {
+          return APP_RESPONSE.MAXIMUM_NUMBER_OF_IMAGES;
+        }
       }
-      if (typeof dto.price !== 'number' || isInvalidVariant) {
-        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+      const finalImage = [...(dto.image_urls || [])];
+      const hasDuplicateImages = new Set(finalImage).size !== finalImage.length;
+
+      if (hasDuplicateImages) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
+
       if (dto.price < 0) {
         return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
-      const { ...productData } = dto;
+
+      if (dto.variants.length === 0) {
+        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+      }
+      if (dto.videos !== undefined) {
+        if (!Array.isArray(dto.videos)) {
+          return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+        }
+        const invalidVideo = dto.videos.some((v) => {
+          return !v.url;
+        });
+        if (invalidVideo) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+      }
+
+      const isInvalidVariant = dto.variants.some((v) => {
+        return (
+          typeof v.stock !== 'number' ||
+          v.stock < 0 ||
+          typeof v.size !== 'string' ||
+          typeof v.color !== 'string' ||
+          typeof v.weight !== 'number' ||
+          v.weight < 0
+        );
+      });
+
+      if (isInvalidVariant) {
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+      }
+
+      const category = await this.categoryRepo.findOne({
+        where: { id: dto.category_id },
+      });
+      if (!category) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+
+      if (dto.brand_id !== undefined) {
+        const brand = await this.brandRepo.findOne({
+          where: { id: dto.brand_id },
+        });
+        if (!brand) {
+          return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+        }
+      }
+
+      const shipFrom = await this.addressRepo.findOne({
+        where: { id: dto.ship_from_id, user_id },
+      });
+      if (!shipFrom) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+
       const product = await this.productRepo.save({
-        ...productData,
+        ...dto,
         seller_id: user_id,
       });
 
-      const variantEntities = variants.map((v) =>
+      const variantEntities = dto.variants.map((v) =>
         this.variantRepo.create({
           ...v,
+          id: undefined,
           product: product,
         }),
       );
+
       await this.variantRepo.save(variantEntities);
-      return product;
+
+      return { code: '1000', message: 'OK.', data: product };
     } catch (e) {
-      console.error(e);
+      console.error('CREATE PRODUCT ERROR:', e);
       console.log(e);
       return APP_RESPONSE.EXCEPTION_ERROR;
     }
   }
-
   async findAll(): Promise<Product[]> {
     return await this.productRepo.find();
   }
@@ -91,76 +162,220 @@ export class ProductsService {
     dto: UpdateProductDto,
   ): Promise<any> {
     try {
+      if (!user_id) {
+        return APP_RESPONSE.TOKEN_INVALID;
+      }
+
+      if (isNaN(Number(id)) || id <= 0) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+
       const product = await this.productRepo.findOne({
         where: { id: Number(id) },
         relations: ['variants'],
       });
-      const variants = dto.variants as CreateProductVariantDto[];
-      const isInvalidVariant = variants.some(
-        (v) => typeof v.stock !== 'number' || v.stock < 0,
-      );
-      if (!product) return APP_RESPONSE.PRODUCT_NOT_EXISTED;
-      if (!user_id) {
-        return APP_RESPONSE.TOKEN_INVALID;
+
+      if (!product) {
+        return APP_RESPONSE.PRODUCT_NOT_EXISTED;
+      }
+
+      if (product.seller_id !== user_id) {
+        return APP_RESPONSE.NOT_ACCESS;
+      }
+      if (dto.title !== undefined && typeof dto.title !== 'string') {
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+      }
+
+      if (dto.price !== undefined && typeof dto.price !== 'number') {
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+      }
+
+      if (dto.price !== undefined && dto.price < 0) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+
+      if (dto.price_discount !== undefined) {
+        if (dto.price !== undefined) {
+          if (dto.price < dto.price_discount) {
+            return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+          }
+        } else {
+          if (dto.price_discount > product.price) {
+            return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+          }
+        }
       }
       if (
-        !dto.title ||
-        !dto.price ||
-        !dto.ship_from_id ||
-        !dto.category_id ||
-        !dto.variants
-      )
-        return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
-      if (
-        typeof dto.price !== 'number' ||
-        typeof dto.title !== 'string' ||
-        isInvalidVariant
+        dto.category_id !== undefined &&
+        typeof dto.category_id !== 'number'
       ) {
         return APP_RESPONSE.PARAMETER_TYPE_INVALID;
       }
-      if (dto.price < 0) {
+
+      if (
+        dto.ship_from_id !== undefined &&
+        typeof dto.ship_from_id !== 'number'
+      ) {
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+      }
+
+      if (dto.videos !== undefined) {
+        if (!Array.isArray(dto.videos)) {
+          return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+        }
+        const invalidVideo = dto.videos.some((v) => {
+          return !v.url;
+        });
+        if (invalidVideo) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+      }
+      if (dto.variants !== undefined) {
+        if (!Array.isArray(dto.variants) || dto.variants.length === 0) {
+          return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+        }
+
+        const isInvalidVariant = dto.variants.some((v) => {
+          return (
+            (v.id !== undefined && typeof v.id !== 'number') ||
+            typeof v.stock !== 'number' ||
+            v.stock < 0 ||
+            typeof v.size !== 'string' ||
+            typeof v.color !== 'string' ||
+            typeof v.weight !== 'number' ||
+            v.weight < 0
+          );
+        });
+
+        if (isInvalidVariant) {
+          return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+        }
+      }
+
+      if (dto.brand_id !== undefined) {
+        const brand = await this.brandRepo.findOne({
+          where: { id: dto.brand_id },
+        });
+        if (!brand) {
+          return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+        }
+      }
+      if (dto.category_id !== undefined) {
+        const category = await this.categoryRepo.findOne({
+          where: { id: dto.category_id },
+        });
+        if (!category) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+
+      if (dto.ship_from_id !== undefined) {
+        const address = await this.addressRepo.findOne({
+          where: { id: dto.ship_from_id, user_id },
+        });
+        if (!address) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+
+      let finalImages = [...(product.image_urls || [])];
+
+      const imageUrlsDel = dto.image_urls_del;
+      if (imageUrlsDel !== undefined) {
+        if (
+          !Array.isArray(dto.image_urls_del) ||
+          dto.image_urls_del.some((i) => typeof i !== 'string')
+        ) {
+          return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+        }
+        const invalidDelete = dto.image_urls_del.some(
+          (img) => !finalImages.includes(img),
+        );
+        if (invalidDelete) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+        finalImages = finalImages.filter((url) => !imageUrlsDel.includes(url));
+      }
+      if (dto.image_urls !== undefined) {
+        if (
+          !Array.isArray(dto.image_urls) ||
+          dto.image_urls.some((i) => typeof i !== 'string')
+        ) {
+          return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+        }
+        finalImages = finalImages = [...finalImages, ...dto.image_urls];
+      }
+      const hasDuplicateImages =
+        new Set(finalImages).size !== finalImages.length;
+
+      if (hasDuplicateImages) {
         return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
-      const {
-        variants: _,
-        image_urls_del,
-        image_urls: newImages,
-        ...productUpdateData
-      } = dto;
-      await this.productRepo.update(id, {
-        ...productUpdateData,
-      });
-
-      let currentImg = product.image_urls || [];
-      if (newImages && Array.isArray(newImages)) {
-        currentImg = newImages;
+      if (finalImages.length > 4) {
+        return APP_RESPONSE.MAXIMUM_NUMBER_OF_IMAGES;
       }
-      let finalImages = currentImg;
-      if (image_urls_del && Array.isArray(image_urls_del)) {
-        finalImages = currentImg.filter((url) => !image_urls_del.includes(url));
-      }
-      await this.productRepo.update(id, {
-        ...productUpdateData,
-        image_urls: finalImages,
-      });
-      await this.variantRepo.delete({ product: { id: id } });
 
-      const variantEntities = variants.map((v) =>
-        this.variantRepo.create({
-          ...v,
-          product: { id: id } as Product,
-        }),
-      );
-      await this.variantRepo.save(variantEntities);
-      return await this.getProductById(id, true);
+      const finalVideos =
+        dto.videos !== undefined ? dto.videos : product.videos || [];
+
+      const hasVideos = finalVideos.length > 0;
+      if (finalImages.length > 0 && hasVideos) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+
+      const { variants, image_urls, image_urls_del, ...productUpdateData } =
+        dto;
+
+      const updatePayload: any = { ...productUpdateData };
+
+      if (dto.image_urls !== undefined || dto.image_urls_del !== undefined) {
+        updatePayload.image_urls = finalImages;
+      }
+
+      if (Object.keys(updatePayload).length > 0) {
+        await this.productRepo.update(id, updatePayload);
+      }
+
+      if (dto.variants !== undefined) {
+        if (!Array.isArray(dto.variants))
+          return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+        for (const v of dto.variants) {
+          if (v.id !== undefined) {
+            const variant = await this.variantRepo.findOne({
+              where: { id: Number(v.id), product: { id: Number(id) } },
+            });
+            if (!variant) {
+              return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+            }
+
+            await this.variantRepo.update(v.id, {
+              size: v.size,
+              stock: v.stock,
+              color: v.color,
+              weight: v.weight,
+            });
+          } else {
+            await this.variantRepo.save(
+              this.variantRepo.create({
+                ...v,
+                product: { id: Number(id) },
+              }),
+            );
+          }
+        }
+      }
+
+      return {
+        code: '1000',
+        message: 'OK.',
+        data: await this.getProductById(id, true),
+      };
     } catch (e) {
-      console.error(e);
+      console.error('UPDATE PRODUCT ERROR:', e);
       return APP_RESPONSE.EXCEPTION_ERROR;
     }
   }
 
   //delete product
-  async remove(id: number) {
+  async remove(id: number, user_id: number) {
+    if (!user_id) {
+      return APP_RESPONSE.TOKEN_INVALID;
+    }
+    if (isNaN(Number(id))) {
+      return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+    }
     const product = await this.productRepo.findOne({
       where: { id: Number(id) },
       relations: ['variants'],
@@ -168,7 +383,10 @@ export class ProductsService {
     if (!product) {
       return APP_RESPONSE.PRODUCT_NOT_EXISTED;
     }
-    await this.variantRepo.delete({ product: { id: id } });
+    if (product.seller_id !== user_id) {
+      return APP_RESPONSE.NOT_ACCESS;
+    }
+    await this.variantRepo.delete({ product: { id: Number(id) } });
     await this.productRepo.delete(id);
     return APP_RESPONSE.OK;
   }
@@ -179,7 +397,24 @@ export class ProductsService {
     }
     const { index, count, user_id, keyword, category_id } = query;
 
-    const target_user_id = user_id ? Number(user_id) : user_id1;
+    const pageIndex = Number(index);
+    const pageCount = Number(count);
+
+    if (
+      !Number.isInteger(pageIndex) ||
+      pageIndex < 0 ||
+      !Number.isInteger(pageCount) ||
+      pageCount <= 0
+    ) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+
+    if (user_id !== undefined) {
+      if (typeof user_id !== 'number') {
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+      }
+    }
+    const target_user_id = user_id ?? user_id1;
     if (user_id) {
       const user = await this.userRepo.findOne({
         where: { id: Number(user_id) },
@@ -197,76 +432,95 @@ export class ProductsService {
       .leftJoinAndSelect('product.order_items', 'order_items')
       .where('product.seller_id = :sellerId', { sellerId: target_user_id });
 
-    if (keyword) {
-      queryBuilder.andWhere('product.title LIKE :keyword', {
+    if (keyword !== undefined) {
+      if (typeof keyword !== 'string')
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+      queryBuilder.andWhere('LOWER(product.title) LIKE LOWER(:keyword)', {
         keyword: `%${keyword}%`,
       });
     }
-    if (category_id) {
+    if (category_id !== undefined) {
+      if (typeof category_id !== 'number')
+        return APP_RESPONSE.PARAMETER_TYPE_INVALID;
       queryBuilder.andWhere('product.category_id = :catId', {
         catId: category_id,
       });
     }
-    queryBuilder.skip(index).take(count);
+    queryBuilder.skip(pageIndex * pageCount).take(pageCount);
 
     const products = await queryBuilder.getMany();
 
     const data = products.map((p) => {
-      const variants_data = p.variants
-        ? p.variants.map((v) => {
-            const variantSold = p.order_items
-              ? p.order_items
-                  .filter((item) => item.variant_id === v.id)
-                  .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
-              : 0;
-            return {
-              id: v.id.toString(),
-              size: v.size,
-              color: v.color,
-              stock: v.stock.toString(),
-              sold: variantSold.toString(),
-            };
-          })
-        : [];
+      const is_liked = (p.likes || []).some((l) => l.user_id === user_id1);
+
+      const is_stock = (p.variants || []).some((v) => Number(v.stock) > 0);
+      const variants_data = (p.variants || []).map((v) => ({
+        id: String(v.id),
+        size: v.size,
+        color: v.color,
+        stock: String(v.stock ?? 0),
+      }));
       return {
         id: p.id.toString(),
         name: p.title || '',
         price: p.price ? p.price.toString() : '0',
-        price_discount: p.price_discount ? p.price_discount.toString() : '0',
+        price_new:
+          p.price_discount !== undefined && p.price_discount !== null
+            ? String(p.price_discount)
+            : '0',
         image: p.image_urls && p.image_urls.length > 0 ? p.image_urls[0] : null,
         video: p.videos && p.videos.length > 0 ? p.videos[0] : null,
         like: p.likes ? p.likes.length.toString() : '0',
         comment: p.comments ? p.comments.length.toString() : '0',
         variants: variants_data,
+        is_stock,
+        is_liked,
       };
     });
     return {
-      code: 1000,
-      message: 'OK',
+      code: '1000',
+      message: 'OK.',
       data: data,
     };
   }
 
-  async getCategories() {
-    const data = await this.productRepo
-      .createQueryBuilder('product')
-      .select('DISTINCT product.category_id', 'category_id')
-      .where('product.category_id IS NOT NULL')
-      .orderBy('product.category_id', 'ASC')
-      .getRawMany();
+  async getCategories(parentId?: number) {
+    const qb = this.categoryRepo.createQueryBuilder('category');
 
-    return data;
+    if (parentId !== undefined) {
+      qb.where('category.parent_id = :parentId', { parentId });
+    }
+
+    qb.orderBy('category.sort', 'ASC').addOrderBy('category.id', 'ASC');
+
+    return await qb.getMany();
   }
 
-  async getListBrands() {
-    const data = await this.productRepo
-      .createQueryBuilder('product')
-      .select('DISTINCT product.brand_id', 'brand_id')
-      .where('product.brand_id IS NOT NULL')
-      .orderBy('product.brand_id', 'ASC')
-      .getRawMany();
+  async getListBrands(
+    categoryId?: number,
+    index: number = 0,
+    count: number = 10,
+  ) {
+    const qb = this.brandRepo
+      .createQueryBuilder('brand')
+      .select(['brand.id', 'brand.name', 'brand.category_id']);
 
-    return data;
+    if (
+      categoryId !== undefined &&
+      categoryId !== null &&
+      categoryId !== 0
+    ) {
+      qb.where('brand.category_id = :categoryId', { categoryId });
+    }
+
+    qb.orderBy('brand.id', 'ASC').skip(index).take(count);
+
+    const rows = await qb.getMany();
+
+    return rows.map((item) => ({
+      id: item.id,
+      brand_name: item.name,
+    }));
   }
 
   //getProductById(1, true): co variants, getProductById(1): khong co
@@ -277,14 +531,201 @@ export class ProductsService {
     });
   }
 
-  async getListProducts(index: number, count: number) {
-    const products = await this.productRepo.find({
-      order: { id: 'DESC' },
-      skip: index,
-      take: count,
+  async getListProducts(query: any) {
+    const {
+      category_id,
+      keyword,
+      brand_id,
+      product_size_id,
+      price_min,
+      price_max,
+      condition,
+      order,
+      latitude,
+      longitude,
+      last_id,
+      index = 0,
+      count = 10,
+    } = query;
+
+    const qb = this.productRepo
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.variants', 'variant')
+      .leftJoinAndSelect('product.likes', 'likes')
+      .leftJoinAndSelect('product.comments', 'comments');
+
+    if (category_id !== undefined) {
+      qb.andWhere('product.category_id = :category_id', { category_id });
+    }
+
+    if (keyword !== undefined && keyword !== '') {
+      qb.andWhere(
+        '(product.title LIKE :keyword OR product.description LIKE :keyword)',
+        { keyword: `%${keyword}%` },
+      );
+    }
+
+    if (brand_id !== undefined) {
+      qb.andWhere('product.brand_id = :brand_id', { brand_id });
+    }
+
+    if (product_size_id !== undefined && product_size_id !== 0) {
+      qb.andWhere('variant.id = :product_size_id', { product_size_id });
+    }
+
+    if (price_min !== undefined) {
+      qb.andWhere('product.price >= :price_min', { price_min });
+    }
+
+    if (price_max !== undefined) {
+      qb.andWhere('product.price <= :price_max', { price_max });
+    }
+
+    if (condition !== undefined && condition !== '') {
+      qb.andWhere('product.condition = :condition', { condition });
+    }
+
+    if (last_id !== undefined) {
+      qb.andWhere('product.id < :last_id', { last_id });
+    }
+
+    switch (order) {
+      case 'price_asc':
+        qb.orderBy('product.price', 'ASC');
+        break;
+      case 'price_desc':
+        qb.orderBy('product.price', 'DESC');
+        break;
+      case 'created_desc':
+        qb.orderBy('product.created_at', 'DESC');
+        break;
+      case 'like_desc':
+        qb.loadRelationCountAndMap('product.like_count', 'product.likes');
+        qb.orderBy('product.like_count', 'DESC');
+        break;
+      case 'comment_desc':
+        qb.loadRelationCountAndMap('product.comment_count', 'product.comments');
+        qb.orderBy('product.comment_count', 'DESC');
+        break;
+      case 'discount_percent_desc':
+        qb.addSelect(
+          '(CASE WHEN product.price > 0 AND product.price_discount IS NOT NULL THEN ((product.price - product.price_discount) / product.price) ELSE 0 END)',
+          'discount_percent_value',
+        );
+        qb.orderBy('discount_percent_value', 'DESC');
+        break;
+      case 'discount_value_desc':
+        qb.addSelect(
+          '(CASE WHEN product.price_discount IS NOT NULL THEN (product.price - product.price_discount) ELSE 0 END)',
+          'discount_value',
+        );
+        qb.orderBy('discount_value', 'DESC');
+        break;
+      case 'distance_asc':
+        // Chưa có cột lat/lng của product/shop để tính đúng khoảng cách.
+        // Tạm fallback theo newest.
+        qb.orderBy('product.id', 'DESC');
+        break;
+      default:
+        qb.orderBy('product.id', 'DESC');
+        break;
+    }
+
+    qb.skip(index).take(count);
+
+    const products = await qb.getMany();
+
+    return products.map((p) => {
+      const likeCount = p.likes ? p.likes.length : 0;
+      const commentCount = p.comments ? p.comments.length : 0;
+      const variants = p.variants || [];
+      const isStock = variants.some((v: any) => Number(v.stock) > 0);
+
+      return {
+        id: String(p.id),
+        name: p.title || '',
+        price: p.price ? String(p.price) : '0',
+        price_new:
+          p.price_discount !== undefined && p.price_discount !== null
+            ? String(p.price_discount)
+            : '0',
+        image: p.image_urls && p.image_urls.length > 0 ? p.image_urls[0] : null,
+        video: p.videos && p.videos.length > 0 ? p.videos[0] : null,
+        like: String(likeCount),
+        comment: String(commentCount),
+        is_liked: false,
+        is_stock: isStock,
+        variants: variants.map((v: any) => ({
+          id: String(v.id),
+          size: v.size,
+          color: v.color,
+          stock: String(v.stock ?? 0),
+        })),
+      };
+    });
+  }
+
+  async getProductDetail(productId: number, authUserId?: number) {
+    const product = await this.productRepo.findOne({
+      where: { id: productId },
+      relations: ['seller', 'variants', 'likes', 'comments', 'category'],
     });
 
-    return products;
+    if (!product) {
+      return null;
+    }
+
+    const likeCount = product.likes ? product.likes.length : 0;
+    const commentCount = product.comments ? product.comments.length : 0;
+
+    const isLiked =
+      product.likes?.some((like: any) => like.user_id === authUserId) ?? false;
+
+    const canEdit = product.seller_id === authUserId;
+
+    return {
+      id: String(product.id),
+      name: product.title || '',
+      price: product.price ? String(product.price) : '0',
+      described: product.description || '',
+      created: product.created_at,
+      like: String(likeCount),
+      comment: String(commentCount),
+      is_liked: isLiked,
+      image: product.image_urls || [],
+      video: [],
+      size: (product.variants || []).map((v: any) => ({
+        id: String(v.id),
+        size: v.size,
+        color: v.color,
+        stock: String(v.stock ?? 0),
+      })),
+      brand:
+        product.brand_id !== undefined && product.brand_id !== null
+          ? {
+              id: String(product.brand_id),
+              brand_name: String(product.brand_id),
+            }
+          : null,
+      seller: product.seller
+        ? {
+            id: String(product.seller.id),
+            username: product.seller.username || '',
+            avatar: product.seller.avatar || '',
+            fullname: product.seller.fullname || '',
+          }
+        : null,
+      category: product.category
+        ? {
+            id: String(product.category.id),
+            name: product.category.name,
+            parent_id: product.category.parent_id ?? 0,
+          }
+        : null,
+      can_edit: canEdit,
+      best_offers: [],
+      messages: [],
+    };
   }
 
   async getCommentsProduct(productId: number, index: number, count: number) {
