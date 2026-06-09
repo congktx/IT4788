@@ -5,6 +5,6 @@ export class CancelOrderDto {
   @IsNotEmpty()
   id: string;
 
-  @IsOptional()
-  reason?: number;
+  @IsString()
+  reason?: string;
 }

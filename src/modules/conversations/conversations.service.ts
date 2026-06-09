@@ -215,12 +215,19 @@ export class ConversationsService {
     let listLastMessageId: number[] = [];
     for (let i = 0; i < conversations.length; i++)
       listLastMessageId.push(conversations[i]['last_messasge_id']);
-    const listLastMessage = await this.messageRepo.find({
-      where: {
-        id: In(listLastMessageId),
-      },
-      relations: ['sender', 'conversation'],
-    });
+    let listLastMessage: any[] = [];
+    if (listLastMessageId && listLastMessageId.length > 0) {
+      const orderedIdsString = listLastMessageId
+        .map(id => (typeof id === 'string' ? `'${id}'` : id))
+        .join(',');
+      listLastMessage = await this.messageRepo
+        .createQueryBuilder('message')
+        .leftJoinAndSelect('message.sender', 'sender')
+        .leftJoinAndSelect('message.conversation', 'conversation')
+        .where('message.id IN (:...ids)', { ids: listLastMessageId })
+        .orderBy(`FIELD(message.id, ${orderedIdsString})`)
+        .getMany();
+    }
 
     let listConv: any[] = [];
     let num_new_message = 0;
@@ -242,7 +249,7 @@ export class ConversationsService {
           unread: listLastMessage[i].sender.id != currentUserId && listLastMessage[i].created_at > conversations[i].time_last_seen
         }
       });
-      if (listLastMessage[i] && listLastMessage[i].created_at !== conversations[i].time_last_seen)
+      if (listLastMessage[i] && listLastMessage[i].sender.id != currentUserId && listLastMessage[i].created_at > conversations[i].time_last_seen)
         num_new_message++;
     }
 
@@ -316,9 +323,9 @@ export class ConversationsService {
     for (let i = 0; i < messages.length; i++) {
       formatedMessages.push({
         message: messages[i].content,
-        unread: currentUserId != messages[i].sender.id && messages[i].sender.created_at > conversation.time_last_seen,
+        unread: currentUserId != messages[i].sender.id && messages[i].created_at > conversation.time_last_seen,
         type: messages[i].type,
-        created: messages[i].content,
+        created: messages[i].created_at,
         sender: {
           id: messages[i].sender.id,
           username: messages[i].sender.username

@@ -1,45 +1,66 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsDefined,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class AddOrderAddressDto {
   @ApiProperty({ description: 'địa chỉ chi tiết' })
-  @IsString()
-  @IsNotEmpty()
+  @IsDefined({ message: '1002' })
+  @IsString({ message: '1003' })
   address: string;
 
-  @ApiProperty({ description: 'đánh dấu địa chỉ mặc định' })
-  @IsBoolean()
-  is_default: boolean = false;
+  @ApiProperty({
+    description: 'đánh dấu địa chỉ mặc định',
+    required: false,
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: '1003' })
+  is_default?: boolean = false;
 
   @ApiProperty({
     description: 'mảng các id, 0-ward_id, 1-province_id',
-    example: '[1,2]',
+    example: [1, 2],
   })
-  @IsArray()
-  @IsOptional()
+  @IsDefined({ message: '1002' })
+  @IsArray({ message: '1003' })
+  @ArrayMinSize(2, { message: '1004' })
+  @IsNumber({}, { each: true, message: '1003' })
   address_id: number[];
 
   @ApiProperty({ description: 'Vĩ độ' })
-  @IsNumber()
+  @IsDefined({ message: '1002' })
+  @IsNumber({}, { message: '1003' })
   lat: number;
 
   @ApiProperty({ description: 'Kinh độ' })
-  @IsNumber()
+  @IsDefined({ message: '1002' })
+  @IsNumber({}, { message: '1003' })
   lng: number;
 
   @ApiProperty({ description: 'Họ và tên người nhận' })
-  @IsString()
+  @IsDefined({ message: '1002' })
+  @IsString({ message: '1003' })
   receiver_name: string;
 
   @ApiProperty({ description: 'Số điện thoại' })
-  @IsString()
+  @IsDefined({ message: '1002' })
+  @IsString({ message: '1003' })
   phone: string;
 
   @ApiProperty({ description: 'cả địa chỉ' })
-  @IsString()
+  @IsDefined({ message: '1002' })
+  @IsString({ message: '1003' })
   full_address: string;
 
   @ApiProperty({ description: 'address detail' })
-  @IsString()
+  @IsDefined({ message: '1002' })
+  @IsString({ message: '1003' })
   address_detail: string;
 }

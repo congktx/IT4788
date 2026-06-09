@@ -63,6 +63,20 @@ export class OrdersController {
     return this.ordersService.getShipFee(this.getUserId(req), query);
   }
 
+  //@UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Lấy danh sách tỉnh/thành phố' })
+  @Get('order/provinces')
+  getProvinces() {
+    return this.ordersService.getProvinces();
+  }
+
+  //@UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Lấy danh sách phường/xã theo tỉnh/thành phố' })
+  @Get('order/wards')
+  getWards(@Query('province_id') provinceId: number) {
+    return this.ordersService.getWardsByProvince(Number(provinceId));
+  }
+
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'lấy danh sách địa chỉ của người mua' })
   @Get('order/get_list_order_address')
@@ -116,6 +130,7 @@ export class OrdersController {
 
   @UseGuards(AuthGuard)
   @Post('order/get_list_purchases')
+  @HttpCode(200)
   getListPurchases(
     @Body() body: GetListPurchasesDto,
     @Req() req: RequestWithUser,
@@ -137,12 +152,14 @@ export class OrdersController {
 
   @UseGuards(AuthGuard)
   @Post('order/cancel_order')
+  @HttpCode(200)
   cancelOrder(@Body() body: CancelOrderDto, @Req() req: RequestWithUser) {
     return this.ordersService.cancelOrder(body, this.getUserId(req));
   }
 
   @UseGuards(AuthGuard)
   @Post('order/set_accept_buyer')
+  @HttpCode(200)
   setAcceptBuyer(@Body() body: SetAcceptBuyerDto, @Req() req: RequestWithUser) {
     return this.ordersService.setAcceptBuyer(body, this.getUserId(req));
   }
