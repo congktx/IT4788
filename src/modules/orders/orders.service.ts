@@ -137,6 +137,7 @@ export class OrdersService {
 
     const products = await this.productRepository
       .createQueryBuilder('product')
+      .leftJoinAndSelect('product.ship_from', 'ship_from')
       .where('product.id IN (:...productIds)', { productIds })
       .getMany();
 
@@ -184,13 +185,22 @@ export class OrdersService {
       };
     });
 
+    const { ship_fee, leatime } = await this.calculateShipFeeForOrder(
+      products[0].id,
+      address.id,
+      buyer.id,
+    );
+
     return this.dataSource.transaction(async (manager) => {
       const order = manager.create(Order, {
         buyer_id: buyer.id,
         seller_id: firstSellerId,
+        buyer_address_id: address.id,
+        seller_address_id: products[0].ship_from?.id,
         status: OrderStatus.PENDING,
         total_price: totalPrice,
-        shipping_fee: 0,
+        shipping_fee: ship_fee,
+        leatime,
       });
 
       const savedOrder = await manager.save(Order, order);
@@ -226,8 +236,13 @@ export class OrdersService {
       return buildResponse(APP_RESPONSE.OK, {
         order_id: savedOrder.id,
         status: savedOrder.status,
-        total_price: savedOrder.total_price,
-        shipping_fee: savedOrder.shipping_fee,
+        total_price: Number(savedOrder.total_price),
+        shipping_fee: Number(savedOrder.shipping_fee),
+        ship_fee: Number(savedOrder.shipping_fee),
+        leatime: savedOrder.leatime,
+        final_price:
+          Number(savedOrder.total_price || 0) +
+          Number(savedOrder.shipping_fee || 0),
         address_id: address.id,
         source: body.source,
       });
@@ -370,20 +385,27 @@ export class OrdersService {
       return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
     }
 
-    if (typeof product_id !== 'number' || Number.isNaN(product_id)) {
-      return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+    const productIdNum = Number(product_id);
+
+    if (Number.isNaN(productIdNum) || productIdNum <= 0) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
 
     const product = await this.productRepository.findOne({
-      where: { id: product_id },
+      where: { id: productIdNum },
       relations: ['ship_from'],
     });
+
+    if (!product || !product.ship_from) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+
     let addressIdNum: number | null = null;
 
-    if (address_id !== undefined) {
+    if (address_id !== undefined && address_id !== null) {
       addressIdNum = Number(address_id);
 
-      if (isNaN(addressIdNum)) {
+      if (Number.isNaN(addressIdNum)) {
         return APP_RESPONSE.PARAMETER_TYPE_INVALID;
       }
 
@@ -391,19 +413,22 @@ export class OrdersService {
         return APP_RESPONSE.PARAMETER_VALUE_INVALID;
       }
     }
-    if (!product || !product?.ship_from) {
-      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
-    }
 
     let buyerAddress: OrderAddress | null = null;
 
     if (addressIdNum !== null) {
       buyerAddress = await this.orderAddressRepository.findOne({
-        where: { id: addressIdNum, user_id },
+        where: {
+          id: addressIdNum,
+          user_id,
+        },
       });
     } else {
       buyerAddress = await this.orderAddressRepository.findOne({
-        where: { user_id, is_default: true },
+        where: {
+          user_id,
+          is_default: true,
+        },
       });
     }
 
@@ -413,13 +438,17 @@ export class OrdersService {
 
     const sellerLat = Number(product.ship_from.lat);
     const sellerLng = Number(product.ship_from.lng);
-
-    if (!sellerLat || !sellerLng) {
-      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
-    }
-
     const buyerLat = Number(buyerAddress.lat);
     const buyerLng = Number(buyerAddress.lng);
+
+    if (
+      Number.isNaN(sellerLat) ||
+      Number.isNaN(sellerLng) ||
+      Number.isNaN(buyerLat) ||
+      Number.isNaN(buyerLng)
+    ) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
 
     const distance = calculateDistance(
       sellerLat,
@@ -428,28 +457,16 @@ export class OrdersService {
       buyerLng,
     );
 
-    let shipfee = 0;
-    let leatime = 0;
-
-    if (distance < 15) {
-      shipfee = 20000;
-      leatime = 24;
-    } else if (distance >= 15 && distance <= 100) {
-      shipfee = 30000;
-      leatime = 36;
-    } else if (distance > 100 && distance < 500) {
-      shipfee = 44000;
-      leatime = 72;
-    } else if (distance >= 500) {
-      shipfee = 55000;
-      leatime = 120;
-    }
+    const { ship_fee, leatime } = this.calculateShipFeeByDistance(distance);
 
     return buildResponse(APP_RESPONSE.OK, {
-      ship_fee: shipfee,
+      ship_fee,
+      shipping_fee: ship_fee,
       leatime,
+      distance,
     });
   }
+
   async getListOrderAddress(user_id: number) {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
@@ -465,7 +482,11 @@ export class OrdersService {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
-    if (!query) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+
+    if (!query) {
+      return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+    }
+
     const {
       address,
       is_default,
@@ -477,6 +498,44 @@ export class OrdersService {
       full_address,
       address_detail,
     } = query;
+
+    if (!Array.isArray(address_id) || address_id.length < 2) {
+      return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+    }
+
+    const [ward_id, province_id] = address_id;
+
+    if (!ward_id || !province_id) {
+      return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
+    }
+
+    const wardIdNum = Number(ward_id);
+    const provinceIdNum = Number(province_id);
+
+    if (
+      Number.isNaN(wardIdNum) ||
+      Number.isNaN(provinceIdNum) ||
+      wardIdNum <= 0 ||
+      provinceIdNum <= 0
+    ) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
+      return APP_RESPONSE.PARAMETER_TYPE_INVALID;
+    }
+
+    const ward = await this.wardRepository.findOne({
+      where: {
+        id: wardIdNum,
+        provinces_id: provinceIdNum,
+      },
+    });
+
+    if (!ward) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+
     if (is_default) {
       await this.orderAddressRepository.update(
         { user_id, is_default: true },
@@ -484,24 +543,19 @@ export class OrdersService {
       );
     }
 
-    const [ward_id, province_id] = address_id;
-    if (!ward_id || !province_id) return APP_RESPONSE.PARAMETER_NOT_ENOUGH;
-    if (typeof lat !== 'number' || typeof lng !== 'number') {
-      return APP_RESPONSE.PARAMETER_TYPE_INVALID;
-    }
-
     const new_address = this.orderAddressRepository.create({
       user_id,
       address_name: address,
       is_default,
-      ward_id: ward_id,
+      ward_id: wardIdNum,
       lat: Number(lat),
       lng: Number(lng),
       address_detail,
       receiver_name,
-      phone: phone,
+      phone,
       full_address,
     });
+
     await this.orderAddressRepository.save(new_address);
 
     return buildResponse(APP_RESPONSE.OK, new_address);
@@ -662,6 +716,126 @@ export class OrdersService {
         video: item.product.videos || [],
       })),
     });
+  }
+
+  private calculateShipFeeByDistance(distance: number) {
+    let ship_fee = 0;
+    let leatime = 0;
+
+    if (distance < 15) {
+      ship_fee = 20000;
+      leatime = 24;
+    } else if (distance >= 15 && distance <= 100) {
+      ship_fee = 30000;
+      leatime = 36;
+    } else if (distance > 100 && distance < 500) {
+      ship_fee = 44000;
+      leatime = 72;
+    } else {
+      ship_fee = 55000;
+      leatime = 120;
+    }
+
+    return { ship_fee, leatime };
+  }
+
+  private async calculateShipFeeForOrder(
+    productId: number,
+    buyerAddressId: number,
+    userId: number,
+  ) {
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+      relations: ['ship_from'],
+    });
+
+    if (!product || !product.ship_from) {
+      throw new BadRequestException(
+        errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+      );
+    }
+
+    const buyerAddress = await this.orderAddressRepository.findOne({
+      where: {
+        id: buyerAddressId,
+        user_id: userId,
+      },
+    });
+
+    if (!buyerAddress) {
+      throw new BadRequestException(
+        errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+      );
+    }
+
+    const sellerLat = Number(product.ship_from.lat);
+    const sellerLng = Number(product.ship_from.lng);
+    const buyerLat = Number(buyerAddress.lat);
+    const buyerLng = Number(buyerAddress.lng);
+
+    if (
+      Number.isNaN(sellerLat) ||
+      Number.isNaN(sellerLng) ||
+      Number.isNaN(buyerLat) ||
+      Number.isNaN(buyerLng)
+    ) {
+      throw new BadRequestException(
+        errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+      );
+    }
+
+    const distance = calculateDistance(
+      sellerLat,
+      sellerLng,
+      buyerLat,
+      buyerLng,
+    );
+
+    return this.calculateShipFeeByDistance(distance);
+  }
+
+  async getProvinces() {
+    const provinces = await this.provinceRepository.find({
+      order: { name: 'ASC' },
+    });
+
+    return buildResponse(
+      APP_RESPONSE.OK,
+      provinces.map((province) => ({
+        id: province.id,
+        name: province.name,
+      })),
+    );
+  }
+
+  async getWardsByProvince(provinceId: number) {
+    const provinceIdNum = Number(provinceId);
+
+    if (Number.isNaN(provinceIdNum) || provinceIdNum <= 0) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+
+    const province = await this.provinceRepository.findOne({
+      where: { id: provinceIdNum },
+    });
+
+    if (!province) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+
+    const wards = await this.wardRepository.find({
+      where: { provinces_id: provinceIdNum },
+      order: { name: 'ASC' },
+    });
+
+    return buildResponse(
+      APP_RESPONSE.OK,
+      wards.map((ward) => ({
+        id: ward.id,
+        name: ward.name,
+        province_id: ward.provinces_id,
+      })),
+    );
   }
 
   private getFirstImage(imageUrls?: string[] | string | null): string {
@@ -859,7 +1033,7 @@ export class OrdersService {
 
     const purchaseId = Number(body.id);
 
-    if (isNaN(purchaseId) || purchaseId <= 0) {
+    if (Number.isNaN(purchaseId) || purchaseId <= 0) {
       throw new BadRequestException(
         errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
       );
@@ -887,56 +1061,61 @@ export class OrdersService {
       );
     }
 
-    return this.dataSource.transaction(async (manager) => {
-      order.status = OrderStatus.CANCELLED;
-      order.cancel_reason = body.reason ?? null;
-      await manager.save(Order, order);
+    try {
+      return await this.dataSource.transaction(async (manager) => {
+        order.status = OrderStatus.CANCELLED;
+        order.cancel_reason = body.reason ?? null;
+        await manager.save(Order, order);
 
-      let wallet = await manager.findOne(Wallet, {
-        where: { user_id: buyer.id },
-      });
-
-      if (!wallet) {
-        wallet = manager.create(Wallet, {
-          user_id: buyer.id,
-          balance: 0,
-          pending_balance: 0,
+        let wallet = await manager.findOne(Wallet, {
+          where: { user_id: buyer.id },
         });
-        wallet = await manager.save(Wallet, wallet);
-      }
 
-      const refundedCoins =
-        Number(order.total_price || 0) + Number(order.shipping_fee || 0);
+        if (!wallet) {
+          wallet = manager.create(Wallet, {
+            user_id: buyer.id,
+            balance: 0,
+            pending_balance: 0,
+          });
+          wallet = await manager.save(Wallet, wallet);
+        }
 
-      wallet.balance = Number(wallet.balance || 0) + refundedCoins;
-      await manager.save(Wallet, wallet);
+        const refundedCoins =
+          Number(order.total_price || 0) + Number(order.shipping_fee || 0);
 
-      const transaction = manager.create(Transaction, {
-        wallet_id: wallet.id,
-        type: 'income',
-        amount: refundedCoins,
-        status: 'success',
-        description: `Refund for cancelled order #${order.id}`,
+        wallet.balance = Number(wallet.balance || 0) + refundedCoins;
+        await manager.save(Wallet, wallet);
+
+        const transaction = manager.create(Transaction, {
+          wallet_id: wallet.id,
+          type: 'income',
+          amount: refundedCoins,
+          status: 'success',
+          description: `Refund for cancelled order #${order.id}`,
+        });
+
+        await manager.save(Transaction, transaction);
+
+        const timeline = manager.create(OrderTimeline, {
+          order_id: order.id,
+          status: OrderStatus.CANCELLED,
+          note: body.reason ?? 'Buyer cancelled order',
+        });
+
+        await manager.save(OrderTimeline, timeline);
+
+        return buildResponse(APP_RESPONSE.OK, {
+          id: order.id,
+          state: order.status,
+          cancel_reason: order.cancel_reason,
+          refunded_coins: refundedCoins,
+          refunded_at: new Date(),
+        });
       });
-
-      await manager.save(Transaction, transaction);
-
-      const timeline = manager.create(OrderTimeline, {
-        order_id: order.id,
-        status: OrderStatus.CANCELLED,
-        note: 'Buyer cancelled order',
-      });
-
-      await manager.save(OrderTimeline, timeline);
-
-      return buildResponse(APP_RESPONSE.OK, {
-        id: order.id,
-        state: order.status,
-        cancel_reason: order.cancel_reason,
-        refunded_coins: refundedCoins,
-        refunded_at: new Date(),
-      });
-    });
+    } catch (error) {
+      console.error('Cancel order error:', error);
+      throw error;
+    }
   }
 
   async setAcceptBuyer(body: SetAcceptBuyerDto, userId: number) {
