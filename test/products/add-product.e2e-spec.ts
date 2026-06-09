@@ -78,18 +78,20 @@ describe('Products - Add Product (e2e)', () => {
       validShipFromId = addrRes.body.data[0].id;
     } else {
       const addAddrRes = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${accessToken}`).send({
-         address: '123 Test St',
-         address_id: [1, 1],
-         lat: 21.0285,
-         lng: 105.8542,
-         receiver_name: 'Test Receiver',
-         phone: phone_number,
-         full_address: '123 Test St, Ha Noi',
-         address_detail: '123 Test St'
+        address: '123 Test St',
+        address_id: [1, 1],
+        lat: 21.0285,
+        lng: 105.8542,
+        receiver_name: 'Test Receiver',
+        phone: phone_number,
+        full_address: '123 Test St, Ha Noi',
+        address_detail: '123 Test St',
+        is_default: true
       });
       if (addAddrRes.body.code === '1000' && addAddrRes.body.data) {
         validShipFromId = addAddrRes.body.data.id;
       } else {
+        console.error('[DEBUG] Failed to add address:', addAddrRes.body);
         validShipFromId = 1;
       }
     }
@@ -105,7 +107,6 @@ describe('Products - Add Product (e2e)', () => {
 
 
   //NHÓM 1: HAPPY PATH
-
   it('TC-01: (Thành công) - Đầy đủ tất cả các trường hợp lệ', async () => {
     const productData = {
       title: 'iPhone 15 Pro Max 256GB',
@@ -382,6 +383,6 @@ describe('Products - Add Product (e2e)', () => {
       });
 
     expect(res.body.code).toBe('1002');
-    expect(res.body.message).toBe('Parameter is not enought.');
+    expect(res.body.message).toBe('Parameter is not enough.');
   });
 });

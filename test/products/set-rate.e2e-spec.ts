@@ -85,7 +85,8 @@ describe('Rates - Set Rate (e2e)', () => {
          receiver_name: 'Test Receiver B',
          phone: phoneB,
          full_address: '123 Test St B, Ha Noi',
-         address_detail: '123 Test St B'
+         address_detail: '123 Test St B',
+         is_default: true
       });
       if (addAddrResB.body.code === '1000' && addAddrResB.body.data) {
         addressIdB = addAddrResB.body.data.id;

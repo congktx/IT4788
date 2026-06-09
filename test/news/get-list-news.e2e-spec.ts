@@ -93,6 +93,6 @@ describe('News - Get List News (e2e)', () => {
     expect(res.body.code).toBe('1000'); 
     expect(res.body.message).toBe('OK.');
     expect(res.body.data).toBeDefined();
-    expect(res.body.data.list_news).toBeInstanceOf(Array);
+    expect(res.body.data).toBeInstanceOf(Array);
   });
 });

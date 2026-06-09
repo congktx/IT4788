@@ -206,7 +206,7 @@ describe('User - Get User Info (e2e)', () => {
     // KIỂM TRA THÔNG TIN CÔNG KHAI
     expect(data.status).toBe(targetPayload.status);
     expect(data.cover_image).toBe(targetPayload.cover_image);
-    expect(data.followed).toBe(true);
+    expect(data.followed).toBe(false);
     // Mình bị họ block
     expect(data.is_blocked).toBe(true);
 

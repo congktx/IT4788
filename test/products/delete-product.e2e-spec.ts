@@ -84,7 +84,8 @@ describe('Products - Delete Product (e2e)', () => {
          receiver_name: 'Test Receiver A',
          phone: context.phone_number,
          full_address: '123 Test St, Ha Noi',
-         address_detail: '123 Test St'
+         address_detail: '123 Test St',
+         is_default: true
       });
       if (addAddrRes.body.code === '1000' && addAddrRes.body.data) {
         validShipFromId = addAddrRes.body.data.id;
