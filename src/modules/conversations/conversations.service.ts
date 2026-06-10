@@ -196,7 +196,7 @@ export class ConversationsService {
 
   async getListConversation(currentUserId: number, getListConvDto: GetListConvDto) {
     const { index, count } = getListConvDto;
-    const skip = (index - 1) * count;
+    const skip = index * count;
     let qb = this.conversationRepo
       .createQueryBuilder('conversation')
       .innerJoin('conversation.users', 'user', 'user.id = :userId', { userId: currentUserId })
@@ -265,7 +265,7 @@ export class ConversationsService {
     let conversation: any = null;
 
     if (getConvDto.partner_id) {
-      if (currentUserId === getConvDto.partner_id)
+      if (currentUserId === Number(getConvDto.partner_id))
         return this.fail(
           APP_RESPONSE.PARAMETER_VALUE_INVALID.code,
           APP_RESPONSE.PARAMETER_VALUE_INVALID.message
@@ -273,15 +273,25 @@ export class ConversationsService {
       conversation = await this.findConversationBetweenUsers([currentUserId, getConvDto.partner_id]);
       if (conversation && conversation['code'])
         return conversation;
-      if (!conversation)
+      if (!conversation) {
+        let block = await this.userBlockRepo.findOne({
+          where: [
+            { blocker_id: currentUserId, blocked_id: Number(getConvDto.partner_id) },
+            { blocker_id: Number(getConvDto.partner_id), blocked_id: currentUserId },
+          ]
+        })
+
+        let can_send_message = (block) ? false : true;
+
         return {
           code: APP_RESPONSE.OK.code,
           message: APP_RESPONSE.OK.message,
           data: {
             messages: [],
-            can_send_message: true
+            can_send_message: can_send_message
           }
         }
+      }
     }
 
     if (getConvDto.conversation_id) {
@@ -300,7 +310,7 @@ export class ConversationsService {
       )
 
     let conversationId = conversation.id;
-    let skip = (getConvDto.index - 1) * getConvDto.count;
+    let skip = getConvDto.index * getConvDto.count;
     let [messages, _] = await this.messageRepo.findAndCount({
       where: {
         conversation: { id: conversationId }

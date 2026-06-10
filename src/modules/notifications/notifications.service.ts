@@ -17,7 +17,7 @@ export class NotificationsService {
     currentUserId: number,
     body: GetNotiticationDto
   ) {
-    let skip = (body.index - 1) * body.count;
+    let skip = body.index * body.count;
     let [notifications, _] = await this.notificationRepo.findAndCount({
       where: {
         user: { id: currentUserId }
