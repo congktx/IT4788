@@ -3,6 +3,6 @@ import { Allow, IsInt, IsNotEmpty, Min } from "class-validator";
 export class SetReadNotificationDto {
   @Allow()
   @IsNotEmpty({ message: "1002" })
-  @IsInt({ message: "1002" })
+  @IsInt({ message: "1003" })
   notification_id: number;
 }

@@ -21,8 +21,8 @@ export class GetConvDto {
     example: 1
   })
   @IsNotEmpty({ message: "1002" })
-  @IsInt({ message: "1002" })
-  @Min(0, { message: "1002" })
+  @IsInt({ message: "1003" })
+  @Min(0, { message: "1004" })
   @Allow()
   index: number;
 
@@ -31,8 +31,8 @@ export class GetConvDto {
     example: 10
   })
   @IsNotEmpty({ message: "1002" })
-  @IsInt({ message: "1002" })
-  @Min(1, { message: "1002" })
+  @IsInt({ message: "1003" })
+  @Min(1, { message: "1004" })
   @Allow()
   count: number;
 }
