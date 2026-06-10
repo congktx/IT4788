@@ -276,8 +276,8 @@ export class ConversationsService {
       if (!conversation) {
         let block = await this.userBlockRepo.findOne({
           where: [
-            { blocker_id: conversation.users[0].id, blocked_id: conversation.users[1].id },
-            { blocker_id: conversation.users[1].id, blocked_id: conversation.users[0].id },
+            { blocker_id: currentUserId, blocked_id: Number(getConvDto.partner_id) },
+            { blocker_id: Number(getConvDto.partner_id), blocked_id: currentUserId },
           ]
         })
 
