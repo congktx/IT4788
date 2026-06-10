@@ -3,6 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Rate } from './entities/rate.entity';
 import { User } from '../users/entities/user.entity';
+import { UserBlock } from '../blocks/entities/user-block.entity';
+import { Order } from '../orders/entities/order.entity';
+import { OrderItem } from '../orders/entities/order_item.entity';
+import { Product } from '../products/entities/product.entity';
+import { APP_RESPONSE } from '../constants/response.constants';
 
 @Injectable()
 export class RatesService {
@@ -12,7 +17,87 @@ export class RatesService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    @InjectRepository(UserBlock)
+    private readonly userBlockRepo: Repository<UserBlock>,
+
+    @InjectRepository(Order)
+  private readonly orderRepository: Repository<Order>,
+
+  @InjectRepository(OrderItem)
+  private readonly orderItemRepository: Repository<OrderItem>,
+
+  @InjectRepository(Product)
+  private readonly productRepository: Repository<Product>,
   ) {}
+
+  async validateSetRateInput(
+    targetUserId: number,
+    reviewerId: number,
+    productId?: number,
+    purchaseId?: number,
+  ) {
+    const isBlocked = await this.isUserBlocked(reviewerId, targetUserId);
+    if (isBlocked) {
+      return APP_RESPONSE.NOT_ACCESS;
+    }
+
+    let product: Product | null = null;
+    let order: Order | null = null;
+
+    if (productId !== undefined) {
+      product = await this.getProductById(productId);
+      if (!product) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+    }
+
+    if (purchaseId !== undefined) {
+      order = await this.getOrderById(purchaseId);
+      if (!order) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+
+      if (order.buyer_id !== reviewerId) {
+        return APP_RESPONSE.NOT_ACCESS;
+      }
+    }
+
+    if (productId !== undefined && purchaseId !== undefined) {
+      const orderItem = await this.getOrderItemByOrderAndProduct(
+        purchaseId,
+        productId,
+      );
+
+      if (!orderItem) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+
+      if (product && product.seller_id !== targetUserId) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+
+      if (order && order.seller_id !== targetUserId) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+    }
+
+    return APP_RESPONSE.OK;
+  }
+
+  async isUserBlocked(viewerId?: number, targetUserId?: number) {
+    if (!viewerId || !targetUserId) return false;
+    if (viewerId === targetUserId) return false;
+
+    const block = await this.userBlockRepo.findOne({
+      where: [
+        { blocker_id: viewerId, blocked_id: targetUserId },
+        { blocker_id: targetUserId, blocked_id: viewerId },
+      ],
+    });
+
+    return !!block;
+  }
 
   async getUserExists(userId: number) {
     const user = await this.userRepository
@@ -22,6 +107,47 @@ export class RatesService {
       .getRawOne();
 
     return user;
+  }
+
+  async getProductById(productId?: number) {
+    if (!productId) return null;
+
+    return this.productRepository.findOne({
+      where: { id: productId },
+      select: {
+        id: true,
+        seller_id: true,
+      },
+    });
+  }
+
+  async getOrderById(orderId?: number) {
+    if (!orderId) return null;
+
+    return this.orderRepository.findOne({
+      where: { id: orderId },
+      select: {
+        id: true,
+        buyer_id: true,
+        seller_id: true,
+      },
+    });
+  }
+
+  async getOrderItemByOrderAndProduct(orderId?: number, productId?: number) {
+    if (!orderId || !productId) return null;
+
+    return this.orderItemRepository.findOne({
+      where: {
+        order_id: orderId,
+        product_id: productId,
+      },
+      select: {
+        id: true,
+        order_id: true,
+        product_id: true,
+      },
+    });
   }
 
   async getRates(

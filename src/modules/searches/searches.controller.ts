@@ -80,10 +80,19 @@ export class SearchesController {
 
   @Post('search')
   @UseGuards(AuthGuard)
-  async search(@Body() dto: SearchDto) {
+  async search(
+    @Req() req: RequestWithUser,
+    @Body() dto: SearchDto,
+  ) {
     try {
+      const userId = req.user?.userId ?? req.user?.id;
+
+      if (!userId) {
+        return buildResponse(APP_RESPONSE.TOKEN_INVALID, null);
+      }
+
       const hasCondition =
-        (dto.keyword !== undefined && dto.keyword !== '') ||
+        (dto.keyword !== undefined && dto.keyword.trim() !== '') ||
         dto.category_id !== undefined ||
         dto.brand_id !== undefined ||
         dto.price_min !== undefined ||
@@ -91,6 +100,10 @@ export class SearchesController {
 
       if (!hasCondition) {
         return buildResponse(APP_RESPONSE.PARAMETER_NOT_ENOUGH, null);
+      }
+
+      if (dto.keyword !== undefined && dto.keyword.trim() !== '') {
+        await this.searchesService.saveSearch(userId, dto.keyword);
       }
 
       const data = await this.productsService.searchProducts(
