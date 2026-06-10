@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Allow, IsNotEmpty } from "class-validator";
+import { Allow, IsInt, IsNotEmpty, Min } from "class-validator";
 
 export class GetListConvDto {
   @ApiProperty({
@@ -7,6 +7,8 @@ export class GetListConvDto {
     example: 1
   })
   @IsNotEmpty({ message: "1002" })
+  @IsInt({ message: "1002" })
+  @Min(0, { message: "1002" })
   @Allow()
   index: number;
 
@@ -15,6 +17,8 @@ export class GetListConvDto {
     example: 10
   })
   @IsNotEmpty({ message: "1002" })
+  @IsInt({ message: "1002" })
+  @Min(1, { message: "1002" })
   @Allow()
   count: number;
 }
