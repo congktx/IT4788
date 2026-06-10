@@ -31,4 +31,6 @@ jobs:
 
             docker compose up -d --build
 
-            docker compose exec -T it4788_app sh -c "npm run migration:generate && npm run migration:run"
+            docker exec -it it4788_app sh 
+            
+            npm run migration:generate && npm run migration:run
