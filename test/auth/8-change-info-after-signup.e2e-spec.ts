@@ -48,23 +48,23 @@ describe('Auth - Change Info After Signup (e2e)', () => {
   }, 20000);
 
   // NHÓM 1: Kiểm tra Token (Xác thực danh tính)
-  it('CHANGE-INFO-01: (Token) - Lỗi 1002 khi không có Token', async () => {
+  it('CHANGE-INFO-01: (Token) - Lỗi 9998 khi không có Token', async () => {
     const res = await request(baseURL)
       .post('/auth/change_info_after_signup')
       .send({ username: 'New Username' });
 
-    expect(res.body.code).toBe('1002'); // PARAMETER_NOT_ENOUGH
-    expect(res.body.message).toBe('Parameter is not enough.');
+    expect(res.body.code).toBe('9998'); // TOKEN_INVALID
+    expect(res.body.message).toBe('Token is invalid.');
   });
 
-  it('CHANGE-INFO-02: (Token) - Lỗi 1004 khi Token quá ngắn', async () => {
+  it('CHANGE-INFO-02: (Token) - Lỗi 9998 khi Token quá ngắn', async () => {
     const res = await request(baseURL)
       .post('/auth/change_info_after_signup')
       .set('Authorization', 'Bearer abc') // Token < 10 chars -> length invalid
       .send({ username: 'New Username' });
 
-    expect(res.body.code).toBe('1004');
-    expect(res.body.message).toBe('Parameter value is invalid.');
+    expect(res.body.code).toBe('9998');
+    expect(res.body.message).toBe('Token is invalid.');
   });
 
   it('CHANGE-INFO-03: (Token) - Lỗi 9998 khi Token không hợp lệ (sai định dạng JWT)', async () => {

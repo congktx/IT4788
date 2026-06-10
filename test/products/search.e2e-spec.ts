@@ -62,7 +62,8 @@ describe('Products - Search (e2e)', () => {
          receiver_name: 'Test Receiver A',
          phone: '0999999999',
          full_address: '123 Test St A, Ha Noi',
-         address_detail: '123 Test St A'
+         address_detail: '123 Test St A',
+         is_default: true
       });
       if (addAddrResA.body.code === '1000' && addAddrResA.body.data) {
         addressIdA = addAddrResA.body.data.id;

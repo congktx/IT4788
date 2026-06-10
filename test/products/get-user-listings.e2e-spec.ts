@@ -80,7 +80,8 @@ describe('Products - Get User Listings (e2e)', () => {
          receiver_name: 'Test Receiver A',
          phone: context.phone_number,
          full_address: '123 Test St A, Ha Noi',
-         address_detail: '123 Test St A'
+         address_detail: '123 Test St A',
+         is_default: true
       });
       if (addAddrRes.body.code === '1000' && addAddrRes.body.data) {
         addressIdA = addAddrRes.body.data.id;

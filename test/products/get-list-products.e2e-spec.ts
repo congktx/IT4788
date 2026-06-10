@@ -79,7 +79,8 @@ describe('Products - Get List Products (e2e)', () => {
         receiver_name: 'Test Receiver',
         phone: phone_number,
         full_address: '123 Test St, Ha Noi',
-        address_detail: '123 Test St'
+        address_detail: '123 Test St',
+        is_default: true
       });
       if (addAddrRes.body.code === '1000' && addAddrRes.body.data) {
         addressId = addAddrRes.body.data.id;

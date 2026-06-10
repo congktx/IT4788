@@ -11,9 +11,10 @@ import { ProductVariant } from './entities/product_variant.entity';
 import { Brand } from './entities/brand.entity';
 import { Category } from './entities/category.entity';
 import { Address } from '../orders/entities/address.entity';
+import { UserBlock } from '../blocks/entities/user-block.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Product, Comment, User, Like, Report, ProductVariant, Brand, Category, Address])],
+  imports: [TypeOrmModule.forFeature([Product, Comment, User, Like, Report, ProductVariant, UserBlock, Brand, Category, Address])],
   controllers: [ProductsController],
   providers: [ProductsService],
   exports: [ProductsService]

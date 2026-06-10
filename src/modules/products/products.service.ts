@@ -14,6 +14,7 @@ import { GetUserListingsDto } from './dto/get_user_listing.dto';
 import { Brand } from './entities/brand.entity';
 import { Category } from './entities/category.entity';
 import { Address } from '../orders/entities/address.entity';
+import { UserBlock } from '../blocks/entities/user-block.entity';
 
 @Injectable()
 export class ProductsService {
@@ -44,7 +45,24 @@ export class ProductsService {
 
     @InjectRepository(ProductVariant)
     private variantRepo: Repository<ProductVariant>,
+
+    @InjectRepository(UserBlock)
+  private readonly userBlockRepo: Repository<UserBlock>,
   ) {}
+
+  async isUserBlockedWithSeller(currentUserId?: number, sellerId?: number) {
+    if (!currentUserId || !sellerId) return false;
+    if (currentUserId === sellerId) return false;
+
+    const block = await this.userBlockRepo.findOne({
+      where: [
+        { blocker_id: currentUserId, blocked_id: sellerId },
+        { blocker_id: sellerId, blocked_id: currentUserId },
+      ],
+    });
+
+    return !!block;
+  }
 
   async createProduct(dto: CreateProductDto, user_id: number) {
     try {
@@ -675,6 +693,19 @@ export class ProductsService {
       return null;
     }
 
+    let isBlocked = false;
+
+    if (authUserId) {
+      isBlocked = await this.isUserBlockedWithSeller(
+        authUserId,
+        product.seller_id,
+      );
+    }
+
+    if (isBlocked) {
+      return APP_RESPONSE.NOT_ACCESS;
+    }
+
     const likeCount = product.likes ? product.likes.length : 0;
     const commentCount = product.comments ? product.comments.length : 0;
 
@@ -813,17 +844,30 @@ export class ProductsService {
     subject: string,
     details: string,
   ) {
-    const reason = `[${subject}] ${details}`;
+    const existedReport = await this.reportRepo.findOne({
+      where: {
+        product_id: productId,
+        user_id: userId,
+      },
+    });
+
+    if (existedReport) {
+      return APP_RESPONSE.ACTION_DONE_PREVIOUSLY; 
+    }
 
     const report = this.reportRepo.create({
       product_id: productId,
       user_id: userId,
-      reason,
+      reason: details || subject || '',
     });
 
-    const savedReport = await this.reportRepo.save(report);
+    await this.reportRepo.save(report);
 
-    return savedReport;
+    return {
+      product_id: productId,
+      user_id: userId,
+      reason: details || subject || '',
+    };
   }
 
   async searchProducts(
@@ -837,9 +881,31 @@ export class ProductsService {
   ) {
     const qb = this.productRepo.createQueryBuilder('product');
 
-    if (keyword !== undefined && keyword !== '') {
-      qb.andWhere('product.title LIKE :keyword', {
-        keyword: `%${keyword}%`,
+    if (keyword !== undefined && keyword.trim() !== '') {
+      const normalizedKeyword = keyword.trim().replace(/\s+/g, ' ');
+      const compactKeyword = normalizedKeyword.replace(/\s+/g, '').toLowerCase();
+      const tokens = normalizedKeyword
+        .toLowerCase()
+        .split(' ')
+        .filter(Boolean);
+
+      qb.andWhere(
+        `
+        (
+          LOWER(product.title) LIKE :rawKeyword
+          OR REPLACE(LOWER(product.title), ' ', '') LIKE :compactKeyword
+        )
+        `,
+        {
+          rawKeyword: `%${normalizedKeyword.toLowerCase()}%`,
+          compactKeyword: `%${compactKeyword}%`,
+        },
+      );
+
+      tokens.forEach((token, idx) => {
+        qb.andWhere(`LOWER(product.title) LIKE :token${idx}`, {
+          [`token${idx}`]: `%${token}%`,
+        });
       });
     }
 
@@ -859,10 +925,13 @@ export class ProductsService {
       qb.andWhere('product.price <= :priceMax', { priceMax });
     }
 
+    const safeIndex = Number(index) || 0;
+    const safeCount = Number(count) || 10;
+
     const data = await qb
       .orderBy('product.id', 'DESC')
-      .offset(index)
-      .limit(count)
+      .offset(safeIndex)
+      .limit(safeCount)
       .getMany();
 
     return data;

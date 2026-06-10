@@ -46,7 +46,7 @@ describe('Auth - Create Code Reset Password (e2e)', () => {
     // API trả về thành công
     expect(res.body.code).toBe('1000');
     expect(res.body.message).toMatch('OK.');
-    expect(res.body.data).toBeNull();
+    expect(res.body.data).toHaveProperty('otp');
   });
 
   it('CREATE-OTP-02: (Thất bại) - Lỗi 9991 khi gửi yêu cầu liên tục (Chống Spam)', async () => {

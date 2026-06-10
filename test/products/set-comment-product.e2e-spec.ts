@@ -181,7 +181,7 @@ describe('Products - Set Comments Product (e2e)', () => {
       });
 
     expect(String(res.body.code)).toBe('9992');
-    expect(res.body.message).toBe('Product is not existed');
+    expect(res.body.message).toBe('Product is not existed.');
   });
 
   it('TC-05: (Thất bại) - Không cho phép bình luận vào sản phẩm của người đã block mình', async () => {
@@ -233,7 +233,7 @@ describe('Products - Set Comments Product (e2e)', () => {
 
   it('TC-07: (Thành công) - Phân trang bình luận (Lấy index=0, count=1)', async () => {
     const res = await request(baseURL)
-      .post('/api/get_comment_product') // Lưu ý: Hàm này dùng get_comment_product để lấy chứ không phải set
+      .post('/api/get_comments_product') // Lưu ý: Hàm này dùng get_comments_product để lấy chứ không phải set
       .send({
         product_id: validProductIdB,
         index: 0,

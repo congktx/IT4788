@@ -74,7 +74,6 @@ export class ProductsController {
   }
 
   @Post('get_products')
-  @UseGuards(AuthGuard)
   async getProducts(@Req() req: RequestWithUser, @Body() dto: GetProductsDto) {
     try {
       const authUserId = req.user?.id;
@@ -83,6 +82,10 @@ export class ProductsController {
         dto.id,
         authUserId,
       );
+
+      if (data === APP_RESPONSE.NOT_ACCESS) {
+        return buildResponse(APP_RESPONSE.NOT_ACCESS, null);
+      }
 
       if (!data) {
         return buildResponse(APP_RESPONSE.PRODUCT_NOT_EXISTED, null);
@@ -112,12 +115,28 @@ export class ProductsController {
   }
 
   @Post('get_comments_product')
-  async getCommentsProduct(@Body() dto: GetCommentsProductDto) {
+  async getCommentsProduct(
+    @Req() req: RequestWithUser,
+    @Body() dto: GetCommentsProductDto,
+  ) {
     try {
+      const authUserId = req.user?.id;
+
       const product = await this.productsService.getProductById(dto.product_id);
 
       if (!product) {
         return buildResponse(APP_RESPONSE.PRODUCT_NOT_EXISTED, null);
+      }
+
+      if (authUserId) {
+        const isBlocked = await this.productsService.isUserBlockedWithSeller(
+          authUserId,
+          product.seller_id,
+        );
+
+        if (isBlocked) {
+          return buildResponse(APP_RESPONSE.NOT_ACCESS, null);
+        }
       }
 
       const data = await this.productsService.getCommentsProduct(
@@ -162,6 +181,15 @@ export class ProductsController {
         return buildResponse(APP_RESPONSE.USER_NOT_EXIST, null);
       }
 
+      const isBlocked = await this.productsService.isUserBlockedWithSeller(
+        userId,
+        product.seller_id,
+      );
+
+      if (isBlocked) {
+        return buildResponse(APP_RESPONSE.NOT_ACCESS, null);
+      }
+
       const data = await this.productsService.setCommentsProduct(
         dto.product_id,
         userId,
@@ -202,6 +230,15 @@ export class ProductsController {
         return buildResponse(APP_RESPONSE.USER_NOT_EXIST, null);
       }
 
+      const isBlocked = await this.productsService.isUserBlockedWithSeller(
+        userId,
+        product.seller_id,
+      );
+
+      if (isBlocked) {
+        return buildResponse(APP_RESPONSE.NOT_ACCESS, null);
+      }
+
       const data = await this.productsService.likeProduct(
         dto.product_id,
         userId,
@@ -239,12 +276,25 @@ export class ProductsController {
         return buildResponse(APP_RESPONSE.USER_NOT_EXIST, null);
       }
 
+      const isBlocked = await this.productsService.isUserBlockedWithSeller(
+        userId,
+        product.seller_id,
+      );
+
+      if (isBlocked) {
+        return buildResponse(APP_RESPONSE.NOT_ACCESS, null);
+      }
+
       const data = await this.productsService.reportProduct(
         dto.product_id,
         userId,
         dto.subject,
         dto.details,
       );
+
+      if (data === APP_RESPONSE.ACTION_DONE_PREVIOUSLY) {
+        return buildResponse(APP_RESPONSE.ACTION_DONE_PREVIOUSLY, null);
+      }
 
       return buildResponse(APP_RESPONSE.OK, data);
     } catch (error) {

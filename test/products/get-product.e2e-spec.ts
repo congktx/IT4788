@@ -77,7 +77,8 @@ describe('Products - Get Product (e2e)', () => {
          receiver_name: 'Test Receiver A',
          phone: phone_number,
          full_address: '123 Test St A, Ha Noi',
-         address_detail: '123 Test St A'
+         address_detail: '123 Test St A',
+         is_default: true
       });
       if (addAddrRes.body.code === '1000' && addAddrRes.body.data) {
         addressId = addAddrRes.body.data.id;
@@ -134,7 +135,8 @@ describe('Products - Get Product (e2e)', () => {
          receiver_name: 'Test Receiver B',
          phone: phoneB,
          full_address: '123 Test St B, Ha Noi',
-         address_detail: '123 Test St B'
+         address_detail: '123 Test St B',
+         is_default: true
       });
       if (addAddrResB.body.code === '1000' && addAddrResB.body.data) {
         addressIdB = addAddrResB.body.data.id;

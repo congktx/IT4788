@@ -39,7 +39,7 @@ describe('Products - Edit Product (e2e)', () => {
     let loginRes = await request(baseURL)
       .post('/auth/login')
       .send({ phone_number: context.phone_number, password: context.password });
-      
+
     if (loginRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
@@ -88,14 +88,15 @@ describe('Products - Edit Product (e2e)', () => {
       validShipFromId = addrResA.body.data[0].id;
     } else {
       const addAddrA = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${accessToken}`).send({
-         address: '123 Test St A',
-         address_id: [1, 1],
-         lat: 21.0285,
-         lng: 105.8542,
-         receiver_name: 'Test Receiver A',
-         phone: context.phone_number,
-         full_address: '123 Test St A, Ha Noi',
-         address_detail: '123 Test St A'
+        address: '123 Test St A',
+        address_id: [1, 1],
+        lat: 21.0285,
+        lng: 105.8542,
+        receiver_name: 'Test Receiver A',
+        phone: context.phone_number,
+        full_address: '123 Test St A, Ha Noi',
+        address_detail: '123 Test St A',
+        is_default: true
       });
       if (addAddrA.body.code === '1000' && addAddrA.body.data) {
         validShipFromId = addAddrA.body.data.id;
@@ -111,14 +112,15 @@ describe('Products - Edit Product (e2e)', () => {
       otherShipFromId = addrResB.body.data[0].id;
     } else {
       const addAddrB = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${otherUserToken}`).send({
-         address: '123 Test St B',
-         address_id: [1, 1],
-         lat: 21.0285,
-         lng: 105.8542,
-         receiver_name: 'Test Receiver B',
-         phone: otherPhone,
-         full_address: '123 Test St B, Ha Noi',
-         address_detail: '123 Test St B'
+        address: '123 Test St B',
+        address_id: [1, 1],
+        lat: 21.0285,
+        lng: 105.8542,
+        receiver_name: 'Test Receiver B',
+        phone: otherPhone,
+        full_address: '123 Test St B, Ha Noi',
+        address_detail: '123 Test St B',
+        is_default: true
       });
       if (addAddrB.body.code === '1000' && addAddrB.body.data) {
         otherShipFromId = addAddrB.body.data.id;
@@ -230,7 +232,6 @@ describe('Products - Edit Product (e2e)', () => {
   });
 
   it('TC-06: (Thành công) - Thêm và xóa ảnh', async () => {
-    // Thêm ảnh ban đầu qua API thay vì DB để chạy remote
     await request(baseURL)
       .patch(`/api/update/${myProductId}`)
       .set('Authorization', `Bearer ${accessToken}`)
