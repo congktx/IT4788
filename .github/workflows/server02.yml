@@ -1,0 +1,34 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER02_HOST }}
+          username: ${{ secrets.SERVER02_USERNAME }}
+          key: ${{ secrets.SERVER02_SSH_KEY }}
+          script: |
+            cd develop2 && cd IT4788
+
+            git fetch origin
+
+            git checkout main
+
+            git pull origin main
+
+            docker compose down
+
+            docker compose up -d --build
+
+            docker compose exec -T it4788_app sh -c "npm run migration:generate && npm run migration:run"
