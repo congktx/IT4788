@@ -6,9 +6,10 @@ import { User } from '../users/entities/user.entity';
 import { RewardProof } from './entities/reward_proof.entity';
 import { RewardAppeal } from './entities/reward_appeal.entity';
 import { RewardRule } from './entities/reward_rule.entity';
+import { Wallet } from '../wallets/entities/wallet.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, RewardProof, RewardAppeal, RewardRule])],
+  imports: [TypeOrmModule.forFeature([User, Wallet, RewardProof, RewardAppeal, RewardRule])],
   controllers: [RewardsController],
   providers: [RewardsService],
   exports: [RewardsService, TypeOrmModule],
