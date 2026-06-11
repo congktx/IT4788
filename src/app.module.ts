@@ -23,6 +23,7 @@ import { PushSettingsModule } from './modules/push_settings/push-settings.module
 import { RatesModule } from './modules/rates/rates.module';
 import { SearchesModule } from './modules/searches/searches.module';
 import { JwtModule } from '@nestjs/jwt';
+import { RewardsModule } from './modules/rewards/rewards.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -50,6 +51,7 @@ import { JwtModule } from '@nestjs/jwt';
     PushSettingsModule,
     RatesModule,
     SearchesModule,
+    RewardsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
