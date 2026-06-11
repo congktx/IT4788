@@ -16,6 +16,7 @@ import { OrderItem } from '../../orders/entities/order_item.entity';
 import { Address } from '../../orders/entities/address.entity';
 import { Category } from './category.entity';
 import { Brand } from './brand.entity';
+import { CartItem } from '../../orders/entities/cart-item.entity';
 @Entity('products')
 export class Product {
   @PrimaryGeneratedColumn()
@@ -72,6 +73,9 @@ export class Product {
 
   @OneToMany(() => OrderItem, (orderItem) => orderItem.product)
   order_items: OrderItem[];
+
+  @OneToMany(() => CartItem, (cartItem) => cartItem.product)
+  cart_items: CartItem[];
 
   @ManyToOne(() => Address, (address) => address.products_shipped_from)
   @JoinColumn({ name: 'ship_from_id' })

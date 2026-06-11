@@ -110,4 +110,26 @@ export const orderAction = {
 
   refundOrderRaw: (token: string | null, body: object) =>
     api.post('/order/refund_order', body, token),
+
+  getCart: (token: string) => api.get('/order/get_cart', token),
+
+  getCartRaw: (token: string | null) => api.get('/order/get_cart', token),
+
+  addCart: (token: string, body: object) =>
+    api.post('/order/add_cart', body, token),
+
+  addCartRaw: (token: string | null, body: object) =>
+    api.post('/order/add_cart', body, token),
+
+  editCart: (token: string, body: object) =>
+    api.post('/order/edit_cart', body, token),
+
+  editCartRaw: (token: string | null, body: object) =>
+    api.post('/order/edit_cart', body, token),
+
+  deleteCart: (token: string, body: object) =>
+    api.post('/order/delete_cart', body, token),
+
+  deleteCartRaw: (token: string | null, body: object) =>
+    api.post('/order/delete_cart', body, token),
 };

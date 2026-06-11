@@ -10,7 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '../../common/auth/guards/auth.guard';
 import { OrdersService } from './orders.service';
 import { GetShipFromQueryDto } from './dto/ship_from.dto';
@@ -28,6 +28,9 @@ import { BuyerConfirmReceivedDto } from './dto/buyer-confirm-received.dto';
 import { RefundOrderDto } from './dto/refund-order.dto';
 import { SellerMarkAsShippedDto } from './dto/seller-mark-as-shipped.dto';
 import { GetOrderTimelineDto } from './dto/get-order-timeline.dto';
+import { AddCartDto } from './dto/add-cart.dto';
+import { EditCartDto } from './dto/edit-cart.dto';
+import { DeleteCartDto } from './dto/delete-cart.dto';
 
 interface RequestWithUser extends Request {
   user?: {
@@ -37,6 +40,7 @@ interface RequestWithUser extends Request {
 }
 
 @Controller()
+@ApiBearerAuth('JWT-auth')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
@@ -70,7 +74,10 @@ export class OrdersController {
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Thêm địa chỉ người dùng' })
   @Post('order/add_order_address')
-  addOrderAddress(@Req() req: RequestWithUser, @Body() dto: AddOrderAddressDto) {
+  addOrderAddress(
+    @Req() req: RequestWithUser,
+    @Body() dto: AddOrderAddressDto,
+  ) {
     return this.ordersService.addOrderAddress(this.getUserId(req), dto);
   }
 
@@ -171,5 +178,33 @@ export class OrdersController {
     @Req() req: RequestWithUser,
   ) {
     return this.ordersService.getOrderTimeline(body, this.getUserId(req));
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Lấy danh sách sản phẩm trong giỏ hàng' })
+  @Get('order/get_cart')
+  getCart(@Req() req: RequestWithUser) {
+    return this.ordersService.getCart(this.getUserId(req));
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Thêm sản phẩm vào giỏ hàng' })
+  @Post('order/add_cart')
+  addCart(@Body() body: AddCartDto, @Req() req: RequestWithUser) {
+    return this.ordersService.addCart(this.getUserId(req), body);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Chỉnh sửa số lượng sản phẩm trong giỏ hàng' })
+  @Post('order/edit_cart')
+  editCart(@Body() body: EditCartDto, @Req() req: RequestWithUser) {
+    return this.ordersService.editCart(this.getUserId(req), body);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Xóa sản phẩm khỏi giỏ hàng' })
+  @Post('order/delete_cart')
+  deleteCart(@Body() body: DeleteCartDto, @Req() req: RequestWithUser) {
+    return this.ordersService.deleteCart(this.getUserId(req), body);
   }
 }

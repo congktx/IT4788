@@ -16,6 +16,7 @@ import { User } from '../users/entities/user.entity';
 import { Address } from '../orders/entities/address.entity';
 import { Wallet } from '../wallets/entities/wallet.entity';
 import { Transaction } from '../wallets/entities/transaction.entity';
+import { CartItem } from './entities/cart-item.entity';
 
 @Module({
   imports: [
@@ -34,10 +35,11 @@ import { Transaction } from '../wallets/entities/transaction.entity';
       Address,
       Wallet,
       Transaction,
+      CartItem,
     ]),
   ],
   controllers: [OrdersController],
   providers: [OrdersService],
   exports: [OrdersService],
 })
-export class OrdersModule { }
+export class OrdersModule {}
