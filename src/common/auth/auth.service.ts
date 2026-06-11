@@ -18,6 +18,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { ChangeInfoAfterSignupDto } from './dto/change-info-after-signup.dto';
 import { DataSource } from 'typeorm';
 import { Wallet } from '../../modules/wallets/entities/wallet.entity';
+import { INITIAL_WALLET_BALANCE } from '../constants/wallet.constants';
 
 @Injectable()
 export class AuthService {
@@ -123,8 +124,7 @@ export class AuthService {
 
       const createdWallet = manager.create(Wallet, {
         user_id: savedUser.id,
-        balance: 0,
-        pending_balance: 0,
+        balance: INITIAL_WALLET_BALANCE,
       });
 
       const savedWallet = await manager.save(Wallet, createdWallet);

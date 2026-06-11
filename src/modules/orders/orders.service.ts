@@ -39,6 +39,7 @@ import { AddOrderAddressDto } from './dto/add_order_address.dto';
 import { AddCartDto } from './dto/add-cart.dto';
 import { EditCartDto } from './dto/edit-cart.dto';
 import { DeleteCartDto } from './dto/delete-cart.dto';
+import { INITIAL_WALLET_BALANCE } from '../../common/constants/wallet.constants';
 
 const errorResponse = (response: { code: string; message: string }) =>
   buildResponse(response, null);
@@ -1270,8 +1271,7 @@ export class OrdersService {
         if (!wallet) {
           wallet = manager.create(Wallet, {
             user_id: buyer.id,
-            balance: 0,
-            pending_balance: 0,
+            balance: INITIAL_WALLET_BALANCE,
           });
           wallet = await manager.save(Wallet, wallet);
         }
@@ -1483,8 +1483,7 @@ export class OrdersService {
       if (!wallet) {
         wallet = manager.create(Wallet, {
           user_id: buyer.id,
-          balance: 0,
-          pending_balance: 0,
+          balance: INITIAL_WALLET_BALANCE,
         });
 
         wallet = await manager.save(Wallet, wallet);
