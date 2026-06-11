@@ -1,15 +1,14 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 
 describe('Rates - Get Rates (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let tokenUserA: string;
   let tokenUserB: string;
   let tokenUserC: string; // User hoàn toàn mới không có đánh giá để test TC-07
@@ -27,7 +26,6 @@ describe('Rates - Get Rates (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dataSource = app.get<DataSource>(DataSource);
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // 1. Setup User A từ test-context.json
@@ -105,10 +103,9 @@ describe('Rates - Get Rates (e2e)', () => {
   });
 
   afterAll(async () => {
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
+    if (app) {
+      await app.close();
     }
-    await app.close();
   });
 
   // TC-01: (Thành công) - Lấy danh sách đánh giá của chính mình (Không truyền user_id)

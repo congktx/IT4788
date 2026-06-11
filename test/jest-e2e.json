@@ -2,7 +2,7 @@
   "moduleFileExtensions": ["js", "json", "ts"],
   "rootDir": ".",
   "testEnvironment": "node",
-  "testRegex": "(e2e|auth)/.+\\.(e2e[.-])?spec\\.ts$",
+  "testRegex": "(e2e|auth|products|news)/.+\\.(e2e[.-])?spec\\.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
@@ -11,7 +11,13 @@
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/../src/$1"
   },
+<<<<<<< HEAD
   "silent": false,
 
   "globalSetup": "<rootDir>/setup/global-setup.ts"
 }
+=======
+  "silent": true,
+  "testSequencer": "<rootDir>/test-sequencer.js"
+}
+>>>>>>> e98fcba21aa84dd3b369f8a71dc8e543d79a856f

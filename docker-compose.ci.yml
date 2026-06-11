@@ -2,32 +2,59 @@ services:
   mysql:
     image: mysql:8.0
     container_name: it4788_mysql
+    env_file: .env.prod
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${DB_NAME}"
+      MYSQL_USER: "${DB_USERNAME}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+    ports:
+      - "${DB_PORT}:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    restart: always
+
+  redis:
+    image: redis:latest
+    env_file: .env.prod
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - ./redis-data:/data
+    restart: always
+
+  mysql-test:
+    image: mysql:8.0
+    container_name: it4788_mysql_test
+    env_file: .env.prod
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: it4788_db
       MYSQL_USER: user
       MYSQL_PASSWORD: password
     ports:
-      - "3306:3306"
+      - "32768:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - ./mysql_data_test:/var/lib/mysql
     restart: always
     networks:
       - proxy-net
 
-  redis:
-    image: redis:latest
-    ports:
-      - "6379:6379"
-
   group2-api:
     image: ghcr.io/congktx/it4788:latest
+    # build: .
     container_name: it4788_app
+    ports:
+      - "${PORT}:${PORT}"
+    env_file: .env.prod
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run start:dev
     depends_on:
       - mysql
+      - redis
     restart: always
-    env_file:
-      - .env.prod
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.group2-api.rule=Host(`group2.it4788.sukkaito.id.v\
@@ -35,9 +62,6 @@ services:
       - "traefik.http.routers.group2-api.entrypoints=web"
     networks:
       - proxy-net
-
-volumes:
-  mysql_data:
 
 networks:
   proxy-net:

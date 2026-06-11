@@ -1,20 +1,14 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Category } from '../../src/modules/products/entities/category.entity';
-import { Address } from '../../src/modules/orders/entities/address.entity';
-import { Province } from '../../src/modules/orders/entities/province.entity';
-import { Ward } from '../../src/modules/orders/entities/ward.entity';
-
 describe('Products - Like Product (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let tokenUserA: string;
   let tokenUserB: string;
   let userIdA: number;
@@ -33,7 +27,6 @@ describe('Products - Like Product (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dataSource = app.get<DataSource>(DataSource);
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // 1. Setup User A
@@ -67,7 +60,7 @@ describe('Products - Like Product (e2e)', () => {
     if (loginBRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test' });
+        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test-like' });
       loginBRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number: phoneB, password: passB });
@@ -76,39 +69,49 @@ describe('Products - Like Product (e2e)', () => {
     userIdB = Number(loginBRes.body.data.id);
 
     // 3. Chuẩn bị Address & Category cho việc add product
-    const categoryRepo = dataSource.getRepository(Category);
-    let category = await categoryRepo.findOne({ where: {} });
-    if (!category) category = await categoryRepo.save({ name: 'Tech' });
-    categoryId = category.id;
+    const catRes = await request(baseURL).post('/api/get_categories').send({});
+    categoryId = catRes.body.data?.[0]?.id || 1;
 
-    const addressRepo = dataSource.getRepository(Address);
-    const provinceRepo = dataSource.getRepository(Province);
-    const wardRepo = dataSource.getRepository(Ward);
-
-    let addressA = await addressRepo.findOne({ where: { user_id: userIdA } });
-    if (!addressA) {
-      let province = await provinceRepo.findOne({ where: {} });
-      if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
-      let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-      if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
-
-      addressA = await addressRepo.save({
-        user_id: userIdA, ward_id: ward.id, address_name: 'Home Test',
-        address_detail: '123 Test St', lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver A', phone: context.phone_number, full_address: '123 Test St, Dich Vong Hau, Ha Noi'
+    let addressIdA = 1;
+    const addrResA = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${tokenUserA}`);
+    if (addrResA.body.code === '1000' && addrResA.body.data && addrResA.body.data.length > 0) {
+      addressIdA = addrResA.body.data[0].id;
+    } else {
+      const addAddrResA = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${tokenUserA}`).send({
+         address: '123 Test St A',
+         address_id: [1, 1],
+         lat: 21.0285,
+         lng: 105.8542,
+         receiver_name: 'Test Receiver A',
+         phone: context.phone_number,
+         full_address: '123 Test St A, Ha Noi',
+         address_detail: '123 Test St A',
+         is_default: true
       });
+      if (addAddrResA.body.code === '1000' && addAddrResA.body.data) {
+        addressIdA = addAddrResA.body.data.id;
+      }
     }
 
-    let addressB = await addressRepo.findOne({ where: { user_id: userIdB } });
-    if (!addressB) {
-      let province = await provinceRepo.findOne({ where: {} });
-      if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
-      let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-      if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
-
-      addressB = await addressRepo.save({
-        user_id: userIdB, ward_id: ward.id, address_name: 'Home Test B',
-        address_detail: '123 Test St B', lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver B', phone: '0955555555', full_address: '123 Test St B, Dich Vong Hau, Ha Noi'
+    let addressIdB = 1;
+    const addrResB = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${tokenUserB}`);
+    if (addrResB.body.code === '1000' && addrResB.body.data && addrResB.body.data.length > 0) {
+      addressIdB = addrResB.body.data[0].id;
+    } else {
+      const addAddrResB = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${tokenUserB}`).send({
+         address: '123 Test St B',
+         address_id: [1, 1],
+         lat: 21.0285,
+         lng: 105.8542,
+         receiver_name: 'Test Receiver B',
+         phone: phoneB,
+         full_address: '123 Test St B, Ha Noi',
+         address_detail: '123 Test St B',
+         is_default: true
       });
+      if (addAddrResB.body.code === '1000' && addAddrResB.body.data) {
+        addressIdB = addAddrResB.body.data.id;
+      }
     }
 
     // 4. User A tạo sản phẩm A (để B like)
@@ -118,7 +121,7 @@ describe('Products - Like Product (e2e)', () => {
       .send({
         title: 'Product of A',
         price: 25000000, description: 'Test like 1',
-        category_id: categoryId, ship_from_id: addressA.id,
+        category_id: categoryId, ship_from_id: addressIdA,
         variants: [{ size: '13 inch', color: 'Midnight', stock: 5, weight: 1.2 }]
       });
     productAId = addProductARes.body?.data?.id || 1;
@@ -130,7 +133,7 @@ describe('Products - Like Product (e2e)', () => {
       .send({
         title: 'Product of B',
         price: 30000000, description: 'Test like block',
-        category_id: categoryId, ship_from_id: addressB.id,
+        category_id: categoryId, ship_from_id: addressIdB,
         variants: [{ size: 'M', color: 'Red', stock: 10, weight: 1.0 }]
       });
     productBId = addProductBRes.body?.data?.id || 2;
@@ -145,10 +148,9 @@ describe('Products - Like Product (e2e)', () => {
         .send({ user_id: userIdA, type: 1 }); // 1 = unblock
     }
 
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
+    if (app) {
+      await app.close();
     }
-    await app.close();
   });
 
   it('TC-01: (Thất bại) - Không gửi token', async () => {

@@ -1,24 +1,14 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Category } from '../../src/modules/products/entities/category.entity';
-import { Address } from '../../src/modules/orders/entities/address.entity';
-import { Brand } from '../../src/modules/products/entities/brand.entity';
-import { Province } from '../../src/modules/orders/entities/province.entity';
-import { Ward } from '../../src/modules/orders/entities/ward.entity';
-import { Product } from '../../src/modules/products/entities/product.entity';
-import { ProductVariant } from '../../src/modules/products/entities/product_variant.entity';
-import { User } from '../../src/modules/users/entities/user.entity';
-
 describe('Products - Add Product (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let accessToken: string;
   let validCategoryId: number;
   let validShipFromId: number;
@@ -41,7 +31,6 @@ describe('Products - Add Product (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dataSource = app.get<DataSource>(DataSource);
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     const { phone_number, password } = context;
@@ -70,108 +59,54 @@ describe('Products - Add Product (e2e)', () => {
     accessToken = loginRes.body.data?.token;
     userId = Number(loginRes.body.data?.id);
 
-    const categoryRepo = dataSource.getRepository(Category);
-    const addressRepo = dataSource.getRepository(Address);
-    const brandRepo = dataSource.getRepository(Brand);
-    const provinceRepo = dataSource.getRepository(Province);
-    const wardRepo = dataSource.getRepository(Ward);
-
-    let category = await categoryRepo.findOne({ where: {} });
-    if (!category) {
-      category = await categoryRepo.save({ name: 'Dien tu', description: 'Category for testing' });
+    const catRes = await request(baseURL).post('/api/get_categories').send({});
+    if (catRes.body.code === '1000' && catRes.body.data && catRes.body.data.length > 0) {
+      validCategoryId = catRes.body.data[0].id;
+    } else {
+      validCategoryId = 1;
     }
-    validCategoryId = category.id;
 
-    let brand = await brandRepo.findOne({ where: {} });
-    if (!brand) {
-      brand = await brandRepo.save({ name: 'Apple' });
+    const brandRes = await request(baseURL).post('/api/get_list_brands').send({ category_id: validCategoryId });
+    if (brandRes.body.code === '1000' && brandRes.body.data && brandRes.body.data.length > 0) {
+      validBrandId = brandRes.body.data[0].id;
+    } else {
+      validBrandId = 1;
     }
-    validBrandId = brand.id;
 
-    let address = await addressRepo.findOne({ where: { user_id: userId } });
-    if (!address) {
-      let province = await provinceRepo.findOne({ where: {} });
-      if (!province) {
-        province = await provinceRepo.save({ name: 'Ha Noi' });
-      }
-
-      let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-      if (!ward) {
-        ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
-      }
-
-      address = await addressRepo.save({
-        user_id: userId,
-        ward_id: ward.id,
-        address_name: 'Home Test',
-        address_detail: '123 Test St',
+    const addrRes = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${accessToken}`);
+    if (addrRes.body.code === '1000' && addrRes.body.data && addrRes.body.data.length > 0) {
+      validShipFromId = addrRes.body.data[0].id;
+    } else {
+      const addAddrRes = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${accessToken}`).send({
+        address: '123 Test St',
+        address_id: [1, 1],
         lat: 21.0285,
         lng: 105.8542,
         receiver_name: 'Test Receiver',
         phone: phone_number,
-        full_address: '123 Test St, Dich Vong Hau, Ha Noi'
+        full_address: '123 Test St, Ha Noi',
+        address_detail: '123 Test St',
+        is_default: true
       });
-    }
-    validShipFromId = address.id;
-
-    console.log(`[TEST SETUP] Category: ${validCategoryId}, Brand: ${validBrandId}, ShipFrom: ${validShipFromId}, BaseURL: ${typeof baseURL === 'string' ? baseURL : 'local'}`);
-  }, 60000);
-
-  afterAll(async () => {
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
-    }
-    await app.close();
-  });
-
-  async function syncProductToLocalDb(serverProduct: any) {
-    if (typeof baseURL !== 'string' || !baseURL.startsWith('http')) return;
-
-    const productRepo = dataSource.getRepository(Product);
-    const variantRepo = dataSource.getRepository(ProductVariant);
-    const categoryRepo = dataSource.getRepository(Category);
-    const brandRepo = dataSource.getRepository(Brand);
-
-    let category = await categoryRepo.findOne({ where: { id: serverProduct.category_id } });
-    if (!category && serverProduct.category_id) {
-      category = await categoryRepo.save({ id: serverProduct.category_id, name: serverProduct.category_name || 'Synced Category' });
-    }
-
-    let brand = await brandRepo.findOne({ where: { id: serverProduct.brand_id } });
-    if (!brand && serverProduct.brand_id) {
-      brand = await brandRepo.save({ id: serverProduct.brand_id, name: serverProduct.brand_name || 'Synced Brand' });
-    }
-
-    const product = await productRepo.save({
-      id: serverProduct.id,
-      seller_id: serverProduct.seller_id || userId,
-      ship_from_id: serverProduct.ship_from_id,
-      category_id: serverProduct.category_id,
-      brand_id: serverProduct.brand_id,
-      title: serverProduct.title,
-      description: serverProduct.description,
-      price: serverProduct.price,
-      image_urls: serverProduct.image_urls || [],
-      videos: serverProduct.videos || null,
-    });
-
-    if (serverProduct.variants && Array.isArray(serverProduct.variants)) {
-      for (const v of serverProduct.variants) {
-        await variantRepo.save({
-          product_id: product.id,
-          size: v.size || null,
-          color: v.color || null,
-          stock: v.stock || 0,
-          weight: v.weight || null,
-        });
+      if (addAddrRes.body.code === '1000' && addAddrRes.body.data) {
+        validShipFromId = addAddrRes.body.data.id;
+      } else {
+        console.error('[DEBUG] Failed to add address:', addAddrRes.body);
+        validShipFromId = 1;
       }
     }
 
-    console.log(`[SYNC] Product ID ${product.id} synced to local DB`);
-  }
+    console.log(`[TEST SETUP] Category: ${validCategoryId}, Brand: ${validBrandId}, ShipFrom: ${validShipFromId}`);
+  }, 60000);
+
+  afterAll(async () => {
+    if (app) {
+      await app.close();
+    }
+  });
+
 
   //NHÓM 1: HAPPY PATH
-
   it('TC-01: (Thành công) - Đầy đủ tất cả các trường hợp lệ', async () => {
     const productData = {
       title: 'iPhone 15 Pro Max 256GB',
@@ -194,7 +129,17 @@ describe('Products - Add Product (e2e)', () => {
     expect(res.body.data).toBeDefined();
     expect(res.body.data.title).toBe('iPhone 15 Pro Max 256GB');
 
-    await syncProductToLocalDb(res.body.data);
+    // Dùng API get_products để kiểm chứng chéo
+    const verifyRes = await request(baseURL)
+      .post('/api/get_products')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ id: Number(res.body.data.id) });
+
+    expect(verifyRes.status).toBe(200);
+    expect(verifyRes.body.code).toBe('1000');
+    expect(verifyRes.body.data.title).toBe(productData.title);
+    expect(Number(verifyRes.body.data.price)).toBe(productData.price);
+    expect(verifyRes.body.data.description).toBe(productData.description);
   });
 
   it('TC-02: (Thành công) - Chỉ gồm các trường bắt buộc', async () => {
@@ -215,7 +160,16 @@ describe('Products - Add Product (e2e)', () => {
     expect(res.body.code).toBe('1000');
     expect(res.body.message).toBe('OK.');
 
-    await syncProductToLocalDb(res.body.data);
+    // Dùng API get_products để kiểm chứng chéo
+    const verifyRes = await request(baseURL)
+      .post('/api/get_products')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ id: Number(res.body.data.id) });
+
+    expect(verifyRes.status).toBe(200);
+    expect(verifyRes.body.code).toBe('1000');
+    expect(verifyRes.body.data.title).toBe(productData.title);
+    expect(Number(verifyRes.body.data.price)).toBe(productData.price);
   });
 
   //NHÓM 2: KIỂM TRA THIẾU THAM SỐ (1002) -

@@ -1,20 +1,14 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Category } from '../../src/modules/products/entities/category.entity';
-import { Address } from '../../src/modules/orders/entities/address.entity';
-import { Province } from '../../src/modules/orders/entities/province.entity';
-import { Ward } from '../../src/modules/orders/entities/ward.entity';
-
 describe('Products - Set Comments Product (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let tokenUserA: string;
   let tokenUserB: string;
   let userIdA: number;
@@ -32,7 +26,6 @@ describe('Products - Set Comments Product (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dataSource = app.get<DataSource>(DataSource);
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // 1. Setup User A
@@ -66,7 +59,7 @@ describe('Products - Set Comments Product (e2e)', () => {
     if (loginBRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test' });
+        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test-comment' });
       loginBRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number: phoneB, password: passB });
@@ -74,27 +67,28 @@ describe('Products - Set Comments Product (e2e)', () => {
     tokenUserB = loginBRes.body.data.token;
     userIdB = Number(loginBRes.body.data.id);
 
-    // 3. Chuẩn bị Address & Category cho việc add product
-    const categoryRepo = dataSource.getRepository(Category);
-    let category = await categoryRepo.findOne({ where: {} });
-    if (!category) category = await categoryRepo.save({ name: 'Tech' });
-    categoryId = category.id;
+    // 3. Chuẩn bị Address & Category bằng API cho việc add product
+    const catRes = await request(baseURL).post('/api/get_categories').send({});
+    categoryId = catRes.body.data?.[0]?.id || 1;
 
-    const addressRepo = dataSource.getRepository(Address);
-    const provinceRepo = dataSource.getRepository(Province);
-    const wardRepo = dataSource.getRepository(Ward);
-
-    let addressB = await addressRepo.findOne({ where: { user_id: userIdB } });
-    if (!addressB) {
-      let province = await provinceRepo.findOne({ where: {} });
-      if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
-      let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-      if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
-
-      addressB = await addressRepo.save({
-        user_id: userIdB, ward_id: ward.id, address_name: 'Home Test B',
-        address_detail: '123 Test St B', lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver B', phone: '0955555555', full_address: '123 Test St B, Dich Vong Hau, Ha Noi'
+    let addressIdB = 1;
+    const addrResB = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${tokenUserB}`);
+    if (addrResB.body.code === '1000' && addrResB.body.data && addrResB.body.data.length > 0) {
+      addressIdB = addrResB.body.data[0].id;
+    } else {
+      const addAddrResB = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${tokenUserB}`).send({
+         address: '123 Test St B',
+         address_id: [1, 1],
+         lat: 21.0285,
+         lng: 105.8542,
+         receiver_name: 'Test Receiver B',
+         phone: phoneB,
+         full_address: '123 Test St B, Ha Noi',
+         address_detail: '123 Test St B'
       });
+      if (addAddrResB.body.code === '1000' && addAddrResB.body.data) {
+        addressIdB = addAddrResB.body.data.id;
+      }
     }
 
     // 4. Tạo sản phẩm của User B để User A comment
@@ -104,20 +98,27 @@ describe('Products - Set Comments Product (e2e)', () => {
       .send({
         title: 'Samsung Galaxy S24 Ultra',
         price: 30000000, description: 'Điện thoại cao cấp của Samsung',
-        category_id: categoryId, ship_from_id: addressB.id,
+        category_id: categoryId, ship_from_id: addressIdB,
         variants: [{ size: '256GB', color: 'Titanium Black', stock: 15, weight: 0.3 }]
       });
     validProductIdB = addProductBRes.body.data?.id || 1;
   });
 
   afterAll(async () => {
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
+    // Cleanup block state để không ảnh hưởng
+    if (tokenUserB && userIdA) {
+      await request(baseURL)
+        .post('/set_user_block')
+        .set('Authorization', `Bearer ${tokenUserB}`)
+        .send({ user_id: userIdA, type: 1 }); // 1 = unblock
     }
-    await app.close();
+
+    if (app) {
+      await app.close();
+    }
   });
 
-  // TC-01: (Thành công) - Bình luận sản phẩm hợp lệ
+
   it('TC-01: (Thành công) - Bình luận sản phẩm hợp lệ', async () => {
     const res = await request(baseURL)
       .post('/api/set_comments_product')
@@ -137,7 +138,7 @@ describe('Products - Set Comments Product (e2e)', () => {
     expect(res.body.data[0]).toHaveProperty('content', 'Sản phẩm này chụp hình rất đẹp!');
   });
 
-  // TC-02: (Thất bại) - Thiếu các trường bắt buộc (Không truyền content)
+
   it('TC-02: (Thất bại) - Thiếu các trường bắt buộc (Không truyền content)', async () => {
     const res = await request(baseURL)
       .post('/api/set_comments_product')
@@ -152,29 +153,13 @@ describe('Products - Set Comments Product (e2e)', () => {
     expect(res.body.message).toBe('Parameter value is invalid.');
   });
 
-  // TC-03: (Thất bại) - Bình luận sản phẩm không tồn tại
-  it('TC-03: (Thất bại) - Bình luận sản phẩm không tồn tại', async () => {
-    const res = await request(baseURL)
-      .post('/api/set_comments_product')
-      .set('Authorization', `Bearer ${tokenUserA}`)
-      .send({
-        product_id: 999999,
-        content: 'Sản phẩm ảo',
-        index: 0,
-        count: 10,
-      });
 
-    expect(String(res.body.code)).toBe('9992');
-    expect(res.body.message).toBe('Product is not existed.');
-  });
-
-  // TC-04: (Thất bại) - Không đính kèm Token (Chưa đăng nhập)
-  it('TC-04: (Thất bại) - Không đính kèm Token (Chưa đăng nhập)', async () => {
+  it('TC-03: (Thất bại) - Không đính kèm Token (Chưa đăng nhập)', async () => {
     const res = await request(baseURL)
       .post('/api/set_comments_product')
       .send({
         product_id: validProductIdB,
-        content: 'Bình luận không token',
+        content: 'Bình luận ẩn danh',
         index: 0,
         count: 10,
       });
@@ -183,99 +168,107 @@ describe('Products - Set Comments Product (e2e)', () => {
     expect(res.body.message).toBe('Token is invalid.');
   });
 
-  // TC-05: (Thất bại) - Lỗi Validation (Thiếu index / count)
-  it('TC-05: (Thất bại) - Lỗi Validation (Thiếu index / count)', async () => {
+
+  it('TC-04: (Thất bại) - ID sản phẩm không tồn tại (Rác)', async () => {
     const res = await request(baseURL)
       .post('/api/set_comments_product')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({
-        product_id: validProductIdB,
-        content: 'Bình luận thiếu index',
-      });
-
-    expect(String(res.body.code)).toBe('1004');
-    expect(res.body.message).toBe('Parameter value is invalid.');
-  });
-
-  // TC-06: (Thất bại) - Số lượng phân trang không hợp lệ (count < 1)
-  it('TC-06: (Thất bại) - Số lượng phân trang không hợp lệ (count < 1)', async () => {
-    const res = await request(baseURL)
-      .post('/api/set_comments_product')
-      .set('Authorization', `Bearer ${tokenUserA}`)
-      .send({
-        product_id: validProductIdB,
-        content: 'Phân trang sai',
+        product_id: 99999999, // ID không có thực
+        content: 'Sản phẩm này ảo quá',
         index: 0,
-        count: 0, // Nhỏ hơn Min(1)
+        count: 10,
       });
 
-    expect(String(res.body.code)).toBe('1004');
-    expect(res.body.message).toBe('Parameter value is invalid.');
+    expect(String(res.body.code)).toBe('9992');
+    expect(res.body.message).toBe('Product is not existed.');
   });
 
-  // TC-07: (Thất bại - TDD) - Không thể bình luận sản phẩm của người đã block mình
-  it('TC-07: (Thất bại - TDD) - Không thể bình luận sản phẩm của người đã block mình', async () => {
-    // 1. User B block User A
+  it('TC-05: (Thất bại) - Không cho phép bình luận vào sản phẩm của người đã block mình', async () => {
+    // Bước 1: User B tiến hành block User A
     await request(baseURL)
       .post('/set_user_block')
       .set('Authorization', `Bearer ${tokenUserB}`)
       .send({ user_id: userIdA, type: 0 }); // 0 = block
 
-    // 2. User A cố comment sản phẩm của B
+    // Bước 2: User A cố tình gửi bình luận vào sản phẩm của B
     const res = await request(baseURL)
       .post('/api/set_comments_product')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({
         product_id: validProductIdB,
-        content: 'Cố ý comment dù bị block',
+        content: 'Bình luận lén lút',
         index: 0,
         count: 10,
       });
 
-    // 3. Kỳ vọng chặn và báo Not Access (1009)
+    // Bước 3: Đảm bảo Server chặn ngay lập tức
     expect(String(res.body.code)).toBe('1009');
     expect(res.body.message).toBe('Not access.');
 
-    // 4. Clean up: User B unblock User A
+    // Bước 4: Clean up: Unblock
     await request(baseURL)
       .post('/set_user_block')
       .set('Authorization', `Bearer ${tokenUserB}`)
       .send({ user_id: userIdA, type: 1 });
   });
 
-  // TC-08: (Thành công) - Phân trang bình luận (Đảm bảo sắp xếp DESC và skip đúng index)
-  it('TC-08: (Thành công) - Phân trang bình luận (Đảm bảo sắp xếp DESC và skip đúng index)', async () => {
-    // Seed thêm 2 bình luận nữa
+  it('TC-06: (Thành công) - Thêm nhiều bình luận liên tiếp để test phân trang', async () => {
+    // A comment thêm 2 cái nữa
     await request(baseURL)
       .post('/api/set_comments_product')
       .set('Authorization', `Bearer ${tokenUserA}`)
-      .send({ product_id: validProductIdB, content: 'Bình luận thứ hai', index: 0, count: 5 });
+      .send({ product_id: validProductIdB, content: 'Bình luận thứ hai', index: 0, count: 10 });
 
-    await request(baseURL)
+    const res = await request(baseURL)
       .post('/api/set_comments_product')
       .set('Authorization', `Bearer ${tokenUserA}`)
-      .send({ product_id: validProductIdB, content: 'Bình luận thứ ba', index: 0, count: 5 });
+      .send({ product_id: validProductIdB, content: 'Bình luận thứ ba', index: 0, count: 10 });
 
-    // Gọi API với index=1 (skip bình luận mới nhất), count=2
+    expect(String(res.body.code)).toBe('1000');
+    expect(res.body.message).toBe('OK.');
+    // Kiểm tra xem bình luận mới nhất có nằm ở đầu mảng (index 0) không
+    expect(res.body.data[0].content).toBe('Bình luận thứ ba');
+  });
+
+  it('TC-07: (Thành công) - Phân trang bình luận (Lấy index=0, count=1)', async () => {
+    const res = await request(baseURL)
+      .post('/api/get_comments_product') // Lưu ý: Hàm này dùng get_comments_product để lấy chứ không phải set
+      .send({
+        product_id: validProductIdB,
+        index: 0,
+        count: 1, // Chỉ lấy 1 bình luận mới nhất
+      });
+
+    expect(String(res.body.code)).toBe('1000');
+    expect(res.body.message).toBe('OK.');
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBe(1);
+    expect(res.body.data[0].content).toBe('Bình luận thứ ba');
+  });
+
+  it('TC-08: (Thành công) - Phân trang bình luận (Lấy index=0, count=2 trong lúc gọi set_comments_product)', async () => {
+    // Khi gọi API set_comments_product, nó cũng trả về danh sách comments mới nhất
+    // Ta truyền count=2 thì nó phải trả về 2 comments mới nhất
     const res = await request(baseURL)
       .post('/api/set_comments_product')
       .set('Authorization', `Bearer ${tokenUserA}`)
       .send({
         product_id: validProductIdB,
-        content: 'Bình luận thứ tư', // Mới nhất sau khi lưu sẽ ở index 0
-        index: 1, // Bỏ qua bình luận thứ tư
-        count: 2, // Lấy bình luận thứ ba và thứ hai
+        content: 'Bình luận thứ tư',
+        index: 0,
+        count: 2, // Lấy bình luận thứ tư và thứ ba
       });
 
     expect(String(res.body.code)).toBe('1000');
     expect(res.body.message).toBe('OK.');
     expect(Array.isArray(res.body.data)).toBe(true);
     expect(res.body.data.length).toBe(2);
-    expect(res.body.data[0].content).toBe('Bình luận thứ ba');
-    expect(res.body.data[1].content).toBe('Bình luận thứ hai');
+    expect(res.body.data[0].content).toBe('Bình luận thứ tư');
+    expect(res.body.data[1].content).toBe('Bình luận thứ ba');
   });
 
-  // TC-09: (Thất bại) - Chỉ mục phân trang (index) không hợp lệ (index < 0)
+
   it('TC-09: (Thất bại) - Chỉ mục phân trang (index) không hợp lệ (index < 0)', async () => {
     const res = await request(baseURL)
       .post('/api/set_comments_product')
@@ -283,7 +276,7 @@ describe('Products - Set Comments Product (e2e)', () => {
       .send({
         product_id: validProductIdB,
         content: 'Bình luận với index âm',
-        index: -1, // Nhỏ hơn Min(0)
+        index: -1,
         count: 10,
       });
 

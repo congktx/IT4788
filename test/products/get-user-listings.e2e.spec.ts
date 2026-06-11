@@ -1,22 +1,14 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource, Not } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
-import { JwtService } from '@nestjs/jwt';
-
-import { Category } from '../../src/modules/products/entities/category.entity';
-import { Address } from '../../src/modules/orders/entities/address.entity';
-import { Province } from '../../src/modules/orders/entities/province.entity';
-import { Ward } from '../../src/modules/orders/entities/ward.entity';
-import { User } from '../../src/modules/users/entities/user.entity';
 
 describe('Products - Get User Listings (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let tokenUserA: string;
   let tokenUserB: string;
   let userIdA: number;
@@ -33,7 +25,6 @@ describe('Products - Get User Listings (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dataSource = app.get<DataSource>(DataSource);
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // 1. Setup User A
@@ -64,7 +55,7 @@ describe('Products - Get User Listings (e2e)', () => {
     if (loginBRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test' });
+        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test-listing' });
       loginBRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number: phoneB, password: passB });
@@ -72,27 +63,29 @@ describe('Products - Get User Listings (e2e)', () => {
     tokenUserB = loginBRes.body.data.token;
     userIdB = Number(loginBRes.body.data.id);
 
-    // 3. Chuẩn bị dữ liệu nền (Category & Address)
-    const categoryRepo = dataSource.getRepository(Category);
-    let category = await categoryRepo.findOne({ where: {} });
-    if (!category) category = await categoryRepo.save({ name: 'Dien tu' });
-    categoryId = category.id;
+    // 3. Chuẩn bị dữ liệu nền bằng API (Category & Address)
+    const catRes = await request(baseURL).post('/api/get_categories').send({});
+    categoryId = catRes.body.data?.[0]?.id || 1;
 
-    const addressRepo = dataSource.getRepository(Address);
-    const provinceRepo = dataSource.getRepository(Province);
-    const wardRepo = dataSource.getRepository(Ward);
-
-    let addressA = await addressRepo.findOne({ where: { user_id: userIdA } });
-    if (!addressA) {
-      let province = await provinceRepo.findOne({ where: {} });
-      if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
-      let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-      if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
-
-      addressA = await addressRepo.save({
-        user_id: userIdA, ward_id: ward.id, address_name: 'Home Test',
-        address_detail: '123 Test St', lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver A', phone: context.phone_number, full_address: '123 Test St, Dich Vong Hau, Ha Noi'
+    let addressIdA = 1;
+    const addrRes = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${tokenUserA}`);
+    if (addrRes.body.code === '1000' && addrRes.body.data && addrRes.body.data.length > 0) {
+      addressIdA = addrRes.body.data[0].id;
+    } else {
+      const addAddrRes = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${tokenUserA}`).send({
+         address: '123 Test St A',
+         address_id: [1, 1],
+         lat: 21.0285,
+         lng: 105.8542,
+         receiver_name: 'Test Receiver A',
+         phone: context.phone_number,
+         full_address: '123 Test St A, Ha Noi',
+         address_detail: '123 Test St A',
+         is_default: true
       });
+      if (addAddrRes.body.code === '1000' && addAddrRes.body.data) {
+        addressIdA = addAddrRes.body.data.id;
+      }
     }
 
     // 4. Tạo sản phẩm cho User A (để test)
@@ -102,7 +95,7 @@ describe('Products - Get User Listings (e2e)', () => {
       .send({
         title: 'MacBook Pro M3 Max',
         price: 80000000, description: 'Laptop Apple mạnh nhất hiện nay',
-        category_id: categoryId, ship_from_id: addressA.id,
+        category_id: categoryId, ship_from_id: addressIdA,
         variants: [{ size: '16 inch', color: 'Space Black', stock: 5, weight: 2.1 }]
       });
 
@@ -112,16 +105,15 @@ describe('Products - Get User Listings (e2e)', () => {
       .send({
         title: 'Tai nghe AirPods Pro 2',
         price: 5500000, description: 'Tai nghe chống ồn chủ động',
-        category_id: categoryId, ship_from_id: addressA.id,
+        category_id: categoryId, ship_from_id: addressIdA,
         variants: [{ size: 'Tiêu chuẩn', color: 'Trắng', stock: 50, weight: 0.1 }]
       });
   });
 
   afterAll(async () => {
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
+    if (app) {
+      await app.close();
     }
-    await app.close();
   });
 
   it('TC-01: (Thành công) - Lấy danh sách sản phẩm của chính mình', async () => {

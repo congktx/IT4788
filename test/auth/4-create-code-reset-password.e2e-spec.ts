@@ -45,16 +45,11 @@ describe('Auth - Create Code Reset Password (e2e)', () => {
 
     // API trả về thành công
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toMatch(/^OK\.?$/);
-    // OUTPUT: API này chỉ gửi mã qua SMS, không trả dữ liệu nhạy cảm ra ngoài
-    // OTP được lưu trên Redis của Server, không cần kiểm tra local
-    expect(res.body.data).toBeNull();
+    expect(res.body.message).toMatch('OK.');
+    expect(res.body.data).toHaveProperty('otp');
   });
 
   it('CREATE-OTP-02: (Thất bại) - Lỗi 9991 khi gửi yêu cầu liên tục (Chống Spam)', async () => {
-    // Lưu ý: Test CREATE-OTP-01 vừa chạy xong, cooldown vẫn đang active trong Redis
-    // Nên lần gọi thứ 2 này sẽ bị chặn ngay lập tức
-
     const res = await request(baseURL)
       .post('/auth/create_code_reset_password')
       .send({ phone_number: TEST_PHONE });

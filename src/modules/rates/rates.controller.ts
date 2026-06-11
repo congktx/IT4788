@@ -37,6 +37,15 @@ export class RatesController {
         return buildResponse(APP_RESPONSE.USER_NOT_EXIST, null);
       }
 
+      const isBlocked = await this.ratesService.isUserBlocked(
+        authUserId,
+        targetUserId,
+      );
+
+      if (isBlocked) {
+        return buildResponse(APP_RESPONSE.NOT_ACCESS, null);
+      }
+
       const data = await this.ratesService.getRates(
         targetUserId,
         dto.index,
@@ -73,6 +82,17 @@ export class RatesController {
       const userExists = await this.ratesService.getUserExists(dto.user_id);
       if (!userExists) {
         return buildResponse(APP_RESPONSE.USER_NOT_EXIST, null);
+      }
+
+      const validateResult = await this.ratesService.validateSetRateInput(
+        dto.user_id,
+        reviewerId,
+        dto.product_id,
+        dto.purchase_id,
+      );
+
+      if (validateResult !== APP_RESPONSE.OK) {
+        return buildResponse(validateResult, null);
       }
 
       const data = await this.ratesService.setRate(

@@ -1,20 +1,14 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Category } from '../../src/modules/products/entities/category.entity';
-import { Address } from '../../src/modules/orders/entities/address.entity';
-import { Province } from '../../src/modules/orders/entities/province.entity';
-import { Ward } from '../../src/modules/orders/entities/ward.entity';
-
 describe('Products - Get Comments Product (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let tokenUserA: string;
   let tokenUserB: string;
   let userIdA: number;
@@ -33,7 +27,6 @@ describe('Products - Get Comments Product (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dataSource = app.get<DataSource>(DataSource);
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // 1. Setup User A
@@ -67,7 +60,7 @@ describe('Products - Get Comments Product (e2e)', () => {
     if (loginBRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test' });
+        .send({ phone_number: phoneB, password: passB, uuid: 'mock-user-test-get-comments' });
       loginBRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number: phoneB, password: passB });
@@ -75,27 +68,32 @@ describe('Products - Get Comments Product (e2e)', () => {
     tokenUserB = loginBRes.body.data.token;
     userIdB = Number(loginBRes.body.data.id);
 
-    // 3. Chuẩn bị Address & Category
-    const categoryRepo = dataSource.getRepository(Category);
-    let category = await categoryRepo.findOne({ where: {} });
-    if (!category) category = await categoryRepo.save({ name: 'Tech' });
-    categoryId = category.id;
+    // 3. Chuẩn bị Category & Address
+    const catRes = await request(baseURL).post('/api/get_categories').send({});
+    if (catRes.body.code === '1000' && catRes.body.data && catRes.body.data.length > 0) {
+      categoryId = catRes.body.data[0].id;
+    } else {
+      categoryId = 1;
+    }
 
-    const addressRepo = dataSource.getRepository(Address);
-    const provinceRepo = dataSource.getRepository(Province);
-    const wardRepo = dataSource.getRepository(Ward);
-
-    let addressB = await addressRepo.findOne({ where: { user_id: userIdB } });
-    if (!addressB) {
-      let province = await provinceRepo.findOne({ where: {} });
-      if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
-      let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-      if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
-
-      addressB = await addressRepo.save({
-        user_id: userIdB, ward_id: ward.id, address_name: 'Home Test B',
-        address_detail: '123 Test St B', lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver B', phone: '0955555555', full_address: '123 Test St B, Dich Vong Hau, Ha Noi'
+    let addressIdB = 1;
+    const addrResB = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${tokenUserB}`);
+    if (addrResB.body.code === '1000' && addrResB.body.data && addrResB.body.data.length > 0) {
+      addressIdB = addrResB.body.data[0].id;
+    } else {
+      const addAddrB = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${tokenUserB}`).send({
+         address: '123 Test St B',
+         address_id: [1, 1],
+         lat: 21.0285,
+         lng: 105.8542,
+         receiver_name: 'Test Receiver B',
+         phone: phoneB,
+         full_address: '123 Test St B, Ha Noi',
+         address_detail: '123 Test St B'
       });
+      if (addAddrB.body.code === '1000' && addAddrB.body.data) {
+        addressIdB = addAddrB.body.data.id;
+      }
     }
 
     // 4. Tạo sản phẩm B (Đã có bình luận)
@@ -105,7 +103,7 @@ describe('Products - Get Comments Product (e2e)', () => {
       .send({
         title: 'Sony WH-1000XM5',
         price: 8000000, description: 'Tai nghe chống ồn đỉnh cao',
-        category_id: categoryId, ship_from_id: addressB.id,
+        category_id: categoryId, ship_from_id: addressIdB,
         variants: [{ size: 'Free Size', color: 'Silver', stock: 20, weight: 0.25 }]
       });
     validProductIdB = addProductBRes.body.data?.id || 1;
@@ -117,7 +115,7 @@ describe('Products - Get Comments Product (e2e)', () => {
       .send({
         title: 'Sony WH-1000XM5 New',
         price: 8500000, description: 'Tai nghe chống ồn mới nguyên seal',
-        category_id: categoryId, ship_from_id: addressB.id,
+        category_id: categoryId, ship_from_id: addressIdB,
         variants: [{ size: 'Free Size', color: 'Black', stock: 10, weight: 0.25 }]
       });
     newProductIdB = addNewProductBRes.body.data?.id || 2;
@@ -135,10 +133,9 @@ describe('Products - Get Comments Product (e2e)', () => {
   });
 
   afterAll(async () => {
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
+    if (app) {
+      await app.close();
     }
-    await app.close();
   });
 
   it('TC-01: (Thành công) - Lấy danh sách bình luận của sản phẩm', async () => {
@@ -260,7 +257,7 @@ describe('Products - Get Comments Product (e2e)', () => {
     expect(res.body.data[1].content).toBe('Bình luận 1');
   });
 
-  // TC-09: (Thất bại - TDD) - Không thể xem bình luận sản phẩm của người đã block mình
+  
   it('TC-09: (Thất bại - TDD) - Không thể xem bình luận sản phẩm của người đã block mình', async () => {
     // 1. User B block User A
     await request(baseURL)
@@ -278,11 +275,9 @@ describe('Products - Get Comments Product (e2e)', () => {
         count: 10,
       });
 
-    // 3. Phải báo lỗi 1009 (Not Access) do đã bị block
     expect(String(res.body.code)).toBe('1009');
     expect(res.body.message).toBe('Not access.');
 
-    // 4. Clean up: User B unblock User A
     await request(baseURL)
       .post('/set_user_block')
       .set('Authorization', `Bearer ${tokenUserB}`)

@@ -196,7 +196,7 @@ export class ConversationsService {
 
   async getListConversation(currentUserId: number, getListConvDto: GetListConvDto) {
     const { index, count } = getListConvDto;
-    const skip = (index - 1) * count;
+    const skip = index * count;
     let qb = this.conversationRepo
       .createQueryBuilder('conversation')
       .innerJoin('conversation.users', 'user', 'user.id = :userId', { userId: currentUserId })
@@ -215,12 +215,19 @@ export class ConversationsService {
     let listLastMessageId: number[] = [];
     for (let i = 0; i < conversations.length; i++)
       listLastMessageId.push(conversations[i]['last_messasge_id']);
-    const listLastMessage = await this.messageRepo.find({
-      where: {
-        id: In(listLastMessageId),
-      },
-      relations: ['sender', 'conversation'],
-    });
+    let listLastMessage: any[] = [];
+    if (listLastMessageId && listLastMessageId.length > 0) {
+      const orderedIdsString = listLastMessageId
+        .map(id => (typeof id === 'string' ? `'${id}'` : id))
+        .join(',');
+      listLastMessage = await this.messageRepo
+        .createQueryBuilder('message')
+        .leftJoinAndSelect('message.sender', 'sender')
+        .leftJoinAndSelect('message.conversation', 'conversation')
+        .where('message.id IN (:...ids)', { ids: listLastMessageId })
+        .orderBy(`FIELD(message.id, ${orderedIdsString})`)
+        .getMany();
+    }
 
     let listConv: any[] = [];
     let num_new_message = 0;
@@ -242,7 +249,7 @@ export class ConversationsService {
           unread: listLastMessage[i].sender.id != currentUserId && listLastMessage[i].created_at > conversations[i].time_last_seen
         }
       });
-      if (listLastMessage[i] && listLastMessage[i].created_at !== conversations[i].time_last_seen)
+      if (listLastMessage[i] && listLastMessage[i].sender.id != currentUserId && listLastMessage[i].created_at > conversations[i].time_last_seen)
         num_new_message++;
     }
 
@@ -258,7 +265,7 @@ export class ConversationsService {
     let conversation: any = null;
 
     if (getConvDto.partner_id) {
-      if (currentUserId === getConvDto.partner_id)
+      if (currentUserId === Number(getConvDto.partner_id))
         return this.fail(
           APP_RESPONSE.PARAMETER_VALUE_INVALID.code,
           APP_RESPONSE.PARAMETER_VALUE_INVALID.message
@@ -266,15 +273,25 @@ export class ConversationsService {
       conversation = await this.findConversationBetweenUsers([currentUserId, getConvDto.partner_id]);
       if (conversation && conversation['code'])
         return conversation;
-      if (!conversation)
+      if (!conversation) {
+        let block = await this.userBlockRepo.findOne({
+          where: [
+            { blocker_id: currentUserId, blocked_id: Number(getConvDto.partner_id) },
+            { blocker_id: Number(getConvDto.partner_id), blocked_id: currentUserId },
+          ]
+        })
+
+        let can_send_message = (block) ? false : true;
+
         return {
           code: APP_RESPONSE.OK.code,
           message: APP_RESPONSE.OK.message,
           data: {
             messages: [],
-            can_send_message: true
+            can_send_message: can_send_message
           }
         }
+      }
     }
 
     if (getConvDto.conversation_id) {
@@ -293,7 +310,7 @@ export class ConversationsService {
       )
 
     let conversationId = conversation.id;
-    let skip = (getConvDto.index - 1) * getConvDto.count;
+    let skip = getConvDto.index * getConvDto.count;
     let [messages, _] = await this.messageRepo.findAndCount({
       where: {
         conversation: { id: conversationId }
@@ -316,9 +333,9 @@ export class ConversationsService {
     for (let i = 0; i < messages.length; i++) {
       formatedMessages.push({
         message: messages[i].content,
-        unread: currentUserId != messages[i].sender.id && messages[i].sender.created_at > conversation.time_last_seen,
+        unread: currentUserId != messages[i].sender.id && messages[i].created_at > conversation.time_last_seen,
         type: messages[i].type,
-        created: messages[i].content,
+        created: messages[i].created_at,
         sender: {
           id: messages[i].sender.id,
           username: messages[i].sender.username

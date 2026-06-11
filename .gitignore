@@ -7,5 +7,5 @@ redis-data
 mysql_data
 .claude
 .codegraph
-.github
 .claude.json
+.idea

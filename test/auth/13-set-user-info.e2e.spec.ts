@@ -4,13 +4,11 @@ import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 
 describe('User - Set User Info (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let baseURL: string | any;
 
   let VALID_TOKEN: string;
@@ -31,7 +29,6 @@ describe('User - Set User Info (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
-    dataSource = app.get<DataSource>(DataSource);
 
     const loginRes = await request(baseURL)
       .post('/auth/login')
@@ -44,10 +41,9 @@ describe('User - Set User Info (e2e)', () => {
   }, 60000);
 
   afterAll(async () => {
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
+    if (app) {
+      await app.close();
     }
-    await app.close();
   }, 20000);
 
   it('SET-INFO-01: (Thất bại) - Không gửi Token → HTTP 401', async () => {
@@ -128,7 +124,7 @@ describe('User - Set User Info (e2e)', () => {
       .get('/auth/me')
       .set('Authorization', `Bearer ${VALID_TOKEN}`)
       .send({});
-      
+
     const targetId = (meRes.body && meRes.body.data) ? meRes.body.data.id : MY_USER_ID;
 
     const getRes = await request(baseURL)

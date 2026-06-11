@@ -1,20 +1,14 @@
+import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Category } from '../../src/modules/products/entities/category.entity';
-import { Address } from '../../src/modules/orders/entities/address.entity';
-import { Province } from '../../src/modules/orders/entities/province.entity';
-import { Ward } from '../../src/modules/orders/entities/ward.entity';
-
 describe('Products - Search (e2e)', () => {
   let app: INestApplication;
-  let dataSource: DataSource;
   let tokenUserA: string;
   let categoryId: number;
   let baseURL: string | any;
@@ -28,11 +22,13 @@ describe('Products - Search (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dataSource = app.get<DataSource>(DataSource);
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
     // 1. Setup User A
     const contextPath = path.join(__dirname, '..', 'auth', 'test-context.json');
+    if (!fs.existsSync(contextPath)) {
+      throw new Error('File test-context.json không tồn tại! Hãy chạy 1-signup trước.');
+    }
     const context = JSON.parse(fs.readFileSync(contextPath, 'utf-8'));
     let loginARes = await request(baseURL)
       .post('/auth/login')
@@ -49,27 +45,29 @@ describe('Products - Search (e2e)', () => {
     tokenUserA = loginARes.body.data.token;
     const userIdA = Number(loginARes.body.data.id);
 
-    // 2. Chuẩn bị dữ liệu nền (Category & Address)
-    const categoryRepo = dataSource.getRepository(Category);
-    let category = await categoryRepo.findOne({ where: {} });
-    if (!category) category = await categoryRepo.save({ name: 'Dien tu' });
-    categoryId = category.id;
+    // 2. Chuẩn bị dữ liệu nền (Category & Address) thông qua API
+    const catRes = await request(baseURL).post('/api/get_categories').send({});
+    categoryId = catRes.body.data?.[0]?.id || 1;
 
-    const addressRepo = dataSource.getRepository(Address);
-    const provinceRepo = dataSource.getRepository(Province);
-    const wardRepo = dataSource.getRepository(Ward);
-
-    let addressA = await addressRepo.findOne({ where: { user_id: userIdA } });
-    if (!addressA) {
-      let province = await provinceRepo.findOne({ where: {} });
-      if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
-      let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-      if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
-
-      addressA = await addressRepo.save({
-        user_id: userIdA, ward_id: ward.id, address_name: 'Home Test',
-        address_detail: '123 Test St', lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver A', phone: '0999999999', full_address: '123 Test St, Dich Vong Hau, Ha Noi'
+    let addressIdA = 1;
+    const addrResA = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${tokenUserA}`);
+    if (addrResA.body.code === '1000' && addrResA.body.data && addrResA.body.data.length > 0) {
+      addressIdA = addrResA.body.data[0].id;
+    } else {
+      const addAddrResA = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${tokenUserA}`).send({
+         address: '123 Test St A',
+         address_id: [1, 1],
+         lat: 21.0285,
+         lng: 105.8542,
+         receiver_name: 'Test Receiver A',
+         phone: '0999999999',
+         full_address: '123 Test St A, Ha Noi',
+         address_detail: '123 Test St A',
+         is_default: true
       });
+      if (addAddrResA.body.code === '1000' && addAddrResA.body.data) {
+        addressIdA = addAddrResA.body.data.id;
+      }
     }
 
     // 3. Tạo sản phẩm để test search
@@ -79,7 +77,7 @@ describe('Products - Search (e2e)', () => {
       .send({
         title: 'MacBook Air M2',
         price: 25000000, description: 'Laptop mỏng nhẹ',
-        category_id: categoryId, ship_from_id: addressA.id,
+        category_id: categoryId, ship_from_id: addressIdA,
         variants: [{ size: '13 inch', color: 'Midnight', stock: 5, weight: 1.2 }]
       });
 
@@ -89,16 +87,15 @@ describe('Products - Search (e2e)', () => {
       .send({
         title: 'IPhone 15 Pro Max',
         price: 35000000, description: 'Điện thoại xịn',
-        category_id: categoryId, ship_from_id: addressA.id,
+        category_id: categoryId, ship_from_id: addressIdA,
         variants: [{ size: '256GB', color: 'Titanium', stock: 10, weight: 0.2 }]
       });
   });
 
   afterAll(async () => {
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
+    if (app) {
+      await app.close();
     }
-    await app.close();
   });
 
   it('TC-01: (Thất bại) - Không có điều kiện tìm kiếm', async () => {

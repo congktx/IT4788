@@ -26,7 +26,7 @@ export class ValidationPipe extends NestValidationPipe {
         if (hasMissingField) {
           errorCode = '1002';
           errorMessage = 'Parameter is not enough.';
-        } 
+        }
         // Ưu tiên thứ 2: Lỗi 1003 (Sai kiểu dữ liệu)
         else if (hasInvalidType) {
           errorCode = '1003';

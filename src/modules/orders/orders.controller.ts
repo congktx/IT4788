@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
   Param,
   Patch,
   Post,
@@ -11,12 +10,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '../../common/auth/guards/auth.guard';
 import { OrdersService } from './orders.service';
 import { GetShipFromQueryDto } from './dto/ship_from.dto';
 import { GetShipFeeDto } from './dto/getshipfee.dto';
-import { AddOrderAddress } from './dto/add_order_address.dto';
+import { AddOrderAddressDto } from './dto/add_order_address.dto';
 import { UpdateOrderAddressDto } from './dto/update_order_address.dto';
 import { GetOrderStatusDto } from './dto/get_order_status.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -37,7 +36,6 @@ interface RequestWithUser extends Request {
   };
 }
 
-@ApiBearerAuth("JWT-auth")
 @Controller()
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
@@ -58,7 +56,6 @@ export class OrdersController {
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Phí ship' })
   @Post('order/get_ship_fee')
-  @HttpCode(200)
   getShipFee(@Body() query: GetShipFeeDto, @Req() req: RequestWithUser) {
     return this.ordersService.getShipFee(this.getUserId(req), query);
   }
@@ -73,8 +70,7 @@ export class OrdersController {
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Thêm địa chỉ người dùng' })
   @Post('order/add_order_address')
-  @HttpCode(200)
-  addOrderAddress(@Req() req: RequestWithUser, @Body() dto: AddOrderAddress) {
+  addOrderAddress(@Req() req: RequestWithUser, @Body() dto: AddOrderAddressDto) {
     return this.ordersService.addOrderAddress(this.getUserId(req), dto);
   }
 

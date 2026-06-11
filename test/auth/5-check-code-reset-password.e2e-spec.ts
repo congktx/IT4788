@@ -4,24 +4,20 @@ import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
-import { RedisService } from '../../src/common/redis/redis.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
 describe('Auth - Check OTP Reset Password (e2e)', () => {
   let app: INestApplication;
-  let redisService: RedisService;
   let TEST_PHONE: string;
   let baseURL: string | any;
 
   beforeAll(async () => {
-    // 1. Đọc SĐT từ file test-context.json
-    const contextPath = path.join(__dirname, 'test-context.json');
-    if (!fs.existsSync(contextPath)) {
-      throw new Error('File test-context.json không tồn tại! Chạy 1-signup trước.');
-    }
-    const context = JSON.parse(fs.readFileSync(contextPath, 'utf-8'));
-    TEST_PHONE = context.phone_number;
+    // Tạo ngẫu nhiên một SĐT mới để tránh lỗi Cooldown 120s khi dùng chung test-context.json
+    const validPrefixes = ['3', '5', '7', '8', '9'];
+    const prefix = validPrefixes[Math.floor(Math.random() * validPrefixes.length)];
+    const suffix = Date.now().toString().slice(-8);
+    TEST_PHONE = '0' + prefix + suffix;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -32,19 +28,13 @@ describe('Auth - Check OTP Reset Password (e2e)', () => {
     await app.init();
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
-    redisService = app.get<RedisService>(RedisService);
-    // Dọn sạch key Redis trước khi test
-    await redisService.del(`reset_password:${TEST_PHONE}`);
-    await redisService.del(`reset_password_cooldown:${TEST_PHONE}`);
-    await redisService.del(`reset_password_verified:${TEST_PHONE}`);
+    // Đăng ký user tạm thời để SĐT tồn tại trong DB
+    await request(baseURL)
+      .post('/auth/signup')
+      .send({ phone_number: TEST_PHONE, password: 'password123', uuid: 'mock-uuid-5' });
   }, 60000);
 
   afterAll(async () => {
-    if (redisService) {
-      await redisService.del(`reset_password:${TEST_PHONE}`);
-      await redisService.del(`reset_password_cooldown:${TEST_PHONE}`);
-      await redisService.del(`reset_password_verified:${TEST_PHONE}`);
-    }
     if (app) {
       await app.close();
     }
@@ -52,15 +42,14 @@ describe('Auth - Check OTP Reset Password (e2e)', () => {
 
   it('CHECK-OTP-01: (Thành công) - Xác thực mã OTP đúng (1000)', async () => {
     // Bước A: Gọi API tạo OTP (Cloudflare xử lý)
-    await request(baseURL)
+    const createRes = await request(baseURL)
       .post('/auth/create_code_reset_password')
       .send({ phone_number: TEST_PHONE });
 
-    // Bước B: Đọc lén Redis local (vì Cloudflare và local dùng chung Redis 127.0.0.1:6379)
-    const realOtp = await redisService.get(`reset_password:${TEST_PHONE}`);
+    // Đọc OTP trực tiếp từ kết quả trả về của API thay vì moi từ local Redis
+    const realOtp = createRes.body.data.otp;
     expect(realOtp).toBeDefined();
 
-    // Bước C: Gửi OTP thật lấy được lên Server
     const res = await request(baseURL)
       .post('/auth/check_code_reset_password')
       .send({
@@ -70,7 +59,7 @@ describe('Auth - Check OTP Reset Password (e2e)', () => {
 
     // Kì vọng: Server xác nhận thành công
     expect(res.body.code).toBe('1000');
-    expect(res.body.message).toMatch(/^OK\.?$/);
+    expect(res.body.message).toMatch('OK.');
     expect(res.body.data).toBeNull();
   });
 
