@@ -3,9 +3,6 @@ node_modules
 .env
 .env.test
 migrations
-!src/migrations/
-src/migrations/*
-!src/migrations/1780000000001-create-cart-items-table.ts
 redis-data
 mysql_data
 .claude
