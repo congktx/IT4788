@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order_item.entity';
 import { Shipping } from './entities/shipping.entity';
@@ -16,7 +16,6 @@ import { Ward } from './entities/ward.entity';
 import { Province } from './entities/province.entity';
 import { Warehouse } from './entities/warehouse.entity';
 import { OrderTimeline } from './entities/order-timeline.entity';
-import { CartItem } from './entities/cart-item.entity';
 import { Wallet } from '../wallets/entities/wallet.entity';
 import { Transaction } from '../wallets/entities/transaction.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -36,10 +35,7 @@ import { UpdateOrderAddressDto } from './dto/update_order_address.dto';
 import { GetOrderStatusDto } from './dto/get_order_status.dto';
 import { APP_RESPONSE, buildResponse } from '../constants/response.constants';
 import { AddOrderAddressDto } from './dto/add_order_address.dto';
-import { AddCartDto } from './dto/add-cart.dto';
-import { EditCartDto } from './dto/edit-cart.dto';
-import { DeleteCartDto } from './dto/delete-cart.dto';
-import { INITIAL_WALLET_BALANCE } from '../../common/constants/wallet.constants';
+import { CartItem } from './entities/cart-item.entity';
 
 const errorResponse = (response: { code: string; message: string }) =>
   buildResponse(response, null);
@@ -128,9 +124,34 @@ export class OrdersService {
       );
     }
 
+    const bodyAny = body as any;
+
+    /**
+     * Theo đặc tả:
+     * order_source = 0: tạo đơn từ giỏ hàng
+     * order_source = 1: tạo đơn trực tiếp từ sản phẩm
+     *
+     * Giữ fallback body.source để không vỡ nếu FE/mobile cũ vẫn gửi "source".
+     */
+    const orderSource = Number(bodyAny.order_source ?? bodyAny.source);
+
+    if (Number.isNaN(orderSource) || (orderSource !== 0 && orderSource !== 1)) {
+      throw new BadRequestException(
+        errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+      );
+    }
+
+    const addressId = Number(body.address_id);
+
+    if (Number.isNaN(addressId) || addressId <= 0) {
+      throw new BadRequestException(
+        errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+      );
+    }
+
     const address = await this.addressRepository.findOne({
       where: {
-        id: body.address_id,
+        id: addressId,
         user_id: buyer.id,
       },
     });
@@ -141,15 +162,25 @@ export class OrdersService {
       );
     }
 
-    const productIds = body.items.map((item) => item.product_id);
+    const productIds = body.items.map((item) => Number(item.product_id));
+
+    if (productIds.some((id) => Number.isNaN(id) || id <= 0)) {
+      throw new BadRequestException(
+        errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+      );
+    }
+
+    const uniqueProductIds = Array.from(new Set(productIds));
 
     const products = await this.productRepository
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.ship_from', 'ship_from')
-      .where('product.id IN (:...productIds)', { productIds })
+      .where('product.id IN (:...productIds)', {
+        productIds: uniqueProductIds,
+      })
       .getMany();
 
-    if (products.length !== productIds.length) {
+    if (products.length !== uniqueProductIds.length) {
       throw new BadRequestException(
         errorResponse(APP_RESPONSE.PRODUCT_NOT_EXISTED),
       );
@@ -169,7 +200,16 @@ export class OrdersService {
     let totalPrice = 0;
 
     const itemPayloads = body.items.map((item) => {
-      const product = products.find((p) => p.id === item.product_id);
+      const productId = Number(item.product_id);
+      const quantity = Number(item.quantity);
+
+      if (Number.isNaN(quantity) || quantity <= 0) {
+        throw new BadRequestException(
+          errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+        );
+      }
+
+      const product = products.find((p) => p.id === productId);
 
       if (!product) {
         throw new BadRequestException(
@@ -177,18 +217,12 @@ export class OrdersService {
         );
       }
 
-      if (!item.quantity || item.quantity <= 0) {
-        throw new BadRequestException(
-          errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
-        );
-      }
-
-      const itemTotal = Number(product.price) * item.quantity;
+      const itemTotal = Number(product.price) * quantity;
       totalPrice += itemTotal;
 
       return {
         product_id: product.id,
-        quantity: item.quantity,
+        quantity,
         total_price: itemTotal,
       };
     });
@@ -241,6 +275,13 @@ export class OrdersService {
 
       await manager.save(Shipping, shipping);
 
+      if (orderSource === 0) {
+        await manager.delete(CartItem, {
+          user_id: buyer.id,
+          product_id: In(uniqueProductIds),
+        });
+      }
+
       return buildResponse(APP_RESPONSE.OK, {
         order_id: savedOrder.id,
         status: savedOrder.status,
@@ -252,7 +293,8 @@ export class OrdersService {
           Number(savedOrder.total_price || 0) +
           Number(savedOrder.shipping_fee || 0),
         address_id: address.id,
-        source: body.source,
+        order_source: orderSource,
+        source: orderSource,
       });
     });
   }
@@ -307,191 +349,6 @@ export class OrdersService {
     }));
 
     return buildResponse(APP_RESPONSE.OK, data);
-  }
-
-  async getCart(userId: number) {
-    const buyer = await this.userRepository.findOne({
-      where: { id: userId },
-    });
-
-    if (!buyer) {
-      throw new UnauthorizedException(
-        errorResponse(APP_RESPONSE.TOKEN_INVALID),
-      );
-    }
-
-    const cartItems = await this.cartItemRepository.find({
-      where: { user_id: buyer.id },
-      relations: ['product', 'product.seller'],
-      order: { updated_at: 'DESC', id: 'DESC' },
-    });
-
-    const shopMap = new Map<
-      number,
-      {
-        shop_id: number;
-        shop_name: string;
-        shop_avatar: string;
-        items: {
-          cart_item_id: number;
-          product_id: number;
-          name: string;
-          image: string;
-          price: string;
-          quantity: number;
-          subtotal: string;
-        }[];
-        shop_total: string;
-      }
-    >();
-
-    for (const cartItem of cartItems) {
-      const product = cartItem.product;
-
-      if (!product) {
-        continue;
-      }
-
-      const seller = product.seller;
-      const shopId = product.seller_id;
-      const price = Number(product.price || 0);
-      const subtotal = price * cartItem.quantity;
-
-      if (!shopMap.has(shopId)) {
-        shopMap.set(shopId, {
-          shop_id: shopId,
-          shop_name: seller?.fullname || seller?.username || '',
-          shop_avatar: seller?.avatar || '',
-          items: [],
-          shop_total: '0',
-        });
-      }
-
-      const shop = shopMap.get(shopId)!;
-
-      shop.items.push({
-        cart_item_id: cartItem.id,
-        product_id: product.id,
-        name: product.title || '',
-        image: this.getFirstImage(product.image_urls),
-        price: this.formatMoney(price),
-        quantity: cartItem.quantity,
-        subtotal: this.formatMoney(subtotal),
-      });
-
-      shop.shop_total = this.formatMoney(Number(shop.shop_total) + subtotal);
-    }
-
-    return buildResponse(APP_RESPONSE.OK, Array.from(shopMap.values()));
-  }
-
-  async addCart(userId: number, body: AddCartDto) {
-    const buyer = await this.userRepository.findOne({
-      where: { id: userId },
-    });
-
-    if (!buyer) {
-      throw new UnauthorizedException(
-        errorResponse(APP_RESPONSE.TOKEN_INVALID),
-      );
-    }
-
-    const product = await this.productRepository.findOne({
-      where: { id: Number(body.product_id) },
-    });
-
-    if (!product) {
-      return buildResponse(APP_RESPONSE.PRODUCT_NOT_EXISTED, null);
-    }
-
-    let cartItem = await this.cartItemRepository.findOne({
-      where: {
-        user_id: buyer.id,
-        product_id: product.id,
-      },
-    });
-
-    if (cartItem) {
-      cartItem.quantity += Number(body.quantity);
-    } else {
-      cartItem = this.cartItemRepository.create({
-        user_id: buyer.id,
-        product_id: product.id,
-        quantity: Number(body.quantity),
-      });
-    }
-
-    const savedCartItem = await this.cartItemRepository.save(cartItem);
-    const subtotal = Number(product.price || 0) * savedCartItem.quantity;
-
-    return buildResponse(APP_RESPONSE.OK, {
-      cart_item_id: savedCartItem.id,
-      product_id: savedCartItem.product_id,
-      quantity: savedCartItem.quantity,
-      subtotal: this.formatMoney(subtotal),
-    });
-  }
-
-  async editCart(userId: number, body: EditCartDto) {
-    const buyer = await this.userRepository.findOne({
-      where: { id: userId },
-    });
-
-    if (!buyer) {
-      throw new UnauthorizedException(
-        errorResponse(APP_RESPONSE.TOKEN_INVALID),
-      );
-    }
-
-    const cartItem = await this.cartItemRepository.findOne({
-      where: {
-        id: Number(body.cart_item_id),
-        user_id: buyer.id,
-      },
-      relations: ['product'],
-    });
-
-    if (!cartItem || !cartItem.product) {
-      return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
-    }
-
-    cartItem.quantity = Number(body.quantity);
-    const savedCartItem = await this.cartItemRepository.save(cartItem);
-    const subtotal =
-      Number(cartItem.product.price || 0) * savedCartItem.quantity;
-
-    return buildResponse(APP_RESPONSE.OK, {
-      cart_item_id: savedCartItem.id,
-      quantity: savedCartItem.quantity,
-      subtotal: this.formatMoney(subtotal),
-    });
-  }
-
-  async deleteCart(userId: number, body: DeleteCartDto) {
-    const buyer = await this.userRepository.findOne({
-      where: { id: userId },
-    });
-
-    if (!buyer) {
-      throw new UnauthorizedException(
-        errorResponse(APP_RESPONSE.TOKEN_INVALID),
-      );
-    }
-
-    const cartItem = await this.cartItemRepository.findOne({
-      where: {
-        id: Number(body.cart_item_id),
-        user_id: buyer.id,
-      },
-    });
-
-    if (!cartItem) {
-      return buildResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID, null);
-    }
-
-    await this.cartItemRepository.delete(cartItem.id);
-
-    return buildResponse(APP_RESPONSE.OK, null);
   }
 
   async findAll() {
@@ -1048,10 +905,6 @@ export class OrdersService {
     return imageUrls;
   }
 
-  private formatMoney(value: number): string {
-    return Number(value || 0).toString();
-  }
-
   async getPurchase(body: GetPurchaseDto, userId: number) {
     const buyer = await this.userRepository.findOne({
       where: { id: userId },
@@ -1271,7 +1124,8 @@ export class OrdersService {
         if (!wallet) {
           wallet = manager.create(Wallet, {
             user_id: buyer.id,
-            balance: INITIAL_WALLET_BALANCE,
+            balance: 0,
+            pending_balance: 0,
           });
           wallet = await manager.save(Wallet, wallet);
         }
@@ -1483,7 +1337,8 @@ export class OrdersService {
       if (!wallet) {
         wallet = manager.create(Wallet, {
           user_id: buyer.id,
-          balance: INITIAL_WALLET_BALANCE,
+          balance: 0,
+          pending_balance: 0,
         });
 
         wallet = await manager.save(Wallet, wallet);
