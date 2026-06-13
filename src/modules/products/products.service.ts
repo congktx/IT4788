@@ -570,7 +570,9 @@ export class ProductsService {
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.variants', 'variant')
       .leftJoinAndSelect('product.likes', 'likes')
-      .leftJoinAndSelect('product.comments', 'comments');
+      .leftJoinAndSelect('product.comments', 'comments')
+      .leftJoinAndSelect('product.brand', 'brand')
+      .leftJoinAndSelect('product.category', 'category');
 
     if (category_id !== undefined) {
       qb.andWhere('product.category_id = :category_id', { category_id });
@@ -673,6 +675,21 @@ export class ProductsService {
         comment: String(commentCount),
         is_liked: false,
         is_stock: isStock,
+
+        brand: p.brand
+          ? {
+              id: String(p.brand.id),
+              name: p.brand.name,
+            }
+          : null,
+
+        category: p.category
+          ? {
+              id: String(p.category.id),
+              name: p.category.name,
+            }
+          : null,
+
         variants: variants.map((v: any) => ({
           id: String(v.id),
           size: v.size,
@@ -760,14 +777,23 @@ export class ProductsService {
   }
 
   async getCommentsProduct(productId: number, index: number, count: number) {
-    const comments = await this.commentRepo.find({
-      where: { product_id: productId },
-      order: { created_at: 'DESC' },
-      skip: index,
-      take: count,
-    });
-
-    return comments;
+    return await this.commentRepo
+      .createQueryBuilder('comment')
+      .leftJoin(User, 'user', 'user.id = comment.user_id')
+      .select([
+        'comment.id AS id',
+        'comment.product_id AS product_id',
+        'comment.user_id AS user_id',
+        'comment.content AS content',
+        'comment.created_at AS created_at',
+        'user.username AS username',
+        'user.avatar AS avatar',
+      ])
+      .where('comment.product_id = :productId', { productId })
+      .orderBy('comment.created_at', 'DESC')
+      .offset(index)
+      .limit(count)
+      .getRawMany();
   }
 
   async getUserById(id: number) {
