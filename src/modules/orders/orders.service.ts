@@ -22,6 +22,7 @@ import { Transaction } from '../wallets/entities/transaction.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderStatus } from './enums/order-status.enum';
 import { GetListPurchasesDto } from './dto/get-list-purchases.dto';
+import { GetListPurchasesSellerDto } from './dto/get_list_purchases_seller.dto';
 import { GetPurchaseDto } from './dto/get-purchase.dto';
 import { EditPurchaseDto } from './dto/edit-purchase.dto';
 import { CancelOrderDto } from './dto/cancel-order.dto';
@@ -301,6 +302,61 @@ export class OrdersService {
         source: orderSource,
       });
     });
+  }
+
+  async getListPurchasesSeller(
+    body: GetListPurchasesSellerDto,
+    userId: number,
+  ) {
+    const seller = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!seller) {
+      throw new UnauthorizedException(
+        errorResponse(APP_RESPONSE.TOKEN_INVALID),
+      );
+    }
+
+    const index = Number(body.index ?? 0);
+    const count = Number(body.count ?? 10);
+
+    if (isNaN(index) || isNaN(count) || index < 0 || count <= 0) {
+      throw new BadRequestException(
+        errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+      );
+    }
+
+    const query = this.orderRepository
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.items', 'item')
+      .leftJoinAndSelect('item.product', 'product')
+      .where('order.seller_id = :sellerId', { sellerId: seller.id });
+
+    if (body.state) {
+      query.andWhere('order.status = :state', { state: body.state });
+    }
+
+    const orders = await query
+      .orderBy('order.created_at', 'DESC')
+      .skip(index)
+      .take(count)
+      .getMany();
+
+    const data = orders.map((order) => ({
+      id: order.id,
+      state: order.status,
+      total_price: Number(order.total_price),
+      items: (order.items || []).map((item) => ({
+        product_id: item.product_id,
+        name: item.product?.title || '',
+        image: this.getFirstImage(item.product?.image_urls),
+        price: item.product ? Number(item.product.price) : 0,
+        quantity: item.quantity,
+      })),
+    }));
+
+    return buildResponse(APP_RESPONSE.OK, data);
   }
 
   async getListPurchases(body: GetListPurchasesDto, userId: number) {
