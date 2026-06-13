@@ -31,7 +31,7 @@ import { GetOrderTimelineDto } from './dto/get-order-timeline.dto';
 import { AddCartDto } from './dto/add-cart.dto';
 import { EditCartDto } from './dto/edit-cart.dto';
 import { DeleteCartDto } from './dto/delete-cart.dto';
-import { GetListPurchasesSellerDto } from './dto/get_list_purchases_seller.dto';
+
 interface RequestWithUser extends Request {
   user?: {
     id?: number;
@@ -121,15 +121,6 @@ export class OrdersController {
     @Req() req: RequestWithUser,
   ) {
     return this.ordersService.getListPurchases(body, this.getUserId(req));
-  }
-
-  @UseGuards(AuthGuard)
-  @Post('order/get_list_purchases_seller')
-  getListPurchasesSeller(
-    @Body() body: GetListPurchasesSellerDto,
-    @Req() req: RequestWithUser,
-  ) {
-    return this.ordersService.getListPurchasesSeller(body, this.getUserId(req));
   }
 
   @UseGuards(AuthGuard)

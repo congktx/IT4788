@@ -7,6 +7,9 @@ export class RewardProof {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column()
+  user_id: number;
+
   @Column({ nullable: true })
   video_url: string;
 

@@ -15,11 +15,5 @@ export const SecretConfig = {
     pub_endpoint: process.env.R2_PUB_ENDPOINT || "",
     access_key: process.env.R2_ACCESS_KEY || "",
     secret_key: process.env.R2_SECRET_KEY || ""
-  },
-  openai: {
-    api_key: process.env.OPENAI_API_KEY || ""
-  },
-  gemini: {
-    api_key: process.env.GEMINI_API_KEY || ""
   }
 };
