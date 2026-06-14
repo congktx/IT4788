@@ -47,7 +47,7 @@ export class ProductsService {
     private variantRepo: Repository<ProductVariant>,
 
     @InjectRepository(UserBlock)
-  private readonly userBlockRepo: Repository<UserBlock>,
+    private readonly userBlockRepo: Repository<UserBlock>,
   ) {}
 
   async isUserBlockedWithSeller(currentUserId?: number, sellerId?: number) {
@@ -161,8 +161,12 @@ export class ProductsService {
       );
 
       await this.variantRepo.save(variantEntities);
-
-      return { code: '1000', message: 'OK.', data: product };
+      const { title, ...restProduct } = product;
+      return {
+        code: '1000',
+        message: 'OK.',
+        data: { ...restProduct, name: title },
+      };
     } catch (e) {
       console.error('CREATE PRODUCT ERROR:', e);
       console.log(e);
@@ -375,10 +379,18 @@ export class ProductsService {
         }
       }
 
+      const updateProduct = await this.getProductById(id, true);
+      if (!updateProduct) {
+        return APP_RESPONSE.PRODUCT_NOT_EXISTED;
+      }
+      const { title, ...restProduct } = updateProduct;
       return {
         code: '1000',
         message: 'OK.',
-        data: await this.getProductById(id, true),
+        data: {
+          name: title,
+          ...restProduct,
+        },
       };
     } catch (e) {
       console.error('UPDATE PRODUCT ERROR:', e);
@@ -523,11 +535,7 @@ export class ProductsService {
       .createQueryBuilder('brand')
       .select(['brand.id', 'brand.name', 'brand.category_id']);
 
-    if (
-      categoryId !== undefined &&
-      categoryId !== null &&
-      categoryId !== 0
-    ) {
+    if (categoryId !== undefined && categoryId !== null && categoryId !== 0) {
       qb.where('brand.category_id = :categoryId', { categoryId });
     }
 
@@ -878,7 +886,7 @@ export class ProductsService {
     });
 
     if (existedReport) {
-      return APP_RESPONSE.ACTION_DONE_PREVIOUSLY; 
+      return APP_RESPONSE.ACTION_DONE_PREVIOUSLY;
     }
 
     const report = this.reportRepo.create({
@@ -909,11 +917,10 @@ export class ProductsService {
 
     if (keyword !== undefined && keyword.trim() !== '') {
       const normalizedKeyword = keyword.trim().replace(/\s+/g, ' ');
-      const compactKeyword = normalizedKeyword.replace(/\s+/g, '').toLowerCase();
-      const tokens = normalizedKeyword
-        .toLowerCase()
-        .split(' ')
-        .filter(Boolean);
+      const compactKeyword = normalizedKeyword
+        .replace(/\s+/g, '')
+        .toLowerCase();
+      const tokens = normalizedKeyword.toLowerCase().split(' ').filter(Boolean);
 
       qb.andWhere(
         `
