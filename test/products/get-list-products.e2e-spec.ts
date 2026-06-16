@@ -4,6 +4,8 @@ import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
+import { AllExceptionsFilter } from '../../src/all-exceptions.filter';
+import { LoggingInterceptor } from '../../src/common/logging.interceptor';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -23,15 +25,21 @@ describe('Products - Get List Products (e2e)', () => {
     }
     const context = JSON.parse(fs.readFileSync(contextPath, 'utf-8'));
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    baseURL = process.env.TEST_API_URL;
 
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
-    await app.init();
+    if (!baseURL) {
+      const moduleFixture: TestingModule = await Test.createTestingModule({
+        imports: [AppModule],
+      }).compile();
 
-    baseURL = process.env.TEST_API_URL || app.getHttpServer();
+      app = moduleFixture.createNestApplication();
+      app.useGlobalPipes(new ValidationPipe());
+      app.useGlobalInterceptors(new LoggingInterceptor());
+      app.useGlobalFilters(new AllExceptionsFilter());
+      await app.init();
+
+      baseURL = app.getHttpServer();
+    }
 
     // Login để lấy token
     const { phone_number, password } = context;
@@ -65,6 +73,20 @@ describe('Products - Get List Products (e2e)', () => {
       categoryId = catRes.body.data[0].id;
     }
 
+    // Lấy province / ward hợp lệ
+    let provinceId = 1;
+    let wardId = 8;
+    const provRes = await request(baseURL).get('/order/provinces');
+    if (provRes.status !== 404 && provRes.body.code === '1000' && provRes.body.data && provRes.body.data.length > 0) {
+      provinceId = provRes.body.data[0].id;
+      const wardRes = await request(baseURL).get(`/order/wards?province_id=${provinceId}`);
+      if (wardRes.body.code === '1000' && wardRes.body.data && wardRes.body.data.length > 0) {
+        wardId = wardRes.body.data[0].id;
+      }
+    } else {
+      console.warn(`[DEBUG] /order/provinces returned 404 or empty. Server might be outdated. Falling back to address_id: [8, 1]`);
+    }
+
     // Địa chỉ giao hàng
     let addressId = 1;
     const addrRes = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${accessToken}`);
@@ -73,7 +95,7 @@ describe('Products - Get List Products (e2e)', () => {
     } else {
       const addAddrRes = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${accessToken}`).send({
         address: '123 Test St',
-        address_id: [1, 1],
+        address_id: [wardId, provinceId],
         lat: 21.0285,
         lng: 105.8542,
         receiver_name: 'Test Receiver',
@@ -84,6 +106,8 @@ describe('Products - Get List Products (e2e)', () => {
       });
       if (addAddrRes.body.code === '1000' && addAddrRes.body.data) {
         addressId = addAddrRes.body.data.id;
+      } else {
+        throw new Error(`[DEBUG] Failed to add order address. Response: ${JSON.stringify(addAddrRes.body)}`);
       }
     }
 

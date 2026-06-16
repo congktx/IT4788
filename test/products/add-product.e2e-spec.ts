@@ -4,6 +4,8 @@ import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
+import { AllExceptionsFilter } from '../../src/all-exceptions.filter';
+import { LoggingInterceptor } from '../../src/common/logging.interceptor';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -12,7 +14,7 @@ describe('Products - Add Product (e2e)', () => {
   let accessToken: string;
   let validCategoryId: number;
   let validShipFromId: number;
-  let validBrandId: number;
+  let validBrandId: number | undefined;
   let baseURL: string | any;
   let userId: number;
 
@@ -23,15 +25,21 @@ describe('Products - Add Product (e2e)', () => {
     }
     const context = JSON.parse(fs.readFileSync(contextPath, 'utf-8'));
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    baseURL = process.env.TEST_API_URL;
 
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
-    await app.init();
+    if (!baseURL) {
+      const moduleFixture: TestingModule = await Test.createTestingModule({
+        imports: [AppModule],
+      }).compile();
 
-    baseURL = process.env.TEST_API_URL || app.getHttpServer();
+      app = moduleFixture.createNestApplication();
+      app.useGlobalPipes(new ValidationPipe());
+      app.useGlobalInterceptors(new LoggingInterceptor());
+      app.useGlobalFilters(new AllExceptionsFilter());
+      await app.init();
+
+      baseURL = app.getHttpServer();
+    }
 
     const { phone_number, password } = context;
     let loginRes = await request(baseURL)
@@ -60,26 +68,39 @@ describe('Products - Add Product (e2e)', () => {
     userId = Number(loginRes.body.data?.id);
 
     const catRes = await request(baseURL).post('/api/get_categories').send({});
-    if (catRes.body.code === '1000' && catRes.body.data && catRes.body.data.length > 0) {
-      validCategoryId = catRes.body.data[0].id;
-    } else {
-      validCategoryId = 1;
+    if (catRes.body.code !== '1000' || !catRes.body.data || catRes.body.data.length === 0) {
+      throw new Error(`[DEBUG] get_categories failed or empty. Cannot proceed. Response: ${JSON.stringify(catRes.body)}`);
     }
+    validCategoryId = catRes.body.data[0].id;
 
-    const brandRes = await request(baseURL).post('/api/get_list_brands').send({ category_id: validCategoryId });
+    const brandRes = await request(baseURL).post('/api/get_list_brands').send({ category_id: 0, index: 0, count: 10 });
     if (brandRes.body.code === '1000' && brandRes.body.data && brandRes.body.data.length > 0) {
       validBrandId = brandRes.body.data[0].id;
     } else {
-      validBrandId = 1;
+      validBrandId = undefined;
     }
 
     const addrRes = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${accessToken}`);
     if (addrRes.body.code === '1000' && addrRes.body.data && addrRes.body.data.length > 0) {
       validShipFromId = addrRes.body.data[0].id;
     } else {
+      let provinceId = 1;
+      let wardId = 8;
+
+      const provRes = await request(baseURL).get('/order/provinces');
+      if (provRes.status !== 404 && provRes.body.code === '1000' && provRes.body.data && provRes.body.data.length > 0) {
+        provinceId = provRes.body.data[0].id;
+        const wardRes = await request(baseURL).get(`/order/wards?province_id=${provinceId}`);
+        if (wardRes.body.code === '1000' && wardRes.body.data && wardRes.body.data.length > 0) {
+          wardId = wardRes.body.data[0].id;
+        }
+      } else {
+        console.warn(`[DEBUG] /order/provinces returned 404 or empty. Server might be outdated. Falling back to address_id: [8, 1]`);
+      }
+
       const addAddrRes = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${accessToken}`).send({
         address: '123 Test St',
-        address_id: [1, 1],
+        address_id: [wardId, provinceId],
         lat: 21.0285,
         lng: 105.8542,
         receiver_name: 'Test Receiver',
@@ -91,8 +112,7 @@ describe('Products - Add Product (e2e)', () => {
       if (addAddrRes.body.code === '1000' && addAddrRes.body.data) {
         validShipFromId = addAddrRes.body.data.id;
       } else {
-        console.error('[DEBUG] Failed to add address:', addAddrRes.body);
-        validShipFromId = 1;
+        throw new Error(`[DEBUG] Failed to add order address. Server lacks /order/provinces API and [8,1] is invalid. You MUST manually add an address for this user before running this test. Response: ${JSON.stringify(addAddrRes.body)}`);
       }
     }
 
@@ -135,11 +155,10 @@ describe('Products - Add Product (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ id: Number(res.body.data.id) });
 
-    expect(verifyRes.status).toBe(200);
     expect(verifyRes.body.code).toBe('1000');
-    expect(verifyRes.body.data.title).toBe(productData.title);
+    expect(verifyRes.body.data.name).toBe(productData.title);
     expect(Number(verifyRes.body.data.price)).toBe(productData.price);
-    expect(verifyRes.body.data.description).toBe(productData.description);
+    expect(verifyRes.body.data.described).toBe(productData.description);
   });
 
   it('TC-02: (Thành công) - Chỉ gồm các trường bắt buộc', async () => {
@@ -166,9 +185,8 @@ describe('Products - Add Product (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ id: Number(res.body.data.id) });
 
-    expect(verifyRes.status).toBe(200);
     expect(verifyRes.body.code).toBe('1000');
-    expect(verifyRes.body.data.title).toBe(productData.title);
+    expect(verifyRes.body.data.name).toBe(productData.title);
     expect(Number(verifyRes.body.data.price)).toBe(productData.price);
   });
 

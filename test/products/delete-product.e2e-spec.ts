@@ -2,6 +2,8 @@ import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
+import { AllExceptionsFilter } from '../../src/all-exceptions.filter';
+import { LoggingInterceptor } from '../../src/common/logging.interceptor';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 
@@ -25,6 +27,8 @@ describe('Products - Delete Product (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
+    app.useGlobalInterceptors(new LoggingInterceptor());
+    app.useGlobalFilters(new AllExceptionsFilter());
     await app.init();
 
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
@@ -35,7 +39,7 @@ describe('Products - Delete Product (e2e)', () => {
     let loginARes = await request(baseURL)
       .post('/auth/login')
       .send({ phone_number: context.phone_number, password: context.password });
-      
+
     if (loginARes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
@@ -44,7 +48,7 @@ describe('Products - Delete Product (e2e)', () => {
         .post('/auth/login')
         .send({ phone_number: context.phone_number, password: context.password });
     }
-    
+
     tokenUserA = loginARes.body.data.token;
 
     // 2. Setup User B (Kẻ đi xóa trộm) - Sử dụng API để tương thích server remote
@@ -66,31 +70,50 @@ describe('Products - Delete Product (e2e)', () => {
 
     // 3. Chuẩn bị Category & Address cho User A bằng API
     const catRes = await request(baseURL).post('/api/get_categories').send({});
-    if (catRes.body.code === '1000' && catRes.body.data && catRes.body.data.length > 0) {
-      validCategoryId = catRes.body.data[0].id;
+    if (catRes.body.code !== '1000' || !catRes.body.data || catRes.body.data.length === 0) {
+      throw new Error(`[DEBUG] get_categories failed or empty. Cannot proceed.`);
+    }
+    validCategoryId = catRes.body.data[0].id;
+
+    const brandRes = await request(baseURL).post('/api/get_list_brands').send({ category_id: 0, index: 0, count: 10 });
+    let validBrandId: number | undefined;
+    if (brandRes.body.code === '1000' && brandRes.body.data && brandRes.body.data.length > 0) {
+      validBrandId = brandRes.body.data[0].id;
     } else {
-      validCategoryId = 1;
+      validBrandId = undefined;
     }
 
     const addrRes = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${tokenUserA}`);
     if (addrRes.body.code === '1000' && addrRes.body.data && addrRes.body.data.length > 0) {
       validShipFromId = addrRes.body.data[0].id;
     } else {
+      let provinceId = 1;
+      let wardId = 8;
+
+      const provRes = await request(baseURL).get('/order/provinces');
+      if (provRes.status !== 404 && provRes.body.code === '1000' && provRes.body.data && provRes.body.data.length > 0) {
+        provinceId = provRes.body.data[0].id;
+        const wardRes = await request(baseURL).get(`/order/wards?province_id=${provinceId}`);
+        if (wardRes.body.code === '1000' && wardRes.body.data && wardRes.body.data.length > 0) {
+          wardId = wardRes.body.data[0].id;
+        }
+      }
+
       const addAddrRes = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${tokenUserA}`).send({
-         address: '123 Test St',
-         address_id: [1, 1],
-         lat: 21.0285,
-         lng: 105.8542,
-         receiver_name: 'Test Receiver A',
-         phone: context.phone_number,
-         full_address: '123 Test St, Ha Noi',
-         address_detail: '123 Test St',
-         is_default: true
+        address: '123 Test St',
+        address_id: [wardId, provinceId],
+        lat: 21.0285,
+        lng: 105.8542,
+        receiver_name: 'Test Receiver A',
+        phone: context.phone_number,
+        full_address: '123 Test St, Ha Noi',
+        address_detail: '123 Test St',
+        is_default: true
       });
       if (addAddrRes.body.code === '1000' && addAddrRes.body.data) {
         validShipFromId = addAddrRes.body.data.id;
       } else {
-        validShipFromId = 1;
+        throw new Error(`[DEBUG] Failed to add order address.`);
       }
     }
 
@@ -101,7 +124,7 @@ describe('Products - Delete Product (e2e)', () => {
       .send({
         title: 'iPhone 13 128GB (Sản phẩm User A)',
         price: 15000000, description: 'Điện thoại iPhone 13 chính hãng',
-        category_id: validCategoryId, ship_from_id: validShipFromId,
+        category_id: validCategoryId, ship_from_id: validShipFromId, brand_id: validBrandId,
         variants: [{ size: '128GB', color: 'Blue', stock: 10, weight: 0.5 }]
       });
 

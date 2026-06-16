@@ -4,6 +4,8 @@ import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
+import { AllExceptionsFilter } from '../../src/all-exceptions.filter';
+import { LoggingInterceptor } from '../../src/common/logging.interceptor';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -21,19 +23,25 @@ describe('Products - Edit Product (e2e)', () => {
   beforeAll(async () => {
     const contextPath = path.join(__dirname, '..', 'auth', 'test-context.json');
     if (!fs.existsSync(contextPath)) {
-      throw new Error('File test-context.json không tồn tại!');
+      throw new Error('File test-context.json không tồn tại! Hãy chạy 1-signup trước.');
     }
     const context = JSON.parse(fs.readFileSync(contextPath, 'utf-8'));
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    baseURL = process.env.TEST_API_URL;
 
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
-    await app.init();
+    if (!baseURL) {
+      const moduleFixture: TestingModule = await Test.createTestingModule({
+        imports: [AppModule],
+      }).compile();
 
-    baseURL = process.env.TEST_API_URL || app.getHttpServer();
+      app = moduleFixture.createNestApplication();
+      app.useGlobalPipes(new ValidationPipe());
+      app.useGlobalInterceptors(new LoggingInterceptor());
+      app.useGlobalFilters(new AllExceptionsFilter());
+      await app.init();
+
+      baseURL = app.getHttpServer();
+    }
 
     // 1. Login User chính
     let loginRes = await request(baseURL)
@@ -68,6 +76,18 @@ describe('Products - Edit Product (e2e)', () => {
     }
     otherUserToken = otherLoginRes.body.data.token;
 
+    // Lấy province / ward hợp lệ
+    let provinceId = 1;
+    let wardId = 8;
+    const provRes = await request(baseURL).get('/order/provinces');
+    if (provRes.status !== 404 && provRes.body.code === '1000' && provRes.body.data && provRes.body.data.length > 0) {
+      provinceId = provRes.body.data[0].id;
+      const wardRes = await request(baseURL).get(`/order/wards?province_id=${provinceId}`);
+      if (wardRes.body.code === '1000' && wardRes.body.data && wardRes.body.data.length > 0) {
+        wardId = wardRes.body.data[0].id;
+      }
+    }
+
     // 3. Chuẩn bị Category & Brand bằng API
     const catRes = await request(baseURL).post('/api/get_categories').send({});
     if (catRes.body.code === '1000' && catRes.body.data && catRes.body.data.length > 0) {
@@ -90,7 +110,7 @@ describe('Products - Edit Product (e2e)', () => {
     } else {
       const addAddrA = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${accessToken}`).send({
         address: '123 Test St A',
-        address_id: [1, 1],
+        address_id: [wardId, provinceId],
         lat: 21.0285,
         lng: 105.8542,
         receiver_name: 'Test Receiver A',
@@ -102,7 +122,7 @@ describe('Products - Edit Product (e2e)', () => {
       if (addAddrA.body.code === '1000' && addAddrA.body.data) {
         validShipFromId = addAddrA.body.data.id;
       } else {
-        validShipFromId = 1;
+        throw new Error(`[DEBUG] Failed to add order address for User A. Response: ${JSON.stringify(addAddrA.body)}`);
       }
     }
 
@@ -114,7 +134,7 @@ describe('Products - Edit Product (e2e)', () => {
     } else {
       const addAddrB = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${otherUserToken}`).send({
         address: '123 Test St B',
-        address_id: [1, 1],
+        address_id: [wardId, provinceId],
         lat: 21.0285,
         lng: 105.8542,
         receiver_name: 'Test Receiver B',
@@ -125,6 +145,8 @@ describe('Products - Edit Product (e2e)', () => {
       });
       if (addAddrB.body.code === '1000' && addAddrB.body.data) {
         otherShipFromId = addAddrB.body.data.id;
+      } else {
+        throw new Error(`[DEBUG] Failed to add order address for User B. Response: ${JSON.stringify(addAddrB.body)}`);
       }
     }
 

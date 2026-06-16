@@ -2,6 +2,8 @@ import '../setup-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
+import { AllExceptionsFilter } from '../../src/all-exceptions.filter';
+import { LoggingInterceptor } from '../../src/common/logging.interceptor';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import * as fs from 'fs';
@@ -25,6 +27,8 @@ describe('Rates - Set Rate (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
+    app.useGlobalInterceptors(new LoggingInterceptor());
+    app.useGlobalFilters(new AllExceptionsFilter());
     await app.init();
 
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
@@ -72,6 +76,17 @@ describe('Rates - Set Rate (e2e)', () => {
     const catRes = await request(baseURL).post('/api/get_categories').send({});
     categoryId = catRes.body.data?.[0]?.id || 1;
 
+    let provinceId = 1;
+    let wardId = 8;
+    const provRes = await request(baseURL).get('/order/provinces');
+    if (provRes.status !== 404 && provRes.body.code === '1000' && provRes.body.data && provRes.body.data.length > 0) {
+      provinceId = provRes.body.data[0].id;
+      const wardRes = await request(baseURL).get(`/order/wards?province_id=${provinceId}`);
+      if (wardRes.body.code === '1000' && wardRes.body.data && wardRes.body.data.length > 0) {
+        wardId = wardRes.body.data[0].id;
+      }
+    }
+
     let addressIdB = 1;
     const addrResB = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${tokenUserB}`);
     if (addrResB.body.code === '1000' && addrResB.body.data && addrResB.body.data.length > 0) {
@@ -79,7 +94,7 @@ describe('Rates - Set Rate (e2e)', () => {
     } else {
       const addAddrResB = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${tokenUserB}`).send({
          address: '123 Test St B',
-         address_id: [1, 1],
+         address_id: [wardId, provinceId],
          lat: 21.0285,
          lng: 105.8542,
          receiver_name: 'Test Receiver B',
@@ -110,12 +125,11 @@ describe('Rates - Set Rate (e2e)', () => {
   afterAll(async () => {
     // Cleanup state để không ảnh hưởng
     if (tokenUserB && userIdA) {
-      await request(baseURL)
-        .post('/set_user_block')
-        .set('Authorization', `Bearer ${tokenUserB}`)
-        .send({ user_id: userIdA, type: 1 }); // 1 = unblock
+      await request(baseURL).post('/set_user_block').set('Authorization', `Bearer ${tokenUserB}`).send({ user_id: userIdA, type: 1 });
     }
-
+    if (tokenUserA && userIdB) {
+      await request(baseURL).post('/set_user_block').set('Authorization', `Bearer ${tokenUserA}`).send({ user_id: userIdB, type: 1 });
+    }
     if (app) {
       await app.close();
     }

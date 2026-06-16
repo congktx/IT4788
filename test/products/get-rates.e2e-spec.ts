@@ -103,6 +103,12 @@ describe('Rates - Get Rates (e2e)', () => {
   });
 
   afterAll(async () => {
+    if (tokenUserB && userIdA) {
+      await request(baseURL).post('/set_user_block').set('Authorization', `Bearer ${tokenUserB}`).send({ user_id: userIdA, type: 1 });
+    }
+    if (tokenUserA && userIdB) {
+      await request(baseURL).post('/set_user_block').set('Authorization', `Bearer ${tokenUserA}`).send({ user_id: userIdB, type: 1 });
+    }
     if (app) {
       await app.close();
     }

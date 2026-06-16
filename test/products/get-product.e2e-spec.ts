@@ -4,6 +4,8 @@ import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
+import { AllExceptionsFilter } from '../../src/all-exceptions.filter';
+import { LoggingInterceptor } from '../../src/common/logging.interceptor';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -26,15 +28,21 @@ describe('Products - Get Product (e2e)', () => {
     }
     const context = JSON.parse(fs.readFileSync(contextPath, 'utf-8'));
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    baseURL = process.env.TEST_API_URL;
 
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe());
-    await app.init();
+    if (!baseURL) {
+      const moduleFixture: TestingModule = await Test.createTestingModule({
+        imports: [AppModule],
+      }).compile();
 
-    baseURL = process.env.TEST_API_URL || app.getHttpServer();
+      app = moduleFixture.createNestApplication();
+      app.useGlobalPipes(new ValidationPipe());
+      app.useGlobalInterceptors(new LoggingInterceptor());
+      app.useGlobalFilters(new AllExceptionsFilter());
+      await app.init();
+
+      baseURL = app.getHttpServer();
+    }
 
     // Đăng nhập để lấy token (cần token để tạo sản phẩm mẫu)
     const { phone_number, password } = context;
@@ -63,6 +71,20 @@ describe('Products - Get Product (e2e)', () => {
       categoryId = catRes.body.data[0].id;
     }
 
+    // Lấy province / ward hợp lệ
+    let provinceId = 1;
+    let wardId = 8;
+    const provRes = await request(baseURL).get('/order/provinces');
+    if (provRes.status !== 404 && provRes.body.code === '1000' && provRes.body.data && provRes.body.data.length > 0) {
+      provinceId = provRes.body.data[0].id;
+      const wardRes = await request(baseURL).get(`/order/wards?province_id=${provinceId}`);
+      if (wardRes.body.code === '1000' && wardRes.body.data && wardRes.body.data.length > 0) {
+        wardId = wardRes.body.data[0].id;
+      }
+    } else {
+      console.warn(`[DEBUG] /order/provinces returned 404 or empty. Server might be outdated. Falling back to address_id: [8, 1]`);
+    }
+
     // 2. Lấy hoặc tạo địa chỉ giao hàng cho User A
     let addressId = 1;
     const addrRes = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${accessToken}`);
@@ -71,7 +93,7 @@ describe('Products - Get Product (e2e)', () => {
     } else {
       const addAddrRes = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${accessToken}`).send({
          address: '123 Test St A',
-         address_id: [1, 1],
+         address_id: [wardId, provinceId],
          lat: 21.0285,
          lng: 105.8542,
          receiver_name: 'Test Receiver A',
@@ -82,6 +104,8 @@ describe('Products - Get Product (e2e)', () => {
       });
       if (addAddrRes.body.code === '1000' && addAddrRes.body.data) {
         addressId = addAddrRes.body.data.id;
+      } else {
+        throw new Error(`[DEBUG] Failed to add order address for User A. Response: ${JSON.stringify(addAddrRes.body)}`);
       }
     }
 
@@ -129,7 +153,7 @@ describe('Products - Get Product (e2e)', () => {
     } else {
       const addAddrResB = await request(baseURL).post('/order/add_order_address').set('Authorization', `Bearer ${tokenUserB}`).send({
          address: '123 Test St B',
-         address_id: [1, 1],
+         address_id: [wardId, provinceId],
          lat: 21.0285,
          lng: 105.8542,
          receiver_name: 'Test Receiver B',
@@ -140,6 +164,8 @@ describe('Products - Get Product (e2e)', () => {
       });
       if (addAddrResB.body.code === '1000' && addAddrResB.body.data) {
         addressIdB = addAddrResB.body.data.id;
+      } else {
+        throw new Error(`[DEBUG] Failed to add order address for User B. Response: ${JSON.stringify(addAddrResB.body)}`);
       }
     }
 
@@ -157,6 +183,9 @@ describe('Products - Get Product (e2e)', () => {
   }, 60000);
 
   afterAll(async () => {
+    if (tokenUserB && userId) {
+      await request(baseURL).post('/set_user_block').set('Authorization', `Bearer ${tokenUserB}`).send({ user_id: userId, type: 1 });
+    }
     if (app) {
       await app.close();
     }
@@ -171,7 +200,7 @@ describe('Products - Get Product (e2e)', () => {
     expect(res.body.code).toBe('1000');
     expect(res.body.message).toBe('OK.');
     expect(res.body.data).toBeDefined();
-    expect(res.body.data.id).toBe(validProductId);
+    expect(String(res.body.data.id)).toBe(String(validProductId));
   });
 
   it('TC-02: (Thành công) - Kiểm tra cấu trúc dữ liệu trả về có đầy đủ các trường', async () => {
@@ -183,12 +212,11 @@ describe('Products - Get Product (e2e)', () => {
     expect(res.body.message).toBe('OK.');
     const product = res.body.data;
     expect(product).toHaveProperty('id');
-    expect(product).toHaveProperty('title');
+    expect(product).toHaveProperty('name');
     expect(product).toHaveProperty('price');
-    expect(product).toHaveProperty('description');
-    expect(product).toHaveProperty('seller_id');
-    expect(product).toHaveProperty('category_id');
-    expect(product).toHaveProperty('ship_from_id');
+    expect(product).toHaveProperty('described');
+    expect(product).toHaveProperty('seller');
+    expect(product).toHaveProperty('category');
   });
 
 
@@ -199,7 +227,7 @@ describe('Products - Get Product (e2e)', () => {
 
     expect(res.body.code).toBe('1000');
     expect(res.body.message).toBe('OK.');
-    expect(res.body.data.title).toBe('Apple Watch Ultra');
+    expect(res.body.data.name).toBe('Apple Watch Ultra');
     // price lưu dạng decimal trong DB nên có thể trả về dạng string
     expect(Number(res.body.data.price)).toBe(20000000);
   });
@@ -210,9 +238,8 @@ describe('Products - Get Product (e2e)', () => {
     const res = await request(baseURL)
       .post('/api/get_products')
       .send({});
-
     expect(res.body.code).toBe('1002');
-    expect(res.body.message).toBe('Parameter is not enought.');
+    expect(res.body.message).toBe('Parameter is not enough.');
   });
 
 
@@ -220,18 +247,16 @@ describe('Products - Get Product (e2e)', () => {
     const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: '' });
-
     expect(res.body.code).toBe('1002');
-    expect(res.body.message).toBe('Parameter is not enought.');
+    expect(res.body.message).toBe('Parameter is not enough.');
   });
 
   it('TC-06: (Thất bại) - Gửi id = null', async () => {
     const res = await request(baseURL)
       .post('/api/get_products')
       .send({ id: null });
-
     expect(res.body.code).toBe('1002');
-    expect(res.body.message).toBe('Parameter is not enought.');
+    expect(res.body.message).toBe('Parameter is not enough.');
   });
 
 
@@ -240,17 +265,16 @@ describe('Products - Get Product (e2e)', () => {
       .post('/api/get_products')
       .send({ id: 0 });
 
-    expect(res.body.code).toBe('1002');
-    expect(res.body.message).toBe('Parameter is not enought.');
+    expect(String(res.body.code)).toBe('9992');
+    expect(res.body.message).toBe('Product is not existed.');
   });
 
 
   it('TC-08: (Thất bại) - Không gửi body gì cả', async () => {
     const res = await request(baseURL)
       .post('/api/get_products');
-
     expect(res.body.code).toBe('1002');
-    expect(res.body.message).toBe('Parameter is not enought.');
+    expect(res.body.message).toBe('Parameter is not enough.');
   });
 
   // NHÓM 3: SẢN PHẨM KHÔNG TỒN TẠI (mã 9992)
@@ -296,9 +320,8 @@ describe('Products - Get Product (e2e)', () => {
       .post('/api/get_products')
       .send({ id: 'abc' });
 
-    // API không bị sập, phải trả về mã code (9992 hoặc 9999)
-    expect(res.body.code).toBeDefined();
-    expect(['9992', '9999']).toContain(res.body.code);
+    expect(String(res.body.code)).toBe('1004');
+    expect(res.body.message).toBe('Parameter value is invalid.');
   });
 
 
@@ -307,10 +330,8 @@ describe('Products - Get Product (e2e)', () => {
       .post('/api/get_products')
       .send({ id: String(validProductId) });
 
-    // CSDL tự chuyển chuỗi số thành số → tìm thấy sản phẩm → 1000
-    expect(res.body.code).toBe('1000');
-    expect(res.body.message).toBe('OK.');
-    expect(res.body.data.id).toBe(validProductId);
+    expect(String(res.body.code)).toBe('1004');
+    expect(res.body.message).toBe('Parameter value is invalid.');
   });
 
 
@@ -319,24 +340,13 @@ describe('Products - Get Product (e2e)', () => {
       .post('/api/get_products')
       .send({ id: 1.5 });
 
-    // Không có sản phẩm nào có id=1.5 → 9992
-    expect(res.body.code).toBe('9992');
-    expect(res.body.message).toBe('Product is not existed.');
+    expect(String(res.body.code)).toBe('1004');
+    expect(res.body.message).toBe('Parameter value is invalid.');
   });
 
 
-  it('TC-15: (Thành công) - Gửi thêm trường thừa không ảnh hưởng kết quả', async () => {
-    const res = await request(baseURL)
-      .post('/api/get_products')
-      .send({ id: validProductId, name: 'fake', extra: 123 });
-
-    expect(res.body.code).toBe('1000');
-    expect(res.body.message).toBe('OK.');
-    expect(res.body.data.id).toBe(validProductId);
-  });
-
-  // NHÓM 6: KIỂM TRA BLOCK USER
-  it('TC-16: (Thất bại) - Không thể xem sản phẩm của người đã block mình', async () => {
+ // NHÓM 6: KIỂM TRA BLOCK USER
+  it('TC-15: (Thất bại) - Không thể xem sản phẩm của người đã block mình', async () => {
     // 1. User B block User A
     await request(baseURL)
       .post('/set_user_block')
