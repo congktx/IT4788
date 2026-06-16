@@ -47,10 +47,10 @@ services:
     ports:
       - "${PORT}:${PORT}"
     env_file: .env.prod
-    volumes:
-      - .:/app
-      - /app/node_modules
-    command: npm run start:dev
+    # volumes:
+    #   - .:/app
+    #   - /app/node_modules
+    # command: npm run start:dev
     depends_on:
       - mysql
       - redis
