@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 
 @WebSocketGateway({ cors: { origin: '*' } })
-export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
@@ -21,7 +21,7 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
     try {
       const token = client.handshake.auth.jwt_token;
       if (!token) {
-        console.log(`[Websocket] Client ${client.id} bị từ chối do không có token.`);
+        console.log(`[Notification WS] Client ${client.id} bị từ chối do không có token.`);
         client.disconnect();
         return;
       }
@@ -34,12 +34,12 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
       if (user) {
         client['user'] = user;
         this.connectedUsers.set(user.id, client.id);
-        console.log(`[Websocket] User ${user.id} đã kết nối với socket ${client.id}`);
+        console.log(`[Notification WS] User ${user.id} đã kết nối với socket ${client.id}`);
       } else {
         client.disconnect();
       }
     } catch (error) {
-      console.log(`[Websocket] Lỗi xác thực socket ${client.id}:`, error.message);
+      console.log(`[Notification WS] Lỗi xác thực socket ${client.id}:`, error.message);
       client.disconnect();
     }
   }
@@ -48,7 +48,7 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
     const userId = client['user']?.id;
     if (userId) {
       this.connectedUsers.delete(userId);
-      console.log(`[Websocket] User ${userId} đã ngắt kết nối.`);
+      console.log(`[Notification WS] User ${userId} đã ngắt kết nối.`);
     }
   }
 

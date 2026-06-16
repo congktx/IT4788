@@ -115,6 +115,9 @@ export class User {
   @OneToMany(() => Message, (message) => message.sender)
   messages_sent: Message[];
 
+  @OneToMany(() => Message, (message) => message.receiver)
+  messages_receive: Message[];
+
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
 

@@ -6,6 +6,7 @@ import type { AuthenticatedRequest } from "../../types/auth.type";
 import { GetNotiticationDto } from "./dto/get-notification.dto";
 import { SetReadNotificationDto } from "./dto/set-read-notification.dto";
 import { ApiBearerAuth } from "@nestjs/swagger";
+import { AddNotiDto } from "./dto/add-notification.dto";
 @ApiBearerAuth("JWT-auth")
 @Controller('notification')
 export class NotificationsController {
@@ -27,6 +28,29 @@ export class NotificationsController {
 
       return await this.notificationsService.getNotification(currentUserId, body);
     } catch (err: any) {
+      return {
+        code: APP_RESPONSE.UNKNOWN_ERROR.code,
+        message: APP_RESPONSE.UNKNOWN_ERROR.message,
+        data: err.toString()
+      }
+    }
+  }
+
+  @Post('add_notification')
+  @HttpCode(200)
+  @UseGuards(AuthGuard)
+  async add_notification(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: AddNotiDto,
+  ) {
+    try {
+      const currentUserId = Number(
+        req.user?.id ?? req.user?.userId ?? req.user?.sub,
+      );
+
+      return await this.notificationsService.addNotification(currentUserId, body);
+    } catch (err: any) {
+      console.log('Error when add_notification: ', err);
       return {
         code: APP_RESPONSE.UNKNOWN_ERROR.code,
         message: APP_RESPONSE.UNKNOWN_ERROR.message,
