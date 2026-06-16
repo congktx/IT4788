@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
   Param,
   Patch,
   Post,
@@ -29,7 +28,10 @@ import { BuyerConfirmReceivedDto } from './dto/buyer-confirm-received.dto';
 import { RefundOrderDto } from './dto/refund-order.dto';
 import { SellerMarkAsShippedDto } from './dto/seller-mark-as-shipped.dto';
 import { GetOrderTimelineDto } from './dto/get-order-timeline.dto';
-
+import { AddCartDto } from './dto/add-cart.dto';
+import { EditCartDto } from './dto/edit-cart.dto';
+import { DeleteCartDto } from './dto/delete-cart.dto';
+import { GetListPurchasesSellerDto } from './dto/get_list_purchases_seller.dto';
 interface RequestWithUser extends Request {
   user?: {
     id?: number;
@@ -37,8 +39,8 @@ interface RequestWithUser extends Request {
   };
 }
 
-@ApiBearerAuth('JWT-auth')
 @Controller()
+@ApiBearerAuth('JWT-auth')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
@@ -58,23 +60,8 @@ export class OrdersController {
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Phí ship' })
   @Post('order/get_ship_fee')
-  @HttpCode(200)
   getShipFee(@Body() query: GetShipFeeDto, @Req() req: RequestWithUser) {
     return this.ordersService.getShipFee(this.getUserId(req), query);
-  }
-
-  //@UseGuards(AuthGuard)
-  @ApiOperation({ summary: 'Lấy danh sách tỉnh/thành phố' })
-  @Get('order/provinces')
-  getProvinces() {
-    return this.ordersService.getProvinces();
-  }
-
-  //@UseGuards(AuthGuard)
-  @ApiOperation({ summary: 'Lấy danh sách phường/xã theo tỉnh/thành phố' })
-  @Get('order/wards')
-  getWards(@Query('province_id') provinceId: number) {
-    return this.ordersService.getWardsByProvince(Number(provinceId));
   }
 
   @UseGuards(AuthGuard)
@@ -87,7 +74,6 @@ export class OrdersController {
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Thêm địa chỉ người dùng' })
   @Post('order/add_order_address')
-  @HttpCode(200)
   addOrderAddress(
     @Req() req: RequestWithUser,
     @Body() dto: AddOrderAddressDto,
@@ -130,12 +116,20 @@ export class OrdersController {
 
   @UseGuards(AuthGuard)
   @Post('order/get_list_purchases')
-  @HttpCode(200)
   getListPurchases(
     @Body() body: GetListPurchasesDto,
     @Req() req: RequestWithUser,
   ) {
     return this.ordersService.getListPurchases(body, this.getUserId(req));
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('order/get_list_purchases_seller')
+  getListPurchasesSeller(
+    @Body() body: GetListPurchasesSellerDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.ordersService.getListPurchasesSeller(body, this.getUserId(req));
   }
 
   @UseGuards(AuthGuard)
@@ -152,14 +146,12 @@ export class OrdersController {
 
   @UseGuards(AuthGuard)
   @Post('order/cancel_order')
-  @HttpCode(200)
   cancelOrder(@Body() body: CancelOrderDto, @Req() req: RequestWithUser) {
     return this.ordersService.cancelOrder(body, this.getUserId(req));
   }
 
   @UseGuards(AuthGuard)
   @Post('order/set_accept_buyer')
-  @HttpCode(200)
   setAcceptBuyer(@Body() body: SetAcceptBuyerDto, @Req() req: RequestWithUser) {
     return this.ordersService.setAcceptBuyer(body, this.getUserId(req));
   }
@@ -195,5 +187,33 @@ export class OrdersController {
     @Req() req: RequestWithUser,
   ) {
     return this.ordersService.getOrderTimeline(body, this.getUserId(req));
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Lấy danh sách sản phẩm trong giỏ hàng' })
+  @Get('order/get_cart')
+  getCart(@Req() req: RequestWithUser) {
+    return this.ordersService.getCart(this.getUserId(req));
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Thêm sản phẩm vào giỏ hàng' })
+  @Post('order/add_cart')
+  addCart(@Body() body: AddCartDto, @Req() req: RequestWithUser) {
+    return this.ordersService.addCart(this.getUserId(req), body);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Chỉnh sửa số lượng sản phẩm trong giỏ hàng' })
+  @Post('order/edit_cart')
+  editCart(@Body() body: EditCartDto, @Req() req: RequestWithUser) {
+    return this.ordersService.editCart(this.getUserId(req), body);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Xóa sản phẩm khỏi giỏ hàng' })
+  @Post('order/delete_cart')
+  deleteCart(@Body() body: DeleteCartDto, @Req() req: RequestWithUser) {
+    return this.ordersService.deleteCart(this.getUserId(req), body);
   }
 }

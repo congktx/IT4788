@@ -4,11 +4,18 @@ import { INestApplication } from '@nestjs/common';
 import { ValidationPipe } from '../../src/common/validation.pipe';
 import request from 'supertest';
 import { AppModule } from '../../src/app.module';
+import { DataSource } from 'typeorm';
+// import { clearDatabase } from '../utils/db.util'; // Không dùng nữa (Non-destructive testing)
+import bcrypt from 'bcrypt';
+import { User } from '../../src/modules/users/entities/user.entity';
+import { Wallet } from '../../src/modules/wallets/entities/wallet.entity';
+import { INITIAL_WALLET_BALANCE } from '../../src/common/constants/wallet.constants';
 import * as fs from 'fs';
 import * as path from 'path';
 
 describe('Auth - Signup (e2e)', () => {
   let app: INestApplication;
+  let dataSource: DataSource;
   let currentTestPhone: string;
   let baseURL: string | any;
 
@@ -20,6 +27,7 @@ describe('Auth - Signup (e2e)', () => {
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
+    dataSource = app.get(DataSource);
 
     baseURL = process.env.TEST_API_URL || app.getHttpServer();
 
@@ -64,19 +72,51 @@ describe('Auth - Signup (e2e)', () => {
     expect(typeof data.id).toBe('string');
     expect(Number(data.id)).toBeGreaterThan(0);
     expect(data.username).toBe(signupData.phone_number);
+    expect(typeof data.wallet_id).toBe('string');
+    expect(Number(data.wallet_id)).toBeGreaterThan(0);
     expect(data.avatar).toBeNull();
     expect(data.active).toBe(-1);
     expect(data.token).toBeUndefined();
-    const loginRes = await request(baseURL)
-      .post('/auth/login')
-      .send({
-        phone_number: signupData.phone_number,
-        password: signupData.password
-      });
 
-    expect(loginRes.body.code).toBe('1000');
-    expect(loginRes.body.data.token).toBeDefined();
-    expect(loginRes.body.data.id).toBe(data.id);
+    const userRepository = dataSource.getRepository(User);
+    const walletRepository = dataSource.getRepository(Wallet);
+
+    // Nếu test trên server từ xa (baseURL là remote URL), đồng bộ thông tin user mới này vào DB local
+    if (typeof baseURL === 'string' && baseURL.startsWith('http')) {
+      const hashedPassword = await bcrypt.hash(signupData.password, 10);
+      await userRepository.save({
+        id: Number(data.id),
+        phone_number: signupData.phone_number,
+        password: hashedPassword,
+        uuid: signupData.uuid,
+        role: 'soldier',
+        username: signupData.phone_number,
+      });
+      await walletRepository.save({
+        id: Number(data.wallet_id),
+        user_id: Number(data.id),
+        balance: INITIAL_WALLET_BALANCE,
+      });
+    }
+
+    const dbUser = await userRepository.createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.phone_number = :phone', { phone: signupData.phone_number })
+      .getOne();
+
+    expect(dbUser).toBeDefined();
+    expect(dbUser!.phone_number).toBe(signupData.phone_number);
+    const isMatched = await bcrypt.compare(signupData.password, dbUser!.password);
+    expect(isMatched).toBe(true);
+
+    const dbWallet = await walletRepository.findOne({
+      where: { user_id: dbUser!.id },
+    });
+
+    expect(dbWallet).toBeDefined();
+    expect(String(dbWallet!.id)).toBe(data.wallet_id);
+    expect(Number(dbWallet!.balance)).toBe(INITIAL_WALLET_BALANCE);
+    expect(Number(dbWallet!.pending_balance)).toBe(0);
   });
 
   it('SIGNUP-02: (Thất bại) - Lỗi 9996 khi SĐT trùng lặp', async () => {

@@ -23,13 +23,11 @@
     "migration:run": "npm run typeorm -- -d ./data-source.ts migration:run",
     "migration:drop": "npm run typeorm -- -d ./data-source.ts schema:drop",
     "migration:revert": "npx typeorm-ts-node-commonjs migration:revert -d data-source.ts",
-    "test:e2e:full": "cross-env STOP_ON_FAIL=false jest --config ./test/jest-e2e.json --runInBand",
-    "test:e2e:stop": "cross-env STOP_ON_FAIL=true jest --config ./test/jest-failfast.json --runInBand",
-    "demo:follow": "ts-node -r tsconfig-paths/register test/demo/set-user-follow.demo.ts",
-    "demo:block": "ts-node -r tsconfig-paths/register test/demo/blocks.demo.ts"
+    "test:e2e:full": "cross-env STOP_ON_FAIL=false jest --config ./test/jest-e2e.json --runInBand"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1024.0",
+    "@google/genai": "^2.8.0",
     "@googlemaps/google-maps-services-js": "^3.4.2",
     "@nestjs/common": "^11.1.16",
     "@nestjs/config": "^4.0.3",
@@ -50,6 +48,7 @@
     "ioredis": "^5.10.1",
     "multer": "^2.1.1",
     "mysql2": "^3.19.0",
+    "openai": "^6.42.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",

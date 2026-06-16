@@ -21,6 +21,7 @@ import { UserFollow } from '../../follow/entities/user-follow.entity';
 import { Conversation } from '../../conversations/entities/conversation.entity';
 import { Notification } from '../../notifications/entities/notification.entity';
 import { Address } from '../../orders/entities/address.entity';
+import { CartItem } from '../../orders/entities/cart-item.entity';
 
 @Entity('users')
 export class User {
@@ -125,4 +126,7 @@ export class User {
 
   @OneToMany(() => Address, (address) => address.user)
   addresses: Address[];
+
+  @OneToMany(() => CartItem, (cartItem) => cartItem.user)
+  cart_items: CartItem[];
 }

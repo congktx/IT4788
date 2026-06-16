@@ -16,6 +16,9 @@ import { CheckCodeResetPasswordDto } from './dto/check-code-reset-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ChangeInfoAfterSignupDto } from './dto/change-info-after-signup.dto';
+import { DataSource } from 'typeorm';
+import { Wallet } from '../../modules/wallets/entities/wallet.entity';
+import { INITIAL_WALLET_BALANCE } from '../constants/wallet.constants';
 
 @Injectable()
 export class AuthService {
@@ -23,6 +26,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly redisService: RedisService,
+    private readonly dataSource: DataSource,
   ) { }
 
   private buildActive(user: User): number {
@@ -107,17 +111,34 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(signupDto.password, 10);
 
-    const user = await this.usersService.create({
-      phone_number: normalizedPhoneNumber,
-      password: hashedPassword,
-      uuid: signupDto.uuid,
-      role: 'soldier',
-      username: normalizedPhoneNumber,
+    const { user, wallet } = await this.dataSource.transaction(async (manager) => {
+      const createdUser = manager.create(User, {
+        phone_number: normalizedPhoneNumber,
+        password: hashedPassword,
+        uuid: signupDto.uuid,
+        role: 'soldier',
+        username: normalizedPhoneNumber,
+      });
+
+      const savedUser = await manager.save(User, createdUser);
+
+      const createdWallet = manager.create(Wallet, {
+        user_id: savedUser.id,
+        balance: INITIAL_WALLET_BALANCE,
+      });
+
+      const savedWallet = await manager.save(Wallet, createdWallet);
+
+      return {
+        user: savedUser,
+        wallet: savedWallet,
+      };
     });
 
     return buildResponse(APP_RESPONSE.OK, {
       id: String(user.id),
       username: user.username,
+      wallet_id: String(wallet.id),
       avatar: user.avatar,
       active: this.buildActive(user),
     });

@@ -1,0 +1,1 @@
+export const INITIAL_WALLET_BALANCE = 100000000;

@@ -25,10 +25,13 @@ jobs:
 
             git checkout main
 
-            git pull origin main
+            git pull
 
             docker compose down
 
             docker compose up -d --build
 
-            docker compose exec -T it4788_app sh -c "npm run migration:generate && npm run migration:run"
+            sleep 15
+            
+            docker compose exec -T app npm run migration:generate
+            docker compose exec -T app npm run migration:run

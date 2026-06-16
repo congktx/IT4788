@@ -47,7 +47,7 @@ export class ProductsService {
     private variantRepo: Repository<ProductVariant>,
 
     @InjectRepository(UserBlock)
-  private readonly userBlockRepo: Repository<UserBlock>,
+    private readonly userBlockRepo: Repository<UserBlock>,
   ) {}
 
   async isUserBlockedWithSeller(currentUserId?: number, sellerId?: number) {
@@ -161,8 +161,12 @@ export class ProductsService {
       );
 
       await this.variantRepo.save(variantEntities);
-
-      return { code: '1000', message: 'OK.', data: product };
+      const { title, ...restProduct } = product;
+      return {
+        code: '1000',
+        message: 'OK.',
+        data: { ...restProduct, name: title },
+      };
     } catch (e) {
       console.error('CREATE PRODUCT ERROR:', e);
       console.log(e);
@@ -375,10 +379,18 @@ export class ProductsService {
         }
       }
 
+      const updateProduct = await this.getProductById(id, true);
+      if (!updateProduct) {
+        return APP_RESPONSE.PRODUCT_NOT_EXISTED;
+      }
+      const { title, ...restProduct } = updateProduct;
       return {
         code: '1000',
         message: 'OK.',
-        data: await this.getProductById(id, true),
+        data: {
+          name: title,
+          ...restProduct,
+        },
       };
     } catch (e) {
       console.error('UPDATE PRODUCT ERROR:', e);
@@ -523,11 +535,7 @@ export class ProductsService {
       .createQueryBuilder('brand')
       .select(['brand.id', 'brand.name', 'brand.category_id']);
 
-    if (
-      categoryId !== undefined &&
-      categoryId !== null &&
-      categoryId !== 0
-    ) {
+    if (categoryId !== undefined && categoryId !== null && categoryId !== 0) {
       qb.where('brand.category_id = :categoryId', { categoryId });
     }
 
@@ -570,7 +578,9 @@ export class ProductsService {
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.variants', 'variant')
       .leftJoinAndSelect('product.likes', 'likes')
-      .leftJoinAndSelect('product.comments', 'comments');
+      .leftJoinAndSelect('product.comments', 'comments')
+      .leftJoinAndSelect('product.brand', 'brand')
+      .leftJoinAndSelect('product.category', 'category');
 
     if (category_id !== undefined) {
       qb.andWhere('product.category_id = :category_id', { category_id });
@@ -673,6 +683,21 @@ export class ProductsService {
         comment: String(commentCount),
         is_liked: false,
         is_stock: isStock,
+
+        brand: p.brand
+          ? {
+              id: String(p.brand.id),
+              name: p.brand.name,
+            }
+          : null,
+
+        category: p.category
+          ? {
+              id: String(p.category.id),
+              name: p.category.name,
+            }
+          : null,
+
         variants: variants.map((v: any) => ({
           id: String(v.id),
           size: v.size,
@@ -760,14 +785,23 @@ export class ProductsService {
   }
 
   async getCommentsProduct(productId: number, index: number, count: number) {
-    const comments = await this.commentRepo.find({
-      where: { product_id: productId },
-      order: { created_at: 'DESC' },
-      skip: index,
-      take: count,
-    });
-
-    return comments;
+    return await this.commentRepo
+      .createQueryBuilder('comment')
+      .leftJoin(User, 'user', 'user.id = comment.user_id')
+      .select([
+        'comment.id AS id',
+        'comment.product_id AS product_id',
+        'comment.user_id AS user_id',
+        'comment.content AS content',
+        'comment.created_at AS created_at',
+        'user.username AS username',
+        'user.avatar AS avatar',
+      ])
+      .where('comment.product_id = :productId', { productId })
+      .orderBy('comment.created_at', 'DESC')
+      .offset(index)
+      .limit(count)
+      .getRawMany();
   }
 
   async getUserById(id: number) {
@@ -852,7 +886,7 @@ export class ProductsService {
     });
 
     if (existedReport) {
-      return APP_RESPONSE.ACTION_DONE_PREVIOUSLY; 
+      return APP_RESPONSE.ACTION_DONE_PREVIOUSLY;
     }
 
     const report = this.reportRepo.create({
@@ -883,11 +917,10 @@ export class ProductsService {
 
     if (keyword !== undefined && keyword.trim() !== '') {
       const normalizedKeyword = keyword.trim().replace(/\s+/g, ' ');
-      const compactKeyword = normalizedKeyword.replace(/\s+/g, '').toLowerCase();
-      const tokens = normalizedKeyword
-        .toLowerCase()
-        .split(' ')
-        .filter(Boolean);
+      const compactKeyword = normalizedKeyword
+        .replace(/\s+/g, '')
+        .toLowerCase();
+      const tokens = normalizedKeyword.toLowerCase().split(' ').filter(Boolean);
 
       qb.andWhere(
         `

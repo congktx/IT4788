@@ -18,6 +18,7 @@ export class VideoDto {
     description: 'https://example.com/video.mp4',
     example: 'https://example.com/video.mp4',
   })
+  @IsUrl()
   @IsString()
   @IsOptional()
   url: string;

@@ -37,6 +37,7 @@ import { Notification } from './src/modules/notifications/entities/notification.
 import { PushSetting } from './src/modules/push_settings/entities/push-setting.entity';
 import { Rate } from './src/modules/rates/entities/rate.entity';
 import { SavedSearch } from './src/modules/searches/entities/saved_search.entity';
+import { CartItem } from './src/modules/orders/entities/cart-item.entity';
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'mysql',
@@ -46,13 +47,25 @@ export const dataSourceOptions: DataSourceOptions = {
   password: SecretConfig.database.password,
   database: SecretConfig.database.name,
   entities: [
-    User, UserCode,
-    Wallet, Transaction,
-    RewardProof, RewardAppeal, RewardRule,
-    Product, Like, Comment, Report, ProductVariant,
-    Order, OrderItem, Shipping,
-    Conversation, Message,
-    UserFollow, UserBlock,
+    User,
+    UserCode,
+    Wallet,
+    Transaction,
+    RewardProof,
+    RewardAppeal,
+    RewardRule,
+    Product,
+    Like,
+    Comment,
+    Report,
+    ProductVariant,
+    Order,
+    OrderItem,
+    Shipping,
+    Conversation,
+    Message,
+    UserFollow,
+    UserBlock,
     Notification,
     Product,
     Like,
@@ -79,6 +92,7 @@ export const dataSourceOptions: DataSourceOptions = {
     PushSetting,
     Rate,
     SavedSearch,
+    CartItem,
   ],
   migrations: ['src/migrations/*.ts'],
   synchronize: process.env.NODE_ENV === 'test' ? true : false,

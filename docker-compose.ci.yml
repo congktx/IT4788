@@ -13,6 +13,8 @@ services:
     volumes:
       - ./mysql_data:/var/lib/mysql
     restart: always
+    networks:
+      - proxy-net
 
   redis:
     image: redis:latest
@@ -47,19 +49,21 @@ services:
     ports:
       - "${PORT}:${PORT}"
     env_file: .env.prod
-    volumes:
-      - .:/app
-      - /app/node_modules
-    command: npm run start:dev
+    # volumes:
+    #   - .:/app
+    #   - /app/node_modules
+    # command: npm run start:dev
     depends_on:
       - mysql
       - redis
     restart: always
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.group2-api.rule=Host(`group2.it4788.sukkaito.id.v\
-        n`)"
-      - "traefik.http.routers.group2-api.entrypoints=web"
+      - "traefik.http.routers.group2-api.rule=Host(`group2.it4788.sukkaito.id.vn`)"
+      - "traefik.http.routers.group2-api.entrypoints=websecure"
+      - "traefik.http.routers.group2-api.tls=true"
+      - "traefik.http.routers.group2-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.group2-api.loadbalancer.server.port=8001"
     networks:
       - proxy-net
 

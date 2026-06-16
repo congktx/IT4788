@@ -10,6 +10,7 @@ import { User } from '../users/entities/user.entity';
 import { Transaction } from './entities/transaction.entity';
 import { GetBalanceHistoryDto } from './dto/get-balance-history.dto';
 import {APP_RESPONSE, buildResponse,} from '../../common/constants/response.constants';
+import { INITIAL_WALLET_BALANCE } from '../../common/constants/wallet.constants';
 
 @Injectable()
 export class WalletsService {
@@ -38,8 +39,7 @@ export class WalletsService {
     if (!wallet) {
       wallet = this.walletRepository.create({
         user_id: user.id,
-        balance: 0,
-        pending_balance: 0,
+        balance: INITIAL_WALLET_BALANCE,
       });
 
       wallet = await this.walletRepository.save(wallet);
@@ -76,8 +76,7 @@ export class WalletsService {
     if (!wallet) {
       wallet = this.walletRepository.create({
         user_id: user.id,
-        balance: 0,
-        pending_balance: 0,
+        balance: INITIAL_WALLET_BALANCE,
       });
 
       wallet = await this.walletRepository.save(wallet);
