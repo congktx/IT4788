@@ -9,8 +9,11 @@ export class Notification {
   @Column()
   type: string;
 
-  @Column()
+  @Column({ nullable: true })
   product_id: number;
+
+  @Column()
+  object_id: number;
 
   @Column()
   title: string;
@@ -18,10 +21,10 @@ export class Notification {
   @Column()
   created_at: number;
 
-  @Column()
+  @Column({ nullable: true })
   avatar: string;
 
-  @Column()
+  @Column({ nullable: true })
   group: number;
 
   @Column()

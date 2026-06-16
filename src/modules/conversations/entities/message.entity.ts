@@ -24,7 +24,7 @@ export class Message {
   @JoinColumn({ name: 'sender_id' })
   sender: User;
 
-  @ManyToOne(() => User, user => user.messages_sent)
+  @ManyToOne(() => User, user => user.messages_receive)
   @JoinColumn({ name: 'receiver_id' })
   receiver: User;
 }

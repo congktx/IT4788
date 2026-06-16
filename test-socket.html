@@ -47,6 +47,10 @@
           log('Read conversation id: ' + data['conversation_id']);
         });
 
+        socket.on('new_notification', (data) => {
+          log('New notification id: ' + data['id']);
+        });
+
         socket.on('disconnect', () => {
           log('Disconnected');
         });
