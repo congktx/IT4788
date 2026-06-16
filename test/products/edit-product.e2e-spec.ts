@@ -61,12 +61,7 @@ describe('Products - Edit Product (e2e)', () => {
     if (otherLoginRes.body.code === '9995') {
       await request(baseURL)
         .post('/auth/signup')
-<<<<<<< HEAD
-
-        .send({ phone_number: otherPhone, password: otherPass, uuid: 'mock-user-test' });
-=======
         .send({ phone_number: otherPhone, password: otherPass, uuid: 'mock-user-test-edit' });
->>>>>>> e98fcba21aa84dd3b369f8a71dc8e543d79a856f
       otherLoginRes = await request(baseURL)
         .post('/auth/login')
         .send({ phone_number: otherPhone, password: otherPass });
@@ -88,37 +83,6 @@ describe('Products - Edit Product (e2e)', () => {
       validBrandId = 1;
     }
 
-<<<<<<< HEAD
-    let brand = await brandRepo.findOne({ where: {} });
-    if (!brand) brand = await brandRepo.save({ name: 'Apple' });
-    validBrandId = brand.id;
-
-    let province = await provinceRepo.findOne({ where: {} });
-    if (!province) province = await provinceRepo.save({ name: 'Ha Noi' });
-    let ward = await wardRepo.findOne({ where: { provinces_id: province.id } });
-    if (!ward) ward = await wardRepo.save({ name: 'Dich Vong Hau', provinces_id: province.id });
-
-    const userId = loginRes.body.data?.id;
-    let address = await addressRepo.save({
-      user_id: userId,
-      ward_id: ward.id,
-      address_name: 'Home Test',
-      address_detail: '123 Test St',
-      lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver A', phone: context.phone_number, full_address: '123 Test St, Dich Vong Hau, Ha Noi'
-    });
-    validShipFromId = address.id;
-
-    const otherUserId = otherLoginRes.body.data.id;
-    const otherAddress = await addressRepo.save({
-      user_id: otherUserId,
-      ward_id: ward.id,
-
-      address_name: 'Home Test B',
-      address_detail: '123 Test St B',
-      lat: 21.0285, lng: 105.8542, receiver_name: 'Test Receiver B', phone: '0955555555', full_address: '123 Test St B, Dich Vong Hau, Ha Noi'
-    });
-    const otherShipFromId = otherAddress.id;
-=======
     // 4. Chuẩn bị Address cho User chính
     const addrResA = await request(baseURL).get('/order/get_list_order_address').set('Authorization', `Bearer ${accessToken}`);
     if (addrResA.body.code === '1000' && addrResA.body.data && addrResA.body.data.length > 0) {
@@ -141,7 +105,6 @@ describe('Products - Edit Product (e2e)', () => {
         validShipFromId = 1;
       }
     }
->>>>>>> e98fcba21aa84dd3b369f8a71dc8e543d79a856f
 
     // 5. Chuẩn bị Address cho User phụ
     let otherShipFromId = 1;
