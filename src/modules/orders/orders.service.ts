@@ -944,15 +944,74 @@ export class OrdersService {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
-    if (isNaN(Number(id))) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+
+    const userId = Number(user_id);
+    const addressId = Number(id);
+
+    if (Number.isNaN(addressId) || addressId <= 0) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+
     const address = await this.orderAddressRepository.findOne({
-      where: { id: Number(id), user_id: Number(user_id) },
+      where: {
+        id: addressId,
+        user_id: userId,
+      },
     });
+
     if (!address) {
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
-    await this.orderAddressRepository.delete(id);
-    return APP_RESPONSE.OK;
+
+    const usedByOrder = await this.orderRepository.count({
+      where: [
+        { buyer_address_id: addressId },
+        { seller_address_id: addressId },
+      ],
+    });
+
+    const usedByProduct = await this.productRepository.count({
+      where: {
+        ship_from_id: addressId,
+      },
+    });
+
+    if (usedByOrder > 0 || usedByProduct > 0) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        await manager.delete(OrderAddress, {
+          id: addressId,
+          user_id: userId,
+        });
+
+        if (address.is_default) {
+          const nextDefaultAddress = await manager.findOne(OrderAddress, {
+            where: {
+              user_id: userId,
+            },
+            order: {
+              id: 'DESC',
+            },
+          });
+
+          if (nextDefaultAddress) {
+            await manager.update(
+              OrderAddress,
+              { id: nextDefaultAddress.id },
+              { is_default: true },
+            );
+          }
+        }
+      });
+
+      return APP_RESPONSE.OK;
+    } catch (error) {
+      console.error('delete_order_address error:', error);
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
   }
 
   async get_order_status(user_id: number, query: GetOrderStatusDto) {
@@ -1155,11 +1214,11 @@ export class OrdersService {
   }
 
   async getPurchase(body: GetPurchaseDto, userId: number) {
-    const buyer = await this.userRepository.findOne({
+    const user = await this.userRepository.findOne({
       where: { id: userId },
     });
 
-    if (!buyer) {
+    if (!user) {
       throw new UnauthorizedException(
         errorResponse(APP_RESPONSE.TOKEN_INVALID),
       );
@@ -1181,7 +1240,10 @@ export class OrdersService {
       .leftJoinAndSelect('order.seller', 'seller')
       .leftJoinAndSelect('order.shipping', 'shipping')
       .where('order.id = :purchaseId', { purchaseId })
-      .andWhere('order.buyer_id = :buyerId', { buyerId: buyer.id })
+      .andWhere(
+        '(order.buyer_id = :userId OR order.seller_id = :userId)',
+        { userId: user.id },
+      )
       .getOne();
 
     if (!order) {
@@ -1212,7 +1274,7 @@ export class OrdersService {
       total_price: totalPrice,
       ship_fee: shipFee,
       final_price: finalPrice,
-      note: '',
+      note: order.note || '',
       items: (order.items || []).map((item) => ({
         product_id: item.product_id,
         name: item.product?.title || '',
