@@ -1,6 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
+import { DevToken } from "../dev_tokens/entities/dev-token.entity";
+import { getApps } from 'firebase-admin/app';
+import { getMessaging, MulticastMessage } from 'firebase-admin/messaging';
 import { ApiResponse } from "../../common/interfaces/api-response.interface";
 import { APP_RESPONSE } from "../../common/constants/response.constants";
 import { SendMessageDto } from "./dto/send-message.dto";
@@ -33,6 +36,9 @@ export class ConversationsService {
 
     @InjectRepository(UserBlock)
     private readonly userBlockRepo: Repository<UserBlock>,
+
+    @InjectRepository(DevToken)
+    private readonly devTokenRepo: Repository<DevToken>,
   ) { }
 
   private fail(code: string, message: string): ApiResponse<any> {
@@ -47,6 +53,37 @@ export class ConversationsService {
     return {
       ...obj
     };
+  }
+
+  private async sendPushNotification(userId: number, title?: string, body?: string, data?: any) {
+    try {
+      if (!getApps().length) return;
+
+      const tokens = await this.devTokenRepo.find({
+        where: { user_id: userId, is_active: true }
+      });
+
+      if (tokens.length === 0) return;
+
+      const deviceTokens = tokens.map(t => t.devtoken);
+      
+      const message: MulticastMessage = {
+        tokens: deviceTokens,
+        data: data ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])) : {},
+      };
+
+      if (title || body) {
+        message.notification = {
+          title: title || '',
+          body: body || '',
+        };
+      }
+      
+      const response = await getMessaging().sendEachForMulticast(message);
+      console.log(`FCM notification sent to user ${userId}, success: ${response.successCount}, failure: ${response.failureCount}`);
+    } catch (error) {
+      console.error(`Failed to send FCM notification to user ${userId}:`, error);
+    }
   }
 
   async createConversation(userIds: number[]) {
@@ -187,6 +224,16 @@ export class ConversationsService {
     };
 
     this.conversationsGateway.notifyUser(sendMessageDto.to_id, 'new_message', message);
+
+    const senderUser = await this.userRepo.findOne({ where: { id: currentUserId }});
+    const senderName = senderUser ? senderUser.username : 'Người dùng';
+    
+    await this.sendPushNotification(
+      sendMessageDto.to_id, 
+      "Tin nhắn mới", 
+      `Bạn có tin nhắn mới từ ${senderName}`, 
+      { type: 'new_message', conversation_id: conversation["id"].toString() }
+    );
 
     return this.success({
       ...APP_RESPONSE.OK,
@@ -379,6 +426,13 @@ export class ConversationsService {
         time_last_seen: Math.floor(Date.now() / 1000)
       });
       this.conversationsGateway.notifyUser(partner.id, 'read_message', { conversation_id: conversation.id });
+
+      await this.sendPushNotification(
+        partner.id, 
+        undefined, 
+        undefined, 
+        { type: 'read_message', conversation_id: conversation.id.toString() }
+      );
     }
 
     return this.success({

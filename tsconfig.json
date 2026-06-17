@@ -3,6 +3,7 @@
     "types": ["node", "express", "jest"],
     "module": "commonjs",
     "moduleResolution": "node",
+    "resolveJsonModule": true,
     // "resolvePackageJsonExports": true,
     "esModuleInterop": true,
     "isolatedModules": true,

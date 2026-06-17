@@ -13,10 +13,11 @@ import { Order } from '../orders/entities/order.entity';
 import { UserFollow } from '../follow/entities/user-follow.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { DevToken } from '../dev_tokens/entities/dev-token.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Conversation, Message, Product, UserBlock, Order, UserFollow]),
+    TypeOrmModule.forFeature([User, Conversation, Message, Product, UserBlock, Order, UserFollow, DevToken]),
     ConfigModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
