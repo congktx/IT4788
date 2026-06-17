@@ -668,8 +668,6 @@ export class ProductsService {
       const commentCount = p.comments ? p.comments.length : 0;
       const variants = p.variants || [];
       const isStock = variants.some((v: any) => Number(v.stock) > 0);
-      const isLiked =
-        p.likes?.some((like: any) => Number(like.user_id) === Number(authUserId)) ?? false;
 
       return {
         id: String(p.id),
@@ -683,20 +681,23 @@ export class ProductsService {
         video: p.videos && p.videos.length > 0 ? p.videos[0] : null,
         like: String(likeCount),
         comment: String(commentCount),
-        is_liked: isLiked,
+        is_liked: authUserId ? (p.likes || []).some((l: any) => l.user_id === authUserId) : false,
         is_stock: isStock,
+
         brand: p.brand
           ? {
               id: String(p.brand.id),
-              brand_name: p.brand.name,
+              name: p.brand.name,
             }
           : null,
+
         category: p.category
           ? {
               id: String(p.category.id),
               name: p.category.name,
             }
           : null,
+
         variants: variants.map((v: any) => ({
           id: String(v.id),
           size: v.size,
@@ -820,15 +821,6 @@ export class ProductsService {
     index: number,
     count: number,
   ) {
-    const product = await this.productRepo.findOne({
-      where: { id: productId },
-      relations: ['seller'],
-    });
-
-    if (!product) {
-      throw new Error('Product not found');
-    }
-
     const comment = this.commentRepo.create({
       product_id: productId,
       user_id: userId,
@@ -837,44 +829,17 @@ export class ProductsService {
 
     await this.commentRepo.save(comment);
 
-    // Commented out due to compilation errors (notificationRepo, notificationsService, fcm_token missing)
-    /*
-    if (product.seller_id !== userId) {
-      await this.notificationRepo.save({
-        user_id: product.seller_id,
-        title: 'Sản phẩm có bình luận mới',
-        content: `Có người vừa bình luận sản phẩm "${product.title}" của bạn`,
-        type: 'comment_product',
-        ref_id: product.id,
-      });
+    const comments = await this.commentRepo.find({
+      where: { product_id: productId },
+      order: { created_at: 'DESC' },
+      skip: index,
+      take: count,
+    });
 
-      if (product.seller?.fcm_token) {
-        await this.notificationsService.sendPushNotification(
-          product.seller.fcm_token,
-          'Sản phẩm có bình luận mới',
-          `Có người vừa bình luận sản phẩm "${product.title}" của bạn`,
-          {
-            type: 'comment_product',
-            product_id: String(product.id),
-          },
-        );
-      }
-    }
-    */
-
-    return await this.getCommentsProduct(productId, index, count);
+    return comments;
   }
 
   async likeProduct(productId: number, userId: number) {
-    const product = await this.productRepo.findOne({
-      where: { id: productId },
-      relations: ['seller'],
-    });
-
-    if (!product) {
-      throw new Error('Product not found');
-    }
-
     const existingLike = await this.likeRepo.findOne({
       where: {
         product_id: productId,
@@ -882,44 +847,29 @@ export class ProductsService {
       },
     });
 
+    let is_liked = false;
+
     if (existingLike) {
       await this.likeRepo.remove(existingLike);
-      return { is_liked: false };
-    }
-
-    const like = this.likeRepo.create({
-      product_id: productId,
-      user_id: userId,
-    });
-
-    await this.likeRepo.save(like);
-
-    // Commented out due to compilation errors (notificationRepo, notificationsService, fcm_token missing)
-    /*
-    if (product.seller_id !== userId) {
-      await this.notificationRepo.save({
-        user_id: product.seller_id,
-        title: 'Sản phẩm được yêu thích',
-        content: `Có người vừa thích sản phẩm "${product.title}" của bạn`,
-        type: 'like_product',
-        ref_id: product.id,
+      is_liked = false;
+    } else {
+      const newLike = this.likeRepo.create({
+        product_id: productId,
+        user_id: userId,
       });
 
-      if (product.seller?.fcm_token) {
-        await this.notificationsService.sendPushNotification(
-          product.seller.fcm_token,
-          'Sản phẩm được yêu thích',
-          `Có người vừa thích sản phẩm "${product.title}" của bạn`,
-          {
-            type: 'like_product',
-            product_id: String(product.id),
-          },
-        );
-      }
+      await this.likeRepo.save(newLike);
+      is_liked = true;
     }
-    */
 
-    return { is_liked: true };
+    const like_count = await this.likeRepo.count({
+      where: { product_id: productId },
+    });
+
+    return {
+      is_liked,
+      like_count,
+    };
   }
 
   async reportProduct(
