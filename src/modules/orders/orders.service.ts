@@ -956,18 +956,41 @@ export class OrdersService {
     if (!user_id) {
       return APP_RESPONSE.TOKEN_INVALID;
     }
-    if (isNaN(Number(id))) return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+
+    const userId = Number(user_id);
+    const addressId = Number(id);
+
+    if (Number.isNaN(addressId) || addressId <= 0) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+
     const address = await this.orderAddressRepository.findOne({
-      where: { id: Number(id), user_id: Number(user_id) },
+      where: {
+        id: addressId,
+        user_id: userId,
+        deleted_at: IsNull(),
+      },
     });
+
     if (!address) {
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
+
     if (address.is_default) {
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
-    await this.orderAddressRepository.softDelete(id);
-    return APP_RESPONSE.OK;
+
+    try {
+      await this.orderAddressRepository.softDelete({
+        id: addressId,
+        user_id: userId,
+      });
+
+      return APP_RESPONSE.OK;
+    } catch (error) {
+      console.error('delete_order_address error:', error);
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
   }
 
   async get_order_status(user_id: number, query: GetOrderStatusDto) {
@@ -1171,11 +1194,11 @@ export class OrdersService {
   }
 
   async getPurchase(body: GetPurchaseDto, userId: number) {
-    const buyer = await this.userRepository.findOne({
+    const user = await this.userRepository.findOne({
       where: { id: userId },
     });
 
-    if (!buyer) {
+    if (!user) {
       throw new UnauthorizedException(
         errorResponse(APP_RESPONSE.TOKEN_INVALID),
       );
@@ -1197,7 +1220,10 @@ export class OrdersService {
       .leftJoinAndSelect('order.seller', 'seller')
       .leftJoinAndSelect('order.shipping', 'shipping')
       .where('order.id = :purchaseId', { purchaseId })
-      .andWhere('order.buyer_id = :buyerId', { buyerId: buyer.id })
+      .andWhere(
+        '(order.buyer_id = :userId OR order.seller_id = :userId)',
+        { userId: user.id },
+      )
       .getOne();
 
     if (!order) {
@@ -1228,7 +1254,7 @@ export class OrdersService {
       total_price: totalPrice,
       ship_fee: shipFee,
       final_price: finalPrice,
-      note: '',
+      note: order.note || '',
       items: (order.items || []).map((item) => ({
         product_id: item.product_id,
         name: item.product?.title || '',
