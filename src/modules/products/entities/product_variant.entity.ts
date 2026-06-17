@@ -15,6 +15,7 @@ export class ProductVariant {
   @Column()
   product_id: number;
 
+
   @Column({ nullable: true })
   size: string;
 

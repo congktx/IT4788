@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, In, IsNull, Repository } from 'typeorm';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order_item.entity';
 import { Shipping } from './entities/shipping.entity';
@@ -354,6 +354,7 @@ export class OrdersService {
         price: item.product ? Number(item.product.price) : 0,
         quantity: item.quantity,
       })),
+      buyerId: order.buyer_id,
     }));
 
     return buildResponse(APP_RESPONSE.OK, data);
@@ -926,6 +927,17 @@ export class OrdersService {
         { is_default: false },
       );
     }
+    if (is_default !== undefined) {
+      if (is_default === false && addressUpdate.is_default === true) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+      if (is_default === true) {
+        await this.orderAddressRepository.update(
+          { user_id, is_default: true, deleted_at: IsNull() },
+          { is_default: false },
+        );
+      }
+    }
     await this.orderAddressRepository.update(id, {
       ...(address_name && { address_name }),
       ...(is_default !== undefined && { is_default }),
@@ -956,6 +968,7 @@ export class OrdersService {
       where: {
         id: addressId,
         user_id: userId,
+        deleted_at: IsNull(),
       },
     });
 
@@ -963,48 +976,14 @@ export class OrdersService {
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
 
-    const usedByOrder = await this.orderRepository.count({
-      where: [
-        { buyer_address_id: addressId },
-        { seller_address_id: addressId },
-      ],
-    });
-
-    const usedByProduct = await this.productRepository.count({
-      where: {
-        ship_from_id: addressId,
-      },
-    });
-
-    if (usedByOrder > 0 || usedByProduct > 0) {
+    if (address.is_default) {
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
 
     try {
-      await this.dataSource.transaction(async (manager) => {
-        await manager.delete(OrderAddress, {
-          id: addressId,
-          user_id: userId,
-        });
-
-        if (address.is_default) {
-          const nextDefaultAddress = await manager.findOne(OrderAddress, {
-            where: {
-              user_id: userId,
-            },
-            order: {
-              id: 'DESC',
-            },
-          });
-
-          if (nextDefaultAddress) {
-            await manager.update(
-              OrderAddress,
-              { id: nextDefaultAddress.id },
-              { is_default: true },
-            );
-          }
-        }
+      await this.orderAddressRepository.softDelete({
+        id: addressId,
+        user_id: userId,
       });
 
       return APP_RESPONSE.OK;
@@ -1039,6 +1018,7 @@ export class OrdersService {
         'buyer_address.ward',
         'buyer_address.ward.province',
       ],
+      withDeleted: true,
       order: {
         statuses: { id: 'DESC' },
       },
