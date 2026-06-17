@@ -19,11 +19,7 @@ jobs:
           username: ${{ secrets.SERVER02_USERNAME }}
           key: ${{ secrets.SERVER02_SSH_KEY }}
           script: |
-            cd develop2 && cd IT4788
-
-            git fetch origin
-
-            git checkout main
+            cd develop && cd IT4788
 
             git pull
 
