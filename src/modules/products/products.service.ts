@@ -837,6 +837,8 @@ export class ProductsService {
 
     await this.commentRepo.save(comment);
 
+    // Commented out due to compilation errors (notificationRepo, notificationsService, fcm_token missing)
+    /*
     if (product.seller_id !== userId) {
       await this.notificationRepo.save({
         user_id: product.seller_id,
@@ -858,6 +860,7 @@ export class ProductsService {
         );
       }
     }
+    */
 
     return await this.getCommentsProduct(productId, index, count);
   }
@@ -891,6 +894,8 @@ export class ProductsService {
 
     await this.likeRepo.save(like);
 
+    // Commented out due to compilation errors (notificationRepo, notificationsService, fcm_token missing)
+    /*
     if (product.seller_id !== userId) {
       await this.notificationRepo.save({
         user_id: product.seller_id,
@@ -912,6 +917,7 @@ export class ProductsService {
         );
       }
     }
+    */
 
     return { is_liked: true };
   }

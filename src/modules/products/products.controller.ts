@@ -11,6 +11,7 @@ import {
 import { Request } from 'express';
 import { ProductsService } from './products.service';
 import { AuthGuard } from '../../common/auth/guards/auth.guard';
+import { OptionalAuthGuard } from '../../common/auth/guards/optional-auth.guard';
 import { CreateProductDto } from './dto/create_product.dto';
 import { UpdateProductDto } from './dto/update_product.dto';
 import { GetCommentsProductDto } from './dto/get_comments_product.dto';
@@ -74,6 +75,7 @@ export class ProductsController {
   }
 
   @Post('get_products')
+  @UseGuards(OptionalAuthGuard)
   async getProducts(@Req() req: RequestWithUser, @Body() dto: GetProductsDto) {
     try {
       const authUserId = req.user?.id;
@@ -99,7 +101,7 @@ export class ProductsController {
   }
 
   @Post('get_list_products')
-  @UseGuards(AuthGuard)
+  @UseGuards(OptionalAuthGuard)
   async getListProducts(
     @Req() req: RequestWithUser,
     @Body() dto: GetListProductsDto,
