@@ -417,7 +417,7 @@ export class ProductsService {
       return APP_RESPONSE.NOT_ACCESS;
     }
     await this.variantRepo.delete({ product: { id: Number(id) } });
-    await this.productRepo.delete(id);
+    await this.productRepo.softDelete(id);
     return APP_RESPONSE.OK;
   }
   //get_user_listing

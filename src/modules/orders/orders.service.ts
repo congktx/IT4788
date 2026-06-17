@@ -354,6 +354,7 @@ export class OrdersService {
         price: item.product ? Number(item.product.price) : 0,
         quantity: item.quantity,
       })),
+      buyerId: order.buyer_id,
     }));
 
     return buildResponse(APP_RESPONSE.OK, data);
@@ -951,7 +952,7 @@ export class OrdersService {
     if (!address) {
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
-    await this.orderAddressRepository.delete(id);
+    await this.orderAddressRepository.softDelete(id);
     return APP_RESPONSE.OK;
   }
 
