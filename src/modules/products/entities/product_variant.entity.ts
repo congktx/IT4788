@@ -4,7 +4,6 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
-  DeleteDateColumn,
 } from 'typeorm';
 import { Product } from './product.entity';
 
@@ -16,8 +15,6 @@ export class ProductVariant {
   @Column()
   product_id: number;
 
-  @DeleteDateColumn({ nullable: true })
-  deleted_at: Date;
 
   @Column({ nullable: true })
   size: string;

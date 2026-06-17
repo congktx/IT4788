@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  DeleteDateColumn,
   OneToMany,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
@@ -51,6 +52,9 @@ export class Product {
 
   @CreateDateColumn()
   created_at: Date;
+
+  @DeleteDateColumn({ nullable: true })
+  deleted_at: Date;
 
   @Column('simple-array', { nullable: true })
   image_urls: string[];
