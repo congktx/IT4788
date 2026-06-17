@@ -99,15 +99,9 @@ export class ProductsController {
   }
 
   @Post('get_list_products')
-  @UseGuards(AuthGuard)
-  async getListProducts(
-    @Req() req: RequestWithUser,
-    @Body() dto: GetListProductsDto,
-  ) {
+  async getListProducts(@Body() dto: GetListProductsDto) {
     try {
-      const authUserId = req.user?.id;
-
-      const data = await this.productsService.getListProducts(dto, authUserId);
+      const data = await this.productsService.getListProducts(dto);
 
       if (!data || data.length === 0) {
         return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, []);
