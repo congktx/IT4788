@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, In, IsNull, Repository } from 'typeorm';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order_item.entity';
 import { Shipping } from './entities/shipping.entity';
@@ -927,6 +927,17 @@ export class OrdersService {
         { is_default: false },
       );
     }
+    if (is_default !== undefined) {
+      if (is_default === false && addressUpdate.is_default === true) {
+        return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+      }
+      if (is_default === true) {
+        await this.orderAddressRepository.update(
+          { user_id, is_default: true, deleted_at: IsNull() },
+          { is_default: false },
+        );
+      }
+    }
     await this.orderAddressRepository.update(id, {
       ...(address_name && { address_name }),
       ...(is_default !== undefined && { is_default }),
@@ -950,6 +961,9 @@ export class OrdersService {
       where: { id: Number(id), user_id: Number(user_id) },
     });
     if (!address) {
+      return APP_RESPONSE.PARAMETER_VALUE_INVALID;
+    }
+    if (address.is_default) {
       return APP_RESPONSE.PARAMETER_VALUE_INVALID;
     }
     await this.orderAddressRepository.softDelete(id);
@@ -981,6 +995,7 @@ export class OrdersService {
         'buyer_address.ward',
         'buyer_address.ward.province',
       ],
+      withDeleted: true,
       order: {
         statuses: { id: 'DESC' },
       },
