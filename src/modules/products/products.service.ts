@@ -557,7 +557,7 @@ export class ProductsService {
     });
   }
 
-  async getListProducts(query: any) {
+  async getListProducts(query: any, authUserId?: number) {
     const {
       category_id,
       keyword,
@@ -681,7 +681,7 @@ export class ProductsService {
         video: p.videos && p.videos.length > 0 ? p.videos[0] : null,
         like: String(likeCount),
         comment: String(commentCount),
-        is_liked: false,
+        is_liked: authUserId ? (p.likes || []).some((l: any) => l.user_id === authUserId) : false,
         is_stock: isStock,
 
         brand: p.brand
