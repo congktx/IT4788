@@ -416,7 +416,7 @@ export class ProductsService {
     if (product.seller_id !== user_id) {
       return APP_RESPONSE.NOT_ACCESS;
     }
-    await this.variantRepo.delete({ product: { id: Number(id) } });
+    await this.variantRepo.softDelete({ product: { id: Number(id) } });
     await this.productRepo.softDelete(id);
     return APP_RESPONSE.OK;
   }
