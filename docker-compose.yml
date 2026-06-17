@@ -33,7 +33,4 @@ services:
       - .:/app
       - /app/node_modules
     command: npm run start:dev
-    depends_on:
-      - mysql
-      - redis
     restart: always

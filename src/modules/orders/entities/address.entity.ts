@@ -5,6 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
+  DeleteDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Order } from '../../orders/entities/order.entity';
@@ -35,6 +36,9 @@ export class Address {
 
   @Column({ default: false })
   is_default: boolean;
+
+  @DeleteDateColumn({ nullable: true })
+  deleted_at: Date;
 
   @ManyToOne(() => User, (user) => user.addresses, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
