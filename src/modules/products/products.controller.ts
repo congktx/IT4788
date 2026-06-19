@@ -108,7 +108,6 @@ export class ProductsController {
   ) {
     try {
       const authUserId = req.user?.id;
-
       const data = await this.productsService.getListProducts(dto, authUserId);
 
       if (!data || data.length === 0) {

@@ -117,7 +117,7 @@ export class UsersService {
       });
     }
     let info: any = {};
-    if (body.user_id == currentUserId) {
+    if (body.user_id == 0 || body.user_id == currentUserId) {
       info["email"] = user.email;
       info["phonenumber"] = user.phone_number;
       info["firstname"] = user.firstname;
