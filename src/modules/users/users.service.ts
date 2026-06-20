@@ -100,6 +100,12 @@ export class UsersService {
     let order_count = await this.ordersRepo.count({
       where: { seller: { id: user_id } }
     });
+    let follower_count = await this.followsRepo.count({
+      where: { followee_id: user_id }
+    });
+    let following_count = await this.followsRepo.count({
+      where: { follower_id: user_id }
+    });
     let check_follow = 0
     let check_block = 0
     if (user_id && currentUserId) {
@@ -128,6 +134,8 @@ export class UsersService {
     info["id"] = user.id;
     info["username"] = user.username;
     info["listing"] = order_count;
+    info["followers"] = follower_count;
+    info["following"] = following_count;
     info["status"] = user.status;
     info["avatar"] = user.avatar;
     info["cover_image"] = user.cover_image;
