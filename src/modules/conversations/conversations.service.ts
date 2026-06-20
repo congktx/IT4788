@@ -159,7 +159,10 @@ export class ConversationsService {
     let type = sendMessageDto.type_message;
 
     if (sendMessageDto.product_id) {
-      content = String(sendMessageDto.product_id);
+      content = JSON.stringify({
+        product_id: sendMessageDto.product_id,
+        message: sendMessageDto.message || '',
+      });
       type = "product_id";
     }
     const message = this.messageRepo.create({
@@ -282,6 +285,16 @@ export class ConversationsService {
       let idPartner = 0;
       if (conversations[i]['users'][0]['id'] === currentUserId) idPartner = 1;
       console.log(listLastMessage[i])
+
+      const unreadCount = await this.messageRepo
+        .createQueryBuilder('message')
+        .where('message.conversation_id = :convId', { convId: conversations[i].id })
+        .andWhere('message.sender_id != :userId', { userId: currentUserId })
+        .andWhere('message.created_at > :lastSeen', { lastSeen: conversations[i].time_last_seen || 0 })
+        .getCount();
+      
+      num_new_message += unreadCount;
+
       listConv.push({
         id: conversations[i]["id"],
         partner: {
@@ -293,11 +306,10 @@ export class ConversationsService {
           message: listLastMessage[i].content,
           type: listLastMessage[i].type,
           created: listLastMessage[i].created_at,
-          unread: listLastMessage[i].sender.id != currentUserId && listLastMessage[i].created_at > conversations[i].time_last_seen
-        }
+          unread: unreadCount > 0
+        },
+        num_new_message: unreadCount
       });
-      if (listLastMessage[i] && listLastMessage[i].sender.id != currentUserId && listLastMessage[i].created_at > conversations[i].time_last_seen)
-        num_new_message++;
     }
 
     return this.success({

@@ -163,6 +163,7 @@ export class RatesService {
       .leftJoin(User, 'reviewer', 'reviewer.id = rate.reviewer_id')
       .select([
         'rate.id AS id',
+        'rate.reviewer_id AS reviewer_id',
         'reviewer.username AS username',
         'reviewer.avatar AS avatar',
         'rate.content AS content',
