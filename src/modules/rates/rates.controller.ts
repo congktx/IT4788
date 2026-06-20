@@ -19,10 +19,7 @@ export class RatesController {
 
   @Post('get_rates')
   @UseGuards(AuthGuard)
-  async getRates(
-    @Req() req: RequestWithUser,
-    @Body() dto: GetRatesDto,
-  ) {
+  async getRates(@Req() req: RequestWithUser, @Body() dto: GetRatesDto) {
     try {
       const authUserId = req.user?.userId ?? req.user?.id;
 
@@ -68,10 +65,7 @@ export class RatesController {
 
   @Post('set_rates')
   @UseGuards(AuthGuard)
-  async setRates(
-    @Req() req: RequestWithUser,
-    @Body() dto: SetRateDto,
-  ) {
+  async setRates(@Req() req: RequestWithUser, @Body() dto: SetRateDto) {
     try {
       const reviewerId = req.user?.userId ?? req.user?.id;
 
