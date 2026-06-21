@@ -711,7 +711,7 @@ export class ProductsService {
   async getProductDetail(productId: number, authUserId?: number) {
     const product = await this.productRepo.findOne({
       where: { id: productId },
-      relations: ['seller', 'variants', 'likes', 'comments', 'category'],
+      relations: ['seller', 'variants', 'likes', 'comments', 'category', 'brand', 'ship_from'],
     });
 
     if (!product) {
@@ -755,9 +755,14 @@ export class ProductsService {
         size: v.size,
         color: v.color,
         stock: String(v.stock ?? 0),
+        weight: v.weight ? String(v.weight) : '0',
       })),
-      brand:
-        product.brand_id !== undefined && product.brand_id !== null
+      brand: product.brand
+        ? {
+            id: String(product.brand.id),
+            brand_name: product.brand.name,
+          }
+        : product.brand_id !== undefined && product.brand_id !== null
           ? {
               id: String(product.brand_id),
               brand_name: String(product.brand_id),
@@ -778,6 +783,7 @@ export class ProductsService {
             parent_id: product.category.parent_id ?? 0,
           }
         : null,
+      ships_from: product.ship_from?.full_address || '',
       can_edit: canEdit,
       best_offers: [],
       messages: [],
