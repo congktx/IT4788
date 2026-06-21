@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, IsNull, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order_item.entity';
 import { Shipping } from './entities/shipping.entity';
@@ -239,6 +239,29 @@ export class OrdersService {
     );
 
     return this.dataSource.transaction(async (manager) => {
+      const totalAmount = totalPrice + ship_fee;
+
+      let buyerWallet = await manager.findOne(Wallet, {
+        where: { user_id: buyer.id },
+      });
+
+      if (!buyerWallet) {
+        buyerWallet = manager.create(Wallet, {
+          user_id: buyer.id,
+          balance: INITIAL_WALLET_BALANCE,
+          pending_balance: 0,
+        });
+        buyerWallet = await manager.save(Wallet, buyerWallet);
+      }
+
+      const buyerBalance = Number(buyerWallet.balance || 0);
+
+      if (buyerBalance < totalAmount) {
+        throw new BadRequestException(
+          errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+        );
+      }
+
       const order = manager.create(Order, {
         buyer_id: buyer.id,
         seller_id: firstSellerId,
@@ -286,6 +309,35 @@ export class OrdersService {
           product_id: In(uniqueProductIds),
         });
       }
+
+      buyerWallet.balance = buyerBalance - totalAmount;
+      await manager.save(Wallet, buyerWallet);
+
+      const buyerTransaction = manager.create(Transaction, {
+        wallet_id: buyerWallet.id,
+        type: 'expense',
+        amount: totalAmount,
+        status: 'success',
+        description: `Payment for order #${savedOrder.id}`,
+      });
+      await manager.save(Transaction, buyerTransaction);
+
+      let sellerWallet = await manager.findOne(Wallet, {
+        where: { user_id: firstSellerId },
+      });
+
+      if (!sellerWallet) {
+        sellerWallet = manager.create(Wallet, {
+          user_id: firstSellerId,
+          balance: 0,
+          pending_balance: 0,
+        });
+        sellerWallet = await manager.save(Wallet, sellerWallet);
+      }
+
+      sellerWallet.pending_balance =
+        Number(sellerWallet.pending_balance || 0) + totalAmount;
+      await manager.save(Wallet, sellerWallet);
 
       return buildResponse(APP_RESPONSE.OK, {
         order_id: savedOrder.id,
@@ -1404,37 +1456,57 @@ export class OrdersService {
 
     try {
       return await this.dataSource.transaction(async (manager) => {
+        const refundedCoins = this.getOrderAmount(order);
+
+        const sellerWallet = await manager.findOne(Wallet, {
+          where: { user_id: order.seller_id },
+        });
+
+        if (!sellerWallet) {
+          throw new BadRequestException(
+            errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+          );
+        }
+
+        const sellerPendingBalance = Number(sellerWallet.pending_balance || 0);
+
+        if (sellerPendingBalance < refundedCoins) {
+          throw new BadRequestException(
+            errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+          );
+        }
+
+        let buyerWallet = await manager.findOne(Wallet, {
+          where: { user_id: buyer.id },
+        });
+
+        if (!buyerWallet) {
+          buyerWallet = manager.create(Wallet, {
+            user_id: buyer.id,
+            balance: 0,
+            pending_balance: 0,
+          });
+          buyerWallet = await manager.save(Wallet, buyerWallet);
+        }
+
         order.status = OrderStatus.CANCELLED;
         order.cancel_reason = body.reason ?? null;
         await manager.save(Order, order);
 
-        let wallet = await manager.findOne(Wallet, {
-          where: { user_id: buyer.id },
-        });
+        buyerWallet.balance = Number(buyerWallet.balance || 0) + refundedCoins;
+        await manager.save(Wallet, buyerWallet);
 
-        if (!wallet) {
-          wallet = manager.create(Wallet, {
-            user_id: buyer.id,
-            balance: INITIAL_WALLET_BALANCE,
-          });
-          wallet = await manager.save(Wallet, wallet);
-        }
-
-        const refundedCoins =
-          Number(order.total_price || 0) + Number(order.shipping_fee || 0);
-
-        wallet.balance = Number(wallet.balance || 0) + refundedCoins;
-        await manager.save(Wallet, wallet);
-
-        const transaction = manager.create(Transaction, {
-          wallet_id: wallet.id,
+        const buyerTransaction = manager.create(Transaction, {
+          wallet_id: buyerWallet.id,
           type: 'income',
           amount: refundedCoins,
           status: 'success',
           description: `Refund for cancelled order #${order.id}`,
         });
+        await manager.save(Transaction, buyerTransaction);
 
-        await manager.save(Transaction, transaction);
+        sellerWallet.pending_balance = sellerPendingBalance - refundedCoins;
+        await manager.save(Wallet, sellerWallet);
 
         const timeline = manager.create(OrderTimeline, {
           order_id: order.id,
@@ -1513,18 +1585,72 @@ export class OrdersService {
       );
     }
 
-    order.status =
-      isAccept === 1 ? OrderStatus.CONFIRMED : OrderStatus.CANCELLED;
+    return this.dataSource.transaction(async (manager) => {
+      const newStatus =
+        isAccept === 1 ? OrderStatus.CONFIRMED : OrderStatus.CANCELLED;
 
-    await this.orderRepository.save(order);
+      order.status = newStatus;
+      await manager.save(Order, order);
 
-    await this.addTimeline(
-      order.id,
-      order.status,
-      isAccept === 1 ? 'Seller accepted order' : 'Seller rejected order',
-    );
+      if (isAccept === 0) {
+        const refundedCoins = this.getOrderAmount(order);
 
-    return APP_RESPONSE.OK;
+        const sellerWallet = await manager.findOne(Wallet, {
+          where: { user_id: order.seller_id },
+        });
+
+        if (!sellerWallet) {
+          throw new BadRequestException(
+            errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+          );
+        }
+
+        const sellerPendingBalance = Number(sellerWallet.pending_balance || 0);
+
+        if (sellerPendingBalance < refundedCoins) {
+          throw new BadRequestException(
+            errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+          );
+        }
+
+        let buyerWallet = await manager.findOne(Wallet, {
+          where: { user_id: order.buyer_id },
+        });
+
+        if (!buyerWallet) {
+          buyerWallet = manager.create(Wallet, {
+            user_id: order.buyer_id,
+            balance: 0,
+            pending_balance: 0,
+          });
+          buyerWallet = await manager.save(Wallet, buyerWallet);
+        }
+
+        buyerWallet.balance = Number(buyerWallet.balance || 0) + refundedCoins;
+        await manager.save(Wallet, buyerWallet);
+
+        const buyerTransaction = manager.create(Transaction, {
+          wallet_id: buyerWallet.id,
+          type: 'income',
+          amount: refundedCoins,
+          status: 'success',
+          description: `Refund for rejected order #${order.id}`,
+        });
+        await manager.save(Transaction, buyerTransaction);
+
+        sellerWallet.pending_balance = sellerPendingBalance - refundedCoins;
+        await manager.save(Wallet, sellerWallet);
+      }
+
+      await this.addTimeline(
+        order.id,
+        order.status,
+        isAccept === 1 ? 'Seller accepted order' : 'Seller rejected order',
+        manager,
+      );
+
+      return APP_RESPONSE.OK;
+    });
   }
 
   async buyerConfirmReceived(body: BuyerConfirmReceivedDto, userId: number) {
@@ -1565,15 +1691,52 @@ export class OrdersService {
       );
     }
 
-    order.status = OrderStatus.DELIVERED;
-    await this.orderRepository.save(order);
-    await this.addTimeline(
-      order.id,
-      OrderStatus.DELIVERED,
-      'Buyer confirmed received',
-    );
+    return this.dataSource.transaction(async (manager) => {
+      const receivedAmount = this.getOrderAmount(order);
 
-    return APP_RESPONSE.OK;
+      const sellerWallet = await manager.findOne(Wallet, {
+        where: { user_id: order.seller_id },
+      });
+
+      if (!sellerWallet) {
+        throw new BadRequestException(
+          errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+        );
+      }
+
+      const sellerPendingBalance = Number(sellerWallet.pending_balance || 0);
+
+      if (sellerPendingBalance < receivedAmount) {
+        throw new BadRequestException(
+          errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+        );
+      }
+
+      order.status = OrderStatus.DELIVERED;
+      await manager.save(Order, order);
+
+      sellerWallet.pending_balance = sellerPendingBalance - receivedAmount;
+      sellerWallet.balance = Number(sellerWallet.balance || 0) + receivedAmount;
+      await manager.save(Wallet, sellerWallet);
+
+      const sellerTransaction = manager.create(Transaction, {
+        wallet_id: sellerWallet.id,
+        type: 'income',
+        amount: receivedAmount,
+        status: 'success',
+        description: `Payment received for order #${order.id}`,
+      });
+      await manager.save(Transaction, sellerTransaction);
+
+      await this.addTimeline(
+        order.id,
+        OrderStatus.DELIVERED,
+        'Buyer confirmed received',
+        manager,
+      );
+
+      return APP_RESPONSE.OK;
+    });
   }
 
   async refundOrder(body: RefundOrderDto, userId: number) {
@@ -1615,48 +1778,73 @@ export class OrdersService {
     }
 
     return this.dataSource.transaction(async (manager) => {
-      order.status = OrderStatus.REFUNDED;
-      order.refund_reason = body.reason ?? null;
+      const refundedCoins = this.getOrderAmount(order);
 
-      await manager.save(Order, order);
+      const sellerWallet = await manager.findOne(Wallet, {
+        where: { user_id: order.seller_id },
+      });
 
-      let wallet = await manager.findOne(Wallet, {
+      if (!sellerWallet) {
+        throw new BadRequestException(
+          errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+        );
+      }
+
+      const sellerBalance = Number(sellerWallet.balance || 0);
+
+      if (sellerBalance < refundedCoins) {
+        throw new BadRequestException(
+          errorResponse(APP_RESPONSE.PARAMETER_VALUE_INVALID),
+        );
+      }
+
+      let buyerWallet = await manager.findOne(Wallet, {
         where: { user_id: buyer.id },
       });
 
-      if (!wallet) {
-        wallet = manager.create(Wallet, {
+      if (!buyerWallet) {
+        buyerWallet = manager.create(Wallet, {
           user_id: buyer.id,
-          balance: INITIAL_WALLET_BALANCE,
+          balance: 0,
+          pending_balance: 0,
         });
-
-        wallet = await manager.save(Wallet, wallet);
+        buyerWallet = await manager.save(Wallet, buyerWallet);
       }
 
-      const refundedCoins =
-        Number(order.total_price || 0) + Number(order.shipping_fee || 0);
+      order.status = OrderStatus.REFUNDED;
+      order.refund_reason = body.reason ?? null;
+      await manager.save(Order, order);
 
-      wallet.balance = Number(wallet.balance || 0) + refundedCoins;
+      buyerWallet.balance = Number(buyerWallet.balance || 0) + refundedCoins;
+      await manager.save(Wallet, buyerWallet);
 
-      await manager.save(Wallet, wallet);
-
-      const transaction = manager.create(Transaction, {
-        wallet_id: wallet.id,
+      const buyerTransaction = manager.create(Transaction, {
+        wallet_id: buyerWallet.id,
         type: 'income',
         amount: refundedCoins,
         status: 'success',
         description: `Refund for order #${order.id}`,
       });
+      await manager.save(Transaction, buyerTransaction);
 
-      await manager.save(Transaction, transaction);
+      sellerWallet.balance = sellerBalance - refundedCoins;
+      await manager.save(Wallet, sellerWallet);
 
-      const timeline = manager.create(OrderTimeline, {
-        order_id: order.id,
-        status: OrderStatus.REFUNDED,
-        note: body.reason ?? 'Refund requested',
+      const sellerTransaction = manager.create(Transaction, {
+        wallet_id: sellerWallet.id,
+        type: 'expense',
+        amount: refundedCoins,
+        status: 'success',
+        description: `Refund deducted for order #${order.id}`,
       });
+      await manager.save(Transaction, sellerTransaction);
 
-      await manager.save(OrderTimeline, timeline);
+      await this.addTimeline(
+        order.id,
+        OrderStatus.REFUNDED,
+        body.reason ?? 'Refund requested',
+        manager,
+      );
 
       return APP_RESPONSE.OK;
     });
@@ -1726,17 +1914,29 @@ export class OrdersService {
     return APP_RESPONSE.OK;
   }
 
+  private getOrderAmount(order: Pick<Order, 'total_price' | 'shipping_fee'>) {
+    return Number(order.total_price || 0) + Number(order.shipping_fee || 0);
+  }
+
   private async addTimeline(
     orderId: number,
     status: string,
     note?: string | null,
+    manager?: EntityManager,
   ) {
-    const timeline = this.orderTimelineRepository.create({
+    const payload = {
       order_id: orderId,
       status,
       note: note ?? null,
-    });
+    };
 
+    if (manager) {
+      const timeline = manager.create(OrderTimeline, payload);
+      await manager.save(OrderTimeline, timeline);
+      return;
+    }
+
+    const timeline = this.orderTimelineRepository.create(payload);
     await this.orderTimelineRepository.save(timeline);
   }
 
