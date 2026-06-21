@@ -70,6 +70,14 @@ export class ConversationsService {
       const message: MulticastMessage = {
         tokens: deviceTokens,
         data: data ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])) : {},
+        android: {
+          priority: 'high',
+        },
+        apns: {
+          headers: {
+            'apns-priority': '10',
+          },
+        },
       };
 
       if (title || body) {
