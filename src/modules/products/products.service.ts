@@ -15,6 +15,7 @@ import { Brand } from './entities/brand.entity';
 import { Category } from './entities/category.entity';
 import { Address } from '../orders/entities/address.entity';
 import { UserBlock } from '../blocks/entities/user-block.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ProductsService {
@@ -48,6 +49,8 @@ export class ProductsService {
 
     @InjectRepository(UserBlock)
     private readonly userBlockRepo: Repository<UserBlock>,
+
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async isUserBlockedWithSeller(currentUserId?: number, sellerId?: number) {
@@ -668,6 +671,8 @@ export class ProductsService {
       const commentCount = p.comments ? p.comments.length : 0;
       const variants = p.variants || [];
       const isStock = variants.some((v: any) => Number(v.stock) > 0);
+      const isLiked =
+        p.likes?.some((like: any) => Number(like.user_id) === Number(authUserId)) ?? false;
 
       return {
         id: String(p.id),
@@ -681,23 +686,20 @@ export class ProductsService {
         video: p.videos && p.videos.length > 0 ? p.videos[0] : null,
         like: String(likeCount),
         comment: String(commentCount),
-        is_liked: authUserId ? (p.likes || []).some((l: any) => l.user_id === authUserId) : false,
+        is_liked: isLiked,
         is_stock: isStock,
-
         brand: p.brand
           ? {
               id: String(p.brand.id),
-              name: p.brand.name,
+              brand_name: p.brand.name,
             }
           : null,
-
         category: p.category
           ? {
               id: String(p.category.id),
               name: p.category.name,
             }
           : null,
-
         variants: variants.map((v: any) => ({
           id: String(v.id),
           size: v.size,
@@ -711,7 +713,7 @@ export class ProductsService {
   async getProductDetail(productId: number, authUserId?: number) {
     const product = await this.productRepo.findOne({
       where: { id: productId },
-      relations: ['seller', 'variants', 'likes', 'comments', 'category'],
+      relations: ['seller', 'variants', 'likes', 'comments', 'category', 'brand', 'ship_from'],
     });
 
     if (!product) {
@@ -755,9 +757,14 @@ export class ProductsService {
         size: v.size,
         color: v.color,
         stock: String(v.stock ?? 0),
+        weight: v.weight ? String(v.weight) : '0',
       })),
-      brand:
-        product.brand_id !== undefined && product.brand_id !== null
+      brand: product.brand
+        ? {
+            id: String(product.brand.id),
+            brand_name: product.brand.name,
+          }
+        : product.brand_id !== undefined && product.brand_id !== null
           ? {
               id: String(product.brand_id),
               brand_name: String(product.brand_id),
@@ -778,6 +785,7 @@ export class ProductsService {
             parent_id: product.category.parent_id ?? 0,
           }
         : null,
+      ships_from: product.ship_from?.full_address || '',
       can_edit: canEdit,
       best_offers: [],
       messages: [],
@@ -821,6 +829,14 @@ export class ProductsService {
     index: number,
     count: number,
   ) {
+    const product = await this.productRepo.findOne({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      throw new Error('Product not found');
+    }
+
     const comment = this.commentRepo.create({
       product_id: productId,
       user_id: userId,
@@ -829,17 +845,27 @@ export class ProductsService {
 
     await this.commentRepo.save(comment);
 
-    const comments = await this.commentRepo.find({
-      where: { product_id: productId },
-      order: { created_at: 'DESC' },
-      skip: index,
-      take: count,
-    });
+    if (product.seller_id !== userId) {
+      await this.notificationsService.addNotification(userId, {
+        type: 'comment_product',
+        object_id: product.id,
+        title: `Có người vừa bình luận sản phẩm "${product.title}" của bạn`,
+        user_id: product.seller_id,
+      });
+    }
 
-    return comments;
+    return await this.getCommentsProduct(productId, index, count);
   }
 
   async likeProduct(productId: number, userId: number) {
+    const product = await this.productRepo.findOne({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      throw new Error('Product not found');
+    }
+
     const existingLike = await this.likeRepo.findOne({
       where: {
         product_id: productId,
@@ -860,6 +886,15 @@ export class ProductsService {
 
       await this.likeRepo.save(newLike);
       is_liked = true;
+
+      if (product.seller_id !== userId) {
+        await this.notificationsService.addNotification(userId, {
+          type: 'like_product',
+          object_id: product.id,
+          title: `Có người vừa thích sản phẩm "${product.title}" của bạn`,
+          user_id: product.seller_id,
+        });
+      }
     }
 
     const like_count = await this.likeRepo.count({
