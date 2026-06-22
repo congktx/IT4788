@@ -39,6 +39,7 @@ export class AuthService {
       username: user.username,
       token,
       avatar: user.avatar,
+      cover_image: user.cover_image,
       active: this.buildActive(user),
     });
   }
