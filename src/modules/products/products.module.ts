@@ -40,7 +40,7 @@ import { ProductsSearchService } from './products-search.service';
         const username = configService.get<string>('ELASTICSEARCH_USERNAME');
         const password = configService.get<string>('ELASTICSEARCH_PASSWORD');
         const config: any = {
-          node: node || 'http://localhost:9200',
+          node: node || 'http://localhost:9201',
         };
         if (username && password) {
           config.auth = {
@@ -57,4 +57,4 @@ import { ProductsSearchService } from './products-search.service';
   providers: [ProductsService, ProductsSearchService],
   exports: [ProductsService, ProductsSearchService],
 })
-export class ProductsModule {}
+export class ProductsModule { }
