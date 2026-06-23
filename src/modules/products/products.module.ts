@@ -13,11 +13,48 @@ import { Category } from './entities/category.entity';
 import { Address } from '../orders/entities/address.entity';
 import { UserBlock } from '../blocks/entities/user-block.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ElasticsearchModule } from '@nestjs/elasticsearch';
+import { ProductsSearchService } from './products-search.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Product, Comment, User, Like, Report, ProductVariant, UserBlock, Brand, Category, Address]), NotificationsModule],
+  imports: [
+    TypeOrmModule.forFeature([
+      Product,
+      Comment,
+      User,
+      Like,
+      Report,
+      ProductVariant,
+      UserBlock,
+      Brand,
+      Category,
+      Address,
+    ]),
+    NotificationsModule,
+    ConfigModule,
+    ElasticsearchModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => {
+        const node = configService.get<string>('ELASTICSEARCH_NODE');
+        const username = configService.get<string>('ELASTICSEARCH_USERNAME');
+        const password = configService.get<string>('ELASTICSEARCH_PASSWORD');
+        const config: any = {
+          node: node || 'http://localhost:9200',
+        };
+        if (username && password) {
+          config.auth = {
+            username,
+            password,
+          };
+        }
+        return config;
+      },
+      inject: [ConfigService],
+    }),
+  ],
   controllers: [ProductsController],
-  providers: [ProductsService],
-  exports: [ProductsService]
+  providers: [ProductsService, ProductsSearchService],
+  exports: [ProductsService, ProductsSearchService],
 })
-export class ProductsModule { }
+export class ProductsModule {}

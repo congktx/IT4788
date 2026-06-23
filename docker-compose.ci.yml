@@ -67,6 +67,23 @@ services:
     networks:
       - proxy-net
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+    container_name: it4788_elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.authc.api_key.enabled=true
+      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+    ports:
+      - "127.0.0.1:9200:9200"
+    volumes:
+      - ./elasticsearch_data:/usr/share/elasticsearch/data
+    restart: always
+    networks:
+      - proxy-net
+
 networks:
   proxy-net:
     external: true
