@@ -546,7 +546,7 @@ export class ProductsService implements OnModuleInit {
     };
   }
 
-  async getCategories(parentId?: number) {
+  async getCategories(parentId?: number, index?: number, count?: number) {
     const qb = this.categoryRepo.createQueryBuilder('category');
 
     if (parentId !== undefined) {
@@ -554,6 +554,10 @@ export class ProductsService implements OnModuleInit {
     }
 
     qb.orderBy('category.sort', 'ASC').addOrderBy('category.id', 'ASC');
+
+    if (index !== undefined && count !== undefined) {
+      qb.skip(index).take(count);
+    }
 
     return await qb.getMany();
   }
