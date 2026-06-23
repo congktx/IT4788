@@ -54,7 +54,7 @@ services:
     # volumes:
     #   - .:/app
     #   - /app/node_modules
-    command: sh -c "npm run elasticsearch:sync && node dist/src/main.js"
+    command: sh -c "node dist/src/sync-elasticsearch.js && node dist/src/main.js"
     depends_on:
       group2-elasticsearch:
           condition: service_healthy
