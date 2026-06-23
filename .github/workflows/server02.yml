@@ -25,10 +25,11 @@ jobs:
 
             docker compose down
 
+            docker compose -f 'docker-compose.yml' up -d --build 'elasticsearch' 
             docker compose -f 'docker-compose.yml' up -d --build 'redis' 
             docker compose -f 'docker-compose.yml' up -d --build 'app' 
 
             sleep 15
-            
+
             docker compose exec -T app npm run migration:generate
             docker compose exec -T app npm run migration:run
