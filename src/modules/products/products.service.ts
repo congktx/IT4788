@@ -916,17 +916,23 @@ export class ProductsService implements OnModuleInit {
     await this.commentRepo.save(comment);
 
     if (product.seller_id !== userId) {
-      await this.notificationsService.addNotification(userId, {
+      const notificationResponse = await this.notificationsService.addNotification(userId, {
         type: 'comment_product',
         object_id: product.id,
         title: `Có người vừa bình luận sản phẩm "${product.title}" của bạn`,
         user_id: product.seller_id,
       });
+
+      let notificationIdStr = '';
+      if (notificationResponse.code == '1000' && notificationResponse.data) {
+        notificationIdStr = String(notificationResponse.data.id);
+      }
+
       await this.sendPushNotification(
         product.seller_id,
         "Thông báo mới",
         `Có người vừa bình luận sản phẩm "${product.title}" của bạn`,
-        { type: 'comment_product', object_id: String(product.id) }
+        { type: 'comment_product', object_id: String(product.id), notification_id: notificationIdStr }
       );
     }
 
@@ -964,17 +970,27 @@ export class ProductsService implements OnModuleInit {
       is_liked = true;
 
       if (product.seller_id !== userId) {
-        await this.notificationsService.addNotification(userId, {
+        const notificationResponse = await this.notificationsService.addNotification(userId, {
           type: 'like_product',
           object_id: product.id,
           title: `Có người vừa thích sản phẩm "${product.title}" của bạn`,
           user_id: product.seller_id,
         });
+
+        let notificationIdStr = '';
+        if (notificationResponse.code === '1000' && notificationResponse.data) {
+          notificationIdStr = String(notificationResponse.data.id);
+        }
+
         await this.sendPushNotification(
           product.seller_id,
-          "Thông báo mới",
+          'Thông báo mới',
           `Có người vừa thích sản phẩm "${product.title}" của bạn`,
-          { type: 'like_product', object_id: String(product.id) }
+          {
+            type: 'like_product',
+            object_id: String(product.id),
+            notification_id: notificationIdStr,
+          },
         );
       }
     }
