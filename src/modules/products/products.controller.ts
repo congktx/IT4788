@@ -41,7 +41,11 @@ export class ProductsController {
   @Post('get_categories')
   async getCategories(@Body() dto: GetCategoriesDto) {
     try {
-      const data = await this.productsService.getCategories(dto.parent_id);
+      const data = await this.productsService.getCategories(
+        dto.parent_id,
+        dto.index,
+        dto.count,
+      );
 
       if (!data || data.length === 0) {
         return buildResponse(APP_RESPONSE.NO_DATA_OR_END_OF_LIST, []);
