@@ -54,6 +54,7 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayDisco
 
   notifyUser(receiverId: number, noti: string, messageData: any) {
     const socketId = this.connectedUsers.get(receiverId);
+    console.log(`[Websocket] notifyUser: receiverId=${receiverId}, event=${noti}, socketId=${socketId ?? 'NOT_FOUND'} (Total active users: ${this.connectedUsers.size})`);
 
     if (socketId) {
       this.server.to(socketId).emit(noti, messageData);
