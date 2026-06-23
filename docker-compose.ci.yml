@@ -77,7 +77,7 @@ services:
       - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}
       - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
     ports:
-      - "127.0.0.1:9200:9200"
+      - "127.0.0.1:9201:9200"
     volumes:
       - ./elasticsearch_data:/usr/share/elasticsearch/data
     restart: always
