@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
@@ -16,9 +16,10 @@ import { Category } from './entities/category.entity';
 import { Address } from '../orders/entities/address.entity';
 import { UserBlock } from '../blocks/entities/user-block.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ProductsSearchService } from './products-search.service';
 
 @Injectable()
-export class ProductsService {
+export class ProductsService implements OnModuleInit {
   constructor(
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
@@ -51,7 +52,17 @@ export class ProductsService {
     private readonly userBlockRepo: Repository<UserBlock>,
 
     private readonly notificationsService: NotificationsService,
+    private readonly productsSearchService: ProductsSearchService,
   ) {}
+
+  async onModuleInit() {
+    try {
+      await this.productsSearchService.createIndex();
+      console.log('Elasticsearch index initialized successfully');
+    } catch (err) {
+      console.error('Failed to initialize Elasticsearch index:', err);
+    }
+  }
 
   async isUserBlockedWithSeller(currentUserId?: number, sellerId?: number) {
     if (!currentUserId || !sellerId) return false;
@@ -164,6 +175,12 @@ export class ProductsService {
       );
 
       await this.variantRepo.save(variantEntities);
+
+      // Index to Elasticsearch
+      this.productsSearchService.indexProduct(product).catch((err) => {
+        console.error('Failed to index new product to Elasticsearch:', err);
+      });
+
       const { title, ...restProduct } = product;
       return {
         code: '1000',
@@ -386,6 +403,12 @@ export class ProductsService {
       if (!updateProduct) {
         return APP_RESPONSE.PRODUCT_NOT_EXISTED;
       }
+
+      // Update index in Elasticsearch
+      this.productsSearchService.indexProduct(updateProduct).catch((err) => {
+        console.error('Failed to index updated product to Elasticsearch:', err);
+      });
+
       const { title, ...restProduct } = updateProduct;
       return {
         code: '1000',
@@ -421,6 +444,12 @@ export class ProductsService {
     }
     await this.variantRepo.softDelete({ product: { id: Number(id) } });
     await this.productRepo.softDelete(id);
+
+    // Remove from Elasticsearch
+    this.productsSearchService.removeProduct(id).catch((err) => {
+      console.error('Failed to remove deleted product from Elasticsearch:', err);
+    });
+
     return APP_RESPONSE.OK;
   }
   //get_user_listing
@@ -948,6 +977,40 @@ export class ProductsService {
     index: number,
     count: number,
   ) {
+    if (keyword !== undefined && keyword.trim() !== '') {
+      try {
+        const matchedIds = await this.productsSearchService.search(
+          keyword,
+          categoryId,
+          brandId,
+          priceMin,
+          priceMax,
+          index,
+          count,
+        );
+
+        if (matchedIds.length === 0) {
+          return [];
+        }
+
+        // Fetch matched products from MySQL database
+        const products = await this.productRepo.createQueryBuilder('product')
+          .where('product.id IN (:...matchedIds)', { matchedIds })
+          .getMany();
+
+        // Sort products based on the relevance score order returned by Elasticsearch
+        return matchedIds
+          .map((id) => products.find((p) => p.id === id))
+          .filter(Boolean);
+      } catch (error) {
+        console.error(
+          'Elasticsearch search failed, falling back to database query:',
+          error,
+        );
+      }
+    }
+
+    // Fallback or no-keyword query using MySQL database directly
     const qb = this.productRepo.createQueryBuilder('product');
 
     if (keyword !== undefined && keyword.trim() !== '') {
