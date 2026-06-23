@@ -12,6 +12,7 @@ import { Brand } from './entities/brand.entity';
 import { Category } from './entities/category.entity';
 import { Address } from '../orders/entities/address.entity';
 import { UserBlock } from '../blocks/entities/user-block.entity';
+import { DevToken } from '../dev_tokens/entities/dev-token.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ElasticsearchModule } from '@nestjs/elasticsearch';
@@ -30,6 +31,7 @@ import { ProductsSearchService } from './products-search.service';
       Brand,
       Category,
       Address,
+      DevToken,
     ]),
     NotificationsModule,
     ConfigModule,

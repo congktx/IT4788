@@ -2,6 +2,9 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
+import { DevToken } from '../dev_tokens/entities/dev-token.entity';
+import { getApps } from 'firebase-admin/app';
+import { getMessaging, MulticastMessage } from 'firebase-admin/messaging';
 import { ProductVariant } from './entities/product_variant.entity';
 import { CreateProductDto } from './dto/create_product.dto';
 import { Comment } from './entities/comment.entity';
@@ -51,9 +54,43 @@ export class ProductsService implements OnModuleInit {
     @InjectRepository(UserBlock)
     private readonly userBlockRepo: Repository<UserBlock>,
 
+    @InjectRepository(DevToken)
+    private readonly devTokenRepo: Repository<DevToken>,
+
     private readonly notificationsService: NotificationsService,
     private readonly productsSearchService: ProductsSearchService,
   ) {}
+
+  private async sendPushNotification(userId: number, title?: string, body?: string, data?: any) {
+    try {
+      if (!getApps().length) return;
+
+      const tokens = await this.devTokenRepo.find({
+        where: { user_id: userId, is_active: true }
+      });
+
+      if (tokens.length === 0) return;
+
+      const deviceTokens = tokens.map(t => t.devtoken);
+      
+      const message: MulticastMessage = {
+        tokens: deviceTokens,
+        data: data ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)])) : {},
+      };
+
+      if (title || body) {
+        message.notification = {
+          title: title || '',
+          body: body || '',
+        };
+      }
+      
+      const response = await getMessaging().sendEachForMulticast(message);
+      console.log(`FCM notification sent to user ${userId}, success: ${response.successCount}, failure: ${response.failureCount}`);
+    } catch (error) {
+      console.error(`Failed to send FCM notification to user ${userId}:`, error);
+    }
+  }
 
   async onModuleInit() {
     try {
@@ -885,6 +922,12 @@ export class ProductsService implements OnModuleInit {
         title: `Có người vừa bình luận sản phẩm "${product.title}" của bạn`,
         user_id: product.seller_id,
       });
+      await this.sendPushNotification(
+        product.seller_id,
+        "Thông báo mới",
+        `Có người vừa bình luận sản phẩm "${product.title}" của bạn`,
+        { type: 'comment_product', object_id: String(product.id) }
+      );
     }
 
     return await this.getCommentsProduct(productId, index, count);
@@ -927,6 +970,12 @@ export class ProductsService implements OnModuleInit {
           title: `Có người vừa thích sản phẩm "${product.title}" của bạn`,
           user_id: product.seller_id,
         });
+        await this.sendPushNotification(
+          product.seller_id,
+          "Thông báo mới",
+          `Có người vừa thích sản phẩm "${product.title}" của bạn`,
+          { type: 'like_product', object_id: String(product.id) }
+        );
       }
     }
 
