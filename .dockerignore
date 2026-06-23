@@ -1,1 +1,7 @@
 node_modules/
+mysql_data/
+redis-data/
+elasticsearch_data/
+dist/
+.git/
+.idea/
