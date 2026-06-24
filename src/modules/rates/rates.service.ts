@@ -166,6 +166,8 @@ export class RatesService {
         'rate.reviewer_id AS reviewer_id',
         'reviewer.username AS username',
         'reviewer.avatar AS avatar',
+        'reviewer.cover_image AS cover_image',
+        'reviewer.cover_image_web AS cover_image_web',
         'rate.content AS content',
         'rate.level AS level',
         'rate.product_id AS product_id',
