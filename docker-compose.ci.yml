@@ -1,5 +1,5 @@
 services:
-  mysql:
+  group2-mysql:
     image: mysql:8.0
     container_name: it4788_mysql
     env_file: .env.prod
@@ -16,7 +16,7 @@ services:
     networks:
       - proxy-net
 
-  redis:
+  group2-redis:
     image: redis:latest
     env_file: .env.prod
     ports:
@@ -24,6 +24,8 @@ services:
     volumes:
       - ./redis-data:/data
     restart: always
+    networks:
+      - proxy-net
 
   mysql-test:
     image: mysql:8.0
@@ -52,10 +54,14 @@ services:
     # volumes:
     #   - .:/app
     #   - /app/node_modules
-    # command: npm run start:dev
+    command: sh -c "node dist/src/sync-elasticsearch.js && node dist/src/main.js"
     depends_on:
-      - mysql
-      - redis
+      group2-elasticsearch:
+          condition: service_healthy
+      group2-mysql:
+          condition: service_started
+      group2-redis:
+          condition: service_started
     restart: always
     labels:
       - "traefik.enable=true"
@@ -67,7 +73,7 @@ services:
     networks:
       - proxy-net
 
-  elasticsearch:
+  group2-elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
     container_name: it4788_elasticsearch
     environment:
@@ -75,7 +81,7 @@ services:
       - xpack.security.enabled=true
       - xpack.security.authc.api_key.enabled=true
       - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}
-      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
       - "127.0.0.1:9201:9200"
     volumes:
@@ -83,6 +89,15 @@ services:
     restart: always
     networks:
       - proxy-net
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s -u ${ELASTICSEARCH_USERNAME}:${ELASTICSEARCH_PASSWORD} http://localhost:9200/_cluster/health >/dev/null || exit 1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
 networks:
   proxy-net:
