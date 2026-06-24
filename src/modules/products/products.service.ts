@@ -845,6 +845,8 @@ export class ProductsService implements OnModuleInit {
             id: String(product.seller.id),
             username: product.seller.username || '',
             avatar: product.seller.avatar || '',
+            cover_image: product.seller.cover_image || '',
+            cover_image_web: product.seller.cover_image_web,
             fullname: product.seller.fullname || '',
           }
         : null,
