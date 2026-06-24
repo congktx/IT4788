@@ -874,6 +874,8 @@ export class ProductsService implements OnModuleInit {
         'comment.created_at AS created_at',
         'user.username AS username',
         'user.avatar AS avatar',
+        'user.cover_image AS cover_image',
+        'user.cover_image_web AS cover_image_web'
       ])
       .where('comment.product_id = :productId', { productId })
       .orderBy('comment.created_at', 'DESC')
